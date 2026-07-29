@@ -1,0 +1,20 @@
+gateway:
+  tools:
+    find_low_stock_products:
+      owner: inventory-platform
+      version: "1"
+      connection: inventory-db
+      operation: find_low_stock_products
+      mode: read
+      description: Find products at or below a stock threshold for a warehouse.
+      input:
+        include: [warehouse, threshold]
+        defaults:
+          threshold: 10
+      authorization:
+        required-scopes: [tools.read]
+      quota:
+        per-subject: 50/1h
+      output:
+        include: [product_reference, product_name, quantity_available]
+        maximum-items: 50

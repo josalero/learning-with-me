@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: Generic connector test
+  version: 1.0.0
+paths:
+  /widgets/{widgetId}:
+    get:
+      operationId: getWidget
+      parameters:
+        - name: widgetId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: verbose
+          in: query
+          schema: { type: boolean }
+      responses:
+        "200": { description: OK }
+  /widgets:
+    post:
+      operationId: createWidget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2 }
+                color: { type: string, enum: [red, blue] }
+      responses:
+        "201": { description: Created }

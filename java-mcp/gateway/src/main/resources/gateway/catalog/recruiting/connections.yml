@@ -1,0 +1,11 @@
+gateway:
+  connections:
+    recruiting-api:
+      type: openapi
+      specification: classpath:/openapi/recruiting.yaml
+      base-url: ${GATEWAY_CONNECTIONS_RECRUITING_API_BASE_URL:http://127.0.0.1:9080}
+      authentication:
+        type: none
+      timeouts:
+        connect: 2s
+        read: 5s

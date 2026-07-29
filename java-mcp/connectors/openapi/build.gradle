@@ -1,0 +1,14 @@
+dependencies {
+    api project(':connector-spi')
+    implementation 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'io.swagger.parser.v3:swagger-parser:2.1.35'
+    implementation 'tools.jackson.core:jackson-databind'
+    compileOnly 'org.jspecify:jspecify'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation project(':connector-testkit')
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

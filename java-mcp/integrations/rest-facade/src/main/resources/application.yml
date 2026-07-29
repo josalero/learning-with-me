@@ -1,0 +1,30 @@
+server:
+  address: 127.0.0.1
+  port: 9082
+
+spring:
+  application:
+    name: example-orchestrator-api
+  ai:
+    mcp:
+      client:
+        type: SYNC
+        request-timeout: 30s
+        annotation-scanner:
+          enabled: true
+        streamable-http:
+          connections:
+            gateway:
+              url: http://127.0.0.1:8080
+              endpoint: /mcp
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.springframework.ai.mcp: INFO
+    dev.mytechprofile.gateway.examples.orchestrator: INFO

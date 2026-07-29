@@ -1,0 +1,21 @@
+openapi: 3.0.3
+info:
+  title: Protected Example API
+  version: 0.1.0
+paths:
+  /api/secure/ping:
+    get:
+      operationId: securePing
+      summary: Ping a bearer-protected endpoint
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  requestId:
+                    type: string

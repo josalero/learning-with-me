@@ -1,0 +1,5 @@
+dependencies {
+    api project(':connector-spi')
+    api 'org.junit.jupiter:junit-jupiter-api'
+    api 'org.assertj:assertj-core'
+}

@@ -1,0 +1,24 @@
+# Docker profile: listen on all interfaces inside the container network.
+# Do not use this profile on a public host without inbound auth.
+
+server:
+  address: 0.0.0.0
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/mcp_gateway}
+    username: ${SPRING_DATASOURCE_USERNAME:gateway}
+    password: ${SPRING_DATASOURCE_PASSWORD:gateway}
+
+gateway:
+  connections:
+    recruiting-api:
+      base-url: ${GATEWAY_CONNECTIONS_RECRUITING_API_BASE_URL:http://recruiting-api:9080}
+    protected-api:
+      base-url: ${GATEWAY_CONNECTIONS_PROTECTED_API_BASE_URL:http://protected-api:9081}
+      authentication:
+        token-uri: ${GATEWAY_CONNECTIONS_PROTECTED_API_TOKEN_URI:http://protected-api:9081/oauth/token}
+
+logging:
+  level:
+    dev.mytechprofile.gateway: INFO

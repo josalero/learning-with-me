@@ -1,0 +1,20 @@
+# Docker profile for the end-to-end MCP example client.
+
+spring:
+  main:
+    web-application-type: none
+  ai:
+    mcp:
+      client:
+        type: SYNC
+        request-timeout: 30s
+        streamable-http:
+          connections:
+            gateway:
+              url: ${SPRING_AI_MCP_CLIENT_STREAMABLE_HTTP_CONNECTIONS_GATEWAY_URL:http://gateway:8080}
+              endpoint: ${SPRING_AI_MCP_CLIENT_STREAMABLE_HTTP_CONNECTIONS_GATEWAY_ENDPOINT:/mcp}
+
+logging:
+  level:
+    root: INFO
+    dev.mytechprofile.gateway.examples.client: INFO

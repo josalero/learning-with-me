@@ -1,0 +1,4 @@
+dependencies {
+    api 'tools.jackson.core:jackson-databind'
+    compileOnly 'org.jspecify:jspecify'
+}

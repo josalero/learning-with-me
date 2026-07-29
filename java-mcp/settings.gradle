@@ -1,0 +1,41 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'mcp-integration-gateway'
+
+include 'gateway'
+include 'connector-spi'
+include 'connector-openapi'
+include 'connector-sql'
+include 'connector-testkit'
+include 'example-recruiting-api'
+include 'example-mcp-client'
+include 'example-orchestrator-api'
+include 'example-protected-api'
+include 'example-connector-echo'
+include 'integration-tests'
+
+project(':connector-spi').projectDir = file('connectors/spi')
+project(':connector-openapi').projectDir = file('connectors/openapi')
+project(':connector-sql').projectDir = file('connectors/sql')
+project(':connector-testkit').projectDir = file('connectors/testkit')
+project(':example-connector-echo').projectDir = file('connectors/samples/echo')
+
+project(':example-mcp-client').projectDir = file('integrations/mcp-client')
+project(':example-orchestrator-api').projectDir = file('integrations/rest-facade')
+
+project(':example-recruiting-api').projectDir = file('samples/backends/recruiting-api')
+project(':example-protected-api').projectDir = file('samples/backends/protected-api')
+
+project(':integration-tests').projectDir = file('tests/integration')

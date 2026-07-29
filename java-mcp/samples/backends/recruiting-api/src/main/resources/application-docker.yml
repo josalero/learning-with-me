@@ -1,0 +1,10 @@
+# Docker profile for the synthetic recruiting API.
+
+server:
+  address: 0.0.0.0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

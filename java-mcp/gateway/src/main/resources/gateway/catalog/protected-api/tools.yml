@@ -1,0 +1,17 @@
+gateway:
+  tools:
+    secure_ping:
+      owner: platform-security
+      version: "1"
+      connection: protected-api
+      operation: securePing
+      mode: read
+      description: Call a bearer-protected downstream ping endpoint.
+      input:
+        include: []
+      authorization:
+        required-scopes: [tools.read]
+      quota:
+        per-subject: 20/1h
+      output:
+        include: [ok, requestId]

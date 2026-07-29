@@ -1,0 +1,27 @@
+gateway:
+  connections:
+    inventory-db:
+      type: sql
+      datasource: inventory
+      operations:
+        find_low_stock_products:
+          sql: |
+            select p.product_reference,
+                   p.product_name,
+                   i.quantity_available
+              from inventory i
+              join product p on p.product_reference = i.product_reference
+             where i.warehouse_code = :warehouse
+               and i.quantity_available <= :threshold
+             order by i.quantity_available asc
+          parameters:
+            warehouse:
+              type: string
+              description: Warehouse code
+            threshold:
+              type: integer
+              minimum: 0
+              maximum: 1000
+              description: Quantity threshold
+          max-rows: 50
+          timeout: 3s

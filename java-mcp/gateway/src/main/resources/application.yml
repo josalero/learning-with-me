@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: mcp-integration-gateway
+  config:
+    import:
+      - optional:classpath:gateway/gateway.yml
+      - optional:classpath:gateway/catalog/recruiting/connections.yml
+      - optional:classpath:gateway/catalog/recruiting/tools.yml
+      - optional:classpath:gateway/catalog/inventory/connections.yml
+      - optional:classpath:gateway/catalog/inventory/tools.yml
+      - optional:classpath:gateway/catalog/protected-api/connections.yml
+      - optional:classpath:gateway/catalog/protected-api/tools.yml
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/mcp_gateway
+    username: gateway
+    password: gateway
+  flyway:
+    enabled: true
+  ai:
+    mcp:
+      server:
+        name: mcp-integration-gateway
+        version: 0.1.0
+        type: SYNC
+        protocol: STREAMABLE
+        capabilities:
+          tool: true
+
+server:
+  address: 127.0.0.1
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gatewaycatalog
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    org.springframework.ai.mcp: INFO
+    dev.mytechprofile.gateway: DEBUG

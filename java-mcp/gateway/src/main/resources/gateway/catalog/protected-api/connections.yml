@@ -1,0 +1,14 @@
+gateway:
+  connections:
+    protected-api:
+      type: openapi
+      specification: classpath:/openapi/protected.yaml
+      base-url: ${GATEWAY_CONNECTIONS_PROTECTED_API_BASE_URL:http://127.0.0.1:9081}
+      authentication:
+        type: oauth2-client-credentials
+        token-uri: ${GATEWAY_CONNECTIONS_PROTECTED_API_TOKEN_URI:http://127.0.0.1:9081/oauth/token}
+        client-id: gateway-client
+        client-secret: gateway-secret
+      timeouts:
+        connect: 2s
+        read: 5s

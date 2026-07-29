@@ -1,0 +1,8 @@
+# Usage:
+#   RECRUITING_CHAOS_FORCE_STATUS=500 docker compose -f docker-compose.yml -f docker-compose.chaos.yml up -d --wait --force-recreate --no-deps recruiting-api
+#   RECRUITING_CHAOS_DELAY_MS=8000 docker compose -f docker-compose.yml -f docker-compose.chaos.yml up -d --wait --force-recreate --no-deps recruiting-api
+services:
+  recruiting-api:
+    environment:
+      RECRUITING_CHAOS_DELAY_MS: ${RECRUITING_CHAOS_DELAY_MS:-0}
+      RECRUITING_CHAOS_FORCE_STATUS: ${RECRUITING_CHAOS_FORCE_STATUS:-0}

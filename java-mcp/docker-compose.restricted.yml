@@ -1,0 +1,6 @@
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.restricted.yml up -d --wait --force-recreate --no-deps gateway
+services:
+  gateway:
+    environment:
+      SPRING_PROFILES_ACTIVE: docker,local,restricted

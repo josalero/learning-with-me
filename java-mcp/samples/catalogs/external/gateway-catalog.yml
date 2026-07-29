@@ -1,0 +1,27 @@
+gateway:
+  tools:
+    search_candidates_external:
+      owner: developer-experience
+      version: "1"
+      connection: recruiting-api
+      operation: searchCandidates
+      mode: read
+      description: External-catalog example that searches candidates by professional criteria.
+      input:
+        include: [skill, location, minimumExperience, limit]
+        defaults:
+          limit: 5
+        override:
+          limit:
+            maximum: 10
+      context-mappings:
+        tenantId: "${identity.tenantId}"
+        requestedBy: "${identity.subject}"
+      output:
+        include: [candidateReference, displayName, skills, experienceYears, location]
+        maximum-items: 10
+      authorization:
+        required-scopes: [tools.read]
+        required-roles: [RECRUITER]
+      quota:
+        per-subject: 10/1h

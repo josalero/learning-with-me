@@ -1,0 +1,50 @@
+gateway:
+  tools:
+    search_candidates:
+      owner: recruiting-platform
+      version: "1"
+      connection: recruiting-api
+      operation: searchCandidates
+      mode: read
+      description: >
+        Search candidates belonging to the authenticated tenant
+        using professional criteria.
+      input:
+        include: [skill, location, minimumExperience, limit]
+        defaults:
+          limit: 10
+        override:
+          limit:
+            maximum: 25
+      context-mappings:
+        tenantId: "${identity.tenantId}"
+        requestedBy: "${identity.subject}"
+      output:
+        include: [candidateReference, displayName, skills, experienceYears, location]
+        mask: []
+        maximum-items: 25
+      authorization:
+        required-scopes: [tools.read]
+        required-roles: [RECRUITER]
+      quota:
+        per-subject: 3/1h
+    advance_candidate_stage:
+      owner: recruiting-platform
+      version: "1"
+      connection: recruiting-api
+      operation: advanceCandidateStage
+      mode: write
+      requires-approval: true
+      description: Advance a candidate to a new recruiting stage (requires human approval).
+      input:
+        include: [candidateReference, targetStage]
+      context-mappings:
+        tenantId: "${identity.tenantId}"
+        requestedBy: "${identity.subject}"
+      output:
+        include: [candidateReference, previousStage, currentStage, tenantId]
+      authorization:
+        required-scopes: [tools.write]
+        required-roles: [RECRUITER]
+      quota:
+        per-subject: 20/1h

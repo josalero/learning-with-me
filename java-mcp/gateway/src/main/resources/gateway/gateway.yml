@@ -1,0 +1,8 @@
+gateway:
+  configuration-version: 1
+  security:
+    inbound:
+      type: none
+  observability:
+    audit-enabled: true
+    log-tool-arguments: false

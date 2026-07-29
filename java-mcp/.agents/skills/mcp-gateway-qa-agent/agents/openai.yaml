@@ -1,0 +1,4 @@
+interface:
+  display_name: "MCP Gateway QA"
+  short_description: "Validate the governed MCP gateway end to end"
+  default_prompt: "Use $mcp-gateway-qa-agent to validate the gateway and report an evidence-backed verdict."

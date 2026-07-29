@@ -1,0 +1,12 @@
+# JWT inbound profile — HMAC demo decoder (no external IdP required).
+gateway:
+  security:
+    inbound:
+      type: oauth2-jwt
+    jwt:
+      hmac-secret: ${GATEWAY_JWT_HMAC_SECRET:local-demo-hmac-secret-change-me-32bytes}
+      audience: mcp-integration-gateway
+
+logging:
+  level:
+    org.springframework.security: INFO

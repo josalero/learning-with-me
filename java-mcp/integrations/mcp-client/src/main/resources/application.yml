@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: example-mcp-client
+  main:
+    web-application-type: none
+  ai:
+    mcp:
+      client:
+        type: SYNC
+        request-timeout: 30s
+        annotation-scanner:
+          enabled: true
+        streamable-http:
+          connections:
+            gateway:
+              url: http://127.0.0.1:8080
+              endpoint: /mcp
+
+logging:
+  level:
+    org.springframework.ai.mcp: INFO
+    dev.mytechprofile.gateway.examples.client: INFO

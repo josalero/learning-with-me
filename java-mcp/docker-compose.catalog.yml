@@ -1,0 +1,6 @@
+services:
+  gateway:
+    environment:
+      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/etc/mcp-gateway/gateway-catalog.yml
+    volumes:
+      - ./samples/catalogs/external/gateway-catalog.yml:/etc/mcp-gateway/gateway-catalog.yml:ro

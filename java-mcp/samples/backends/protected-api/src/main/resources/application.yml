@@ -1,0 +1,12 @@
+server:
+  port: 9081
+
+spring:
+  application:
+    name: example-protected-api
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

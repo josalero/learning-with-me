@@ -1,0 +1,158 @@
+openapi: 3.0.3
+info:
+  title: Recruiting Example API
+  version: 0.1.0
+  description: Synthetic downstream API for the MCP Integration Gateway POC.
+servers:
+  - url: http://127.0.0.1:9080
+paths:
+  /api/candidates:
+    get:
+      operationId: searchCandidates
+      summary: Search candidates by professional criteria
+      parameters:
+        - name: skill
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Skill to search for
+        - name: location
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Candidate location
+        - name: minimumExperience
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            description: Minimum years of experience
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            description: Maximum number of results
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Tenant isolation key (trusted context; not model-visible)
+        - name: requestedBy
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Caller subject (trusted context; not model-visible)
+      responses:
+        "200":
+          description: Matching candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Candidate"
+  /api/applications/{candidateReference}/history:
+    get:
+      operationId: getApplicationHistory
+      summary: Application history for a candidate (discovered but not published as MCP tool)
+      parameters:
+        - name: candidateReference
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: History entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /api/candidates/{candidateReference}/stage:
+    post:
+      operationId: advanceCandidateStage
+      summary: Advance a candidate to a new stage
+      parameters:
+        - name: candidateReference
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Candidate reference id
+        - name: targetStage
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [PHONE_SCREEN, ONSITE, OFFER, HIRED]
+            description: Target recruiting stage
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: requestedBy
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stage advanced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  candidateReference:
+                    type: string
+                  previousStage:
+                    type: string
+                  currentStage:
+                    type: string
+                  tenantId:
+                    type: string
+components:
+  schemas:
+    Candidate:
+      type: object
+      properties:
+        candidateReference:
+          type: string
+        displayName:
+          type: string
+        skills:
+          type: array
+          items:
+            type: string
+        experienceYears:
+          type: integer
+        personalEmail:
+          type: string
+        phoneNumber:
+          type: string
+        address:
+          type: string
+        governmentIdentifier:
+          type: string
+        salaryExpectation:
+          type: integer
+        location:
+          type: string
+        tenantId:
+          type: string
