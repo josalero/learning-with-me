@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="788" viewBox="0 0 1400 788">
+  <rect width="1400" height="788" fill="#f4f1ea"/>
+  <text x="48" y="56" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Three roles, one stack</text>
+  <text x="48" y="90" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#475569">Keep product APIs, MCP clients, and the gateway as separate jobs</text>
+
+  <!-- table starts higher and wider -->
+  <rect x="48" y="130" width="260" height="72" fill="#1e4a6e"/>
+  <rect x="308" y="130" width="560" height="72" fill="#1e4a6e"/>
+  <rect x="868" y="130" width="484" height="72" fill="#1e4a6e"/>
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#fff">
+    <text x="178" y="175" text-anchor="middle">Role</text>
+    <text x="588" y="175" text-anchor="middle">What it is</text>
+    <text x="1110" y="175" text-anchor="middle">What it is not</text>
+  </g>
+
+  <!-- row1 -->
+  <rect x="48" y="202" width="260" height="160" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="308" y="202" width="560" height="160" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="868" y="202" width="484" height="160" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="48" y="202" width="12" height="160" fill="#1e4a6e"/>
+  <text x="78" y="290" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Domain REST API</text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#1e293b">
+    <tspan x="340" y="270">Product-facing endpoints and DTOs</tspan>
+    <tspan x="340" y="302">your UI or services already understand</tspan>
+  </text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#1e293b">
+    <tspan x="900" y="270">A dump of MCP tool schemas</tspan>
+    <tspan x="900" y="302">onto the public internet</tspan>
+  </text>
+
+  <!-- row2 -->
+  <rect x="48" y="362" width="260" height="160" fill="#e8f1f8" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="308" y="362" width="560" height="160" fill="#e8f1f8" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="868" y="362" width="484" height="160" fill="#e8f1f8" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="48" y="362" width="12" height="160" fill="#1e4a6e"/>
+  <text x="78" y="450" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a">MCP client</text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#1e293b">
+    <tspan x="340" y="430">How that REST API or IDE agent</tspan>
+    <tspan x="340" y="462">discovers and calls tools</tspan>
+  </text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#1e293b">
+    <tspan x="900" y="430">The place that stores</tspan>
+    <tspan x="900" y="462">downstream client secrets</tspan>
+  </text>
+
+  <!-- row3 -->
+  <rect x="48" y="522" width="260" height="160" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="308" y="522" width="560" height="160" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="868" y="522" width="484" height="160" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="48" y="522" width="12" height="160" fill="#1e4a6e"/>
+  <text x="78" y="610" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a">MCP gateway</text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#1e293b">
+    <tspan x="340" y="590">Catalog, pipeline, and connectors that</tspan>
+    <tspan x="340" y="622">publish selected operations as tools</tspan>
+  </text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#1e293b">
+    <tspan x="900" y="590">A generic reverse proxy</tspan>
+    <tspan x="900" y="622">with a new name</tspan>
+  </text>
+</svg>

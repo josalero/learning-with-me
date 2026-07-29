@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="788" viewBox="0 0 1400 788">
+  <rect width="1400" height="788" fill="#f4f1ea"/>
+  <text x="48" y="56" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#0f172a">When to choose which client</text>
+  <text x="48" y="90" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#475569">Same backends can use different client styles depending on the path</text>
+
+  <rect x="48" y="130" width="652" height="80" fill="#1e4a6e"/>
+  <rect x="700" y="130" width="652" height="80" fill="#334155"/>
+  <text x="374" y="180" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#fff">Prefer governed MCP tools</text>
+  <text x="1026" y="180" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#fff">Prefer Feign / RestClient</text>
+
+  <!-- rows -->
+  <rect x="48" y="210" width="652" height="140" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="700" y="210" width="652" height="140" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="70" y="250" width="10" height="60" rx="3" fill="#1e4a6e"/>
+  <rect x="722" y="250" width="10" height="60" rx="3" fill="#64748b"/>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#0f172a">
+    <tspan x="100" y="270">Many systems, shared authZ and audit,</tspan>
+    <tspan x="100" y="304">agent-ready actions</tspan>
+  </text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#0f172a">
+    <tspan x="752" y="270">One tight dependency you own</tspan>
+    <tspan x="752" y="304">end to end</tspan>
+  </text>
+
+  <rect x="48" y="350" width="652" height="140" fill="#eef2f7" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="700" y="350" width="652" height="140" fill="#eef2f7" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="70" y="390" width="10" height="60" rx="3" fill="#1e4a6e"/>
+  <rect x="722" y="390" width="10" height="60" rx="3" fill="#64748b"/>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#0f172a">
+    <tspan x="100" y="410">Same operations used by agents</tspan>
+    <tspan x="100" y="444">and services</tspan>
+  </text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#0f172a">
+    <tspan x="752" y="410">Latency-critical internal CRUD with</tspan>
+    <tspan x="752" y="444">stable contracts</tspan>
+  </text>
+
+  <rect x="48" y="490" width="652" height="140" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="700" y="490" width="652" height="140" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="70" y="530" width="10" height="60" rx="3" fill="#1e4a6e"/>
+  <rect x="722" y="530" width="10" height="60" rx="3" fill="#64748b"/>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#0f172a">
+    <tspan x="100" y="550">Need approvals, quotas, and output</tspan>
+    <tspan x="100" y="584">allowlists in one place</tspan>
+  </text>
+  <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#0f172a">
+    <tspan x="752" y="550">No model in the path and no</tspan>
+    <tspan x="752" y="584">cross-team governance story</tspan>
+  </text>
+
+  <text x="700" y="700" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" fill="#475569">Pick MCP when governance is shared - pick Feign when the path is narrow and human-owned</text>
+</svg>

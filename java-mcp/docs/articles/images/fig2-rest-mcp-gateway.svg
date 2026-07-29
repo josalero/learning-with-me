@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="788" viewBox="0 0 1400 788">
+  <defs>
+    <marker id="a2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1f2937"/></marker>
+    <filter id="s2" x="-4%" y="-4%" width="108%" height="112%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.08"/></filter>
+  </defs>
+  <rect width="1400" height="788" fill="#f4f1ea"/>
+  <text x="48" y="52" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#0f172a">REST facade as MCP client</text>
+  <text x="48" y="84" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#475569">Product API outward / governed tools inward</text>
+
+  <rect x="36" y="120" width="470" height="560" rx="18" fill="#fff" stroke="#94a3b8" stroke-width="2" stroke-dasharray="10 7"/>
+  <text x="56" y="152" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#64748b" letter-spacing="1.5">PRODUCT EDGE</text>
+
+  <rect x="530" y="120" width="834" height="560" rx="18" fill="#e0eef8" stroke="#1e4a6e" stroke-width="2.5"/>
+  <text x="550" y="152" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1e4a6e" letter-spacing="1.5">GOVERNED TOOL PLANE</text>
+
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" filter="url(#s2)">
+    <rect x="70" y="300" width="180" height="140" rx="16" fill="#fff" stroke="#1e4a6e" stroke-width="2.5"/>
+    <text x="160" y="360" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">Frontend</text>
+    <text x="160" y="392" text-anchor="middle" font-size="16" fill="#64748b">caller</text>
+
+    <path d="M260 370 H300" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a2)"/>
+    <text x="280" y="350" text-anchor="middle" font-size="13" font-weight="700" fill="#1e4a6e">HTTP</text>
+    <text x="280" y="366" text-anchor="middle" font-size="13" font-weight="700" fill="#1e4a6e">JSON</text>
+
+    <rect x="310" y="280" width="160" height="180" rx="16" fill="#fff" stroke="#1e4a6e" stroke-width="2.5"/>
+    <text x="390" y="345" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">Domain</text>
+    <text x="390" y="372" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">REST facade</text>
+    <text x="390" y="410" text-anchor="middle" font-size="15" fill="#64748b">MCP client</text>
+
+    <path d="M480 370 H560" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a2)"/>
+    <text x="520" y="350" text-anchor="middle" font-size="14" font-weight="700" fill="#1e4a6e">MCP</text>
+
+    <rect x="570" y="270" width="260" height="200" rx="16" fill="#1e4a6e"/>
+    <text x="700" y="345" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">MCP Integration</text>
+    <text x="700" y="378" text-anchor="middle" font-size="22" font-weight="700" fill="#fff">Gateway</text>
+    <text x="700" y="420" text-anchor="middle" font-size="15" fill="#bfdbfe">catalog / pipeline / audit</text>
+
+    <path d="M840 330 H920" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a2)"/>
+    <path d="M840 410 H920" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a2)"/>
+
+    <rect x="930" y="250" width="200" height="90" rx="14" fill="#fff" stroke="#334155" stroke-width="2.5"/>
+    <text x="1030" y="290" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">OpenAPI</text>
+    <text x="1030" y="318" text-anchor="middle" font-size="15" fill="#64748b">connector</text>
+
+    <rect x="930" y="390" width="200" height="90" rx="14" fill="#fff" stroke="#334155" stroke-width="2.5"/>
+    <text x="1030" y="430" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">SQL</text>
+    <text x="1030" y="458" text-anchor="middle" font-size="15" fill="#64748b">connector</text>
+
+    <path d="M1140 295 H1200" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a2)"/>
+    <path d="M1140 435 H1200" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a2)"/>
+
+    <rect x="1210" y="250" width="130" height="90" rx="14" fill="#fff" stroke="#166534" stroke-width="2.5"/>
+    <text x="1275" y="290" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">REST</text>
+    <text x="1275" y="318" text-anchor="middle" font-size="14" fill="#64748b">API</text>
+
+    <rect x="1210" y="390" width="130" height="90" rx="14" fill="#fff" stroke="#166534" stroke-width="2.5"/>
+    <text x="1275" y="430" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Postgres</text>
+    <text x="1275" y="458" text-anchor="middle" font-size="14" fill="#64748b">inventory</text>
+  </g>
+
+  <text x="700" y="740" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" fill="#475569">Secrets, quotas, approvals, and output projection stay on the gateway</text>
+</svg>

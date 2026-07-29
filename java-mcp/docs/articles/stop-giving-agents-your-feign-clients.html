@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stop Giving Agents Your Feign Clients: Govern Tools Behind MCP — José Adrián Alemán Rojas</title>
+  <meta name="description" content="Why domain REST services should call governed MCP tools instead of wiring Feign clients for every agent-facing integration." />
+  <meta name="author" content="José Adrián Alemán Rojas" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #d6dde6;
+      --paper: #f7f5f1;
+      --card: #ffffff;
+      --accent: #1e4a6e;
+      --accent-soft: #e8f1f8;
+      --warn: #9a3412;
+      --warn-soft: #fff7ed;
+      --code-bg: #0b1220;
+      --code-ink: #e2e8f0;
+      --max: 42rem;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 400px at 10% -10%, #dbe7f2 0%, transparent 55%),
+        radial-gradient(900px 320px at 100% 0%, #efe6d8 0%, transparent 50%),
+        var(--paper);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      line-height: 1.65;
+      font-size: 1.05rem;
+    }
+
+    .wrap {
+      max-width: calc(var(--max) + 8rem);
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    article {
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+
+    header.hero {
+      margin-bottom: 2.25rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 0.75rem;
+    }
+
+    h1 {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: clamp(1.85rem, 4vw, 2.45rem);
+      line-height: 1.2;
+      font-weight: 700;
+      margin: 0 0 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .byline {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    .byline a { color: var(--accent); }
+
+    .series {
+      margin-top: 1.25rem;
+      padding: 0.9rem 1rem;
+      background: var(--accent-soft);
+      border-left: 3px solid var(--accent);
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .series strong { color: var(--ink); }
+
+    h2 {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: 1.45rem;
+      margin: 2.4rem 0 0.85rem;
+      line-height: 1.25;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin: 1.6rem 0 0.6rem;
+      color: var(--accent);
+    }
+
+    p { margin: 0 0 1rem; }
+
+    .lead p {
+      font-size: 1.12rem;
+      color: var(--ink);
+    }
+
+    ul, ol {
+      margin: 0 0 1.1rem;
+      padding-left: 1.25rem;
+    }
+
+    li { margin-bottom: 0.4rem; }
+
+    a { color: var(--accent); }
+
+    blockquote {
+      margin: 1.5rem 0;
+      padding: 1rem 1.15rem;
+      border-left: 3px solid var(--warn);
+      background: var(--warn-soft);
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: 1.15rem;
+      line-height: 1.45;
+      color: var(--ink);
+    }
+
+    blockquote p { margin: 0; }
+
+    .diagram {
+      margin: 1.5rem 0 1.75rem;
+      padding: 0.75rem 0.75rem 0.35rem;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .diagram img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    .diagram figcaption {
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 0.55rem 0.35rem 0.65rem;
+      text-align: center;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    pre {
+      margin: 1rem 0 1.25rem;
+      padding: 1rem 1.1rem;
+      background: var(--code-bg);
+      color: var(--code-ink);
+      border-radius: 10px;
+      overflow-x: auto;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.9em;
+    }
+
+    p code, li code {
+      background: #eef2f7;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.4rem;
+      font-size: 0.92rem;
+      background: var(--card);
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent-soft);
+      font-weight: 600;
+    }
+
+    .takeaways {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem 1.15rem 0.35rem;
+      margin: 1.25rem 0;
+    }
+
+    footer.meta {
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    footer.meta .tags {
+      margin-top: 0.75rem;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    @media (max-width: 640px) {
+      body { font-size: 1rem; }
+      .wrap { padding-top: 1.5rem; }
+    }
+
+    @media print {
+      body { background: white; }
+      .diagram { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <article>
+      <header class="hero">
+        <p class="kicker">Architecture · Spring · MCP</p>
+        <h1>Stop Giving Agents Your Feign Clients: Govern Tools Behind MCP</h1>
+        <p class="byline">
+          By <strong>José Adrián Alemán Rojas</strong> ·
+          <a href="https://my-tech-profile.dev/">my-tech-profile.dev</a> ·
+          Companion code:
+          <a href="https://github.com/josalero/learning-with-me/tree/main/java-mcp">josalero/learning-with-me/java-mcp</a>
+        </p>
+        <p class="series">
+          <strong>Series context.</strong>
+          This follows
+          <a href="https://my-tech-profile.dev/insights/from-apis-to-actions-rethinking-back-end-design-for-agents">From APIs to Actions</a>
+          and
+          <a href="https://my-tech-profile.dev/insights/what-spring-ai-2-0-actually-gives-you-for-transactional-agent-workflows">What Spring AI 2.0 Actually Gives You for Transactional Agent Workflows</a>.
+          Those pieces cover why backends should expose actions, and what Spring AI gives you for tools and MCP.
+          This one is about the missing production piece: a governed tool plane.
+        </p>
+      </header>
+
+      <section class="lead">
+        <p>
+          I stopped wiring recruiting and inventory calls through RestClient-style clients
+          and started calling named MCP tools from a normal Spring REST service.
+        </p>
+        <p>
+          The hard part was not Model Context Protocol (MCP).
+          It was deciding what the model is never allowed to invent: tenant, identity, and secrets.
+          If every microservice grows its own Feign stack for agent tools, you rebuild governance N times.
+        </p>
+      </section>
+
+      <h2>The trap: Feign for every “agent integration”</h2>
+      <p>
+        When teams first connect an agent to real systems, the instinct is familiar.
+        Add a Feign or RestClient bean per downstream API. Put bearer tokens in config.
+        Map DTOs. Ship it.
+      </p>
+      <p>
+        That works for a human-owned service calling a stable partner API.
+        It ages poorly when the caller is a model that can choose arguments,
+        retry creatively, and ask for fields you never meant to expose.
+      </p>
+      <p>
+        Suddenly you need the same controls in every client:
+        scopes, rate limits, human approval for writes, output allowlists, outbound OAuth,
+        and an audit trail that does not log PII.
+        Feign does not give you that plane. It gives you HTTP stubs.
+      </p>
+
+      <figure class="diagram">
+        <img
+          src="images/fig1-feign-sprawl.png"
+          alt="Diagram titled Feign sprawl: three consumers each call their own Feign client (Recruiting, Inventory, Protected API) which then call matching backends."
+          width="2400"
+          height="1351"
+          loading="lazy"
+        />
+        <figcaption>
+          Figure 1. Each consumer reimplements auth, limits, and output rules against the same backends.
+        </figcaption>
+      </figure>
+
+      <h2>The thesis</h2>
+      <p>
+        Agents and business services should share the same <strong>governed tool plane</strong>.
+        Your domain REST app can be an MCP <em>client</em>.
+        Authorization, quotas, approvals, PII projection, trusted context injection, and audit
+        stay in an MCP <em>gateway</em>, not in every Feign client and not in the prompt.
+      </p>
+
+      <blockquote>
+        <p>MCP is the integration plane. REST is still the product API. Governance belongs in neither Feign clients nor the prompt.</p>
+      </blockquote>
+
+      <h2>Three roles, one stack</h2>
+      <p>
+        In the POC I published under
+        <a href="https://github.com/josalero/learning-with-me/tree/main/java-mcp">java-mcp</a>,
+        the boundaries are explicit:
+      </p>
+      <figure class="diagram">
+        <img
+          src="images/table1-three-roles.png"
+          alt="Table titled Three roles, one stack comparing Domain REST API, MCP client, and MCP gateway: what each is and what it is not."
+          width="2400"
+          height="1351"
+          loading="lazy"
+        />
+        <figcaption>Table 1. Role boundaries in the java-mcp stack.</figcaption>
+      </figure>
+      <div class="visually-hidden">
+        <table>
+          <caption>Three roles, one stack</caption>
+          <thead>
+            <tr><th>Role</th><th>What it is</th><th>What it is not</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Domain REST API</td>
+              <td>Product-facing endpoints and DTOs your UI or services already understand</td>
+              <td>A dump of MCP tool schemas onto the public internet</td>
+            </tr>
+            <tr>
+              <td>MCP client</td>
+              <td>How that REST API or IDE agent discovers and calls tools</td>
+              <td>The place that stores downstream client secrets</td>
+            </tr>
+            <tr>
+              <td>MCP gateway</td>
+              <td>Catalog, pipeline, and connectors that publish selected operations as tools</td>
+              <td>A generic reverse proxy with a new name</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Spring AI 2.0 already gives you MCP client and server transport.
+        The gateway is where you decide which OpenAPI operation or named SQL query becomes a tool,
+        and what happens before and after execution.
+      </p>
+
+      <h2>Pattern: a REST facade that is an MCP client</h2>
+      <p>
+        Not every caller speaks MCP. Frontends and existing services want HTTP/JSON.
+        So I keep a thin orchestrator: outward REST, inward MCP.
+      </p>
+
+      <figure class="diagram">
+        <img
+          src="images/fig2-rest-mcp-gateway.png"
+          alt="Architecture flow: Frontend caller to Domain REST facade over HTTP JSON, then MCP to Integration Gateway, then OpenAPI and SQL connectors to Downstream REST and Postgres."
+          width="2400"
+          height="1351"
+          loading="lazy"
+        />
+        <figcaption>
+          Figure 2. Product API on the left, governed tools in the middle, systems of record on the right.
+        </figcaption>
+      </figure>
+
+      <p>
+        Application code depends on a domain port, not on Feign interfaces for every backend:
+      </p>
+      <pre><code class="language-java">interface CandidateSearch {
+    CandidatePage search(SearchCriteria criteria);
+}
+
+// Adapter maps to MCP tool "search_candidates"
+// and translates gateway errors into domain exceptions.</code></pre>
+      <p>
+        In the sample, <code>McpToolGateway</code> wraps Spring AI’s <code>ToolCallbackProvider</code>,
+        calls named tools with JSON arguments, and unwraps the MCP text payload.
+        Write tools that need human approval pass an <code>X-Approve</code> header into an elicitation handler.
+        The orchestrator never holds the protected API’s client secret.
+      </p>
+
+      <h2>What the gateway owns</h2>
+      <p>
+        Tools are declared in YAML packs: connection, operation, input/output projection,
+        required scopes, quota, and whether the mode is read or write.
+        At runtime, every invocation walks the same pipeline.
+      </p>
+
+      <figure class="diagram">
+        <img
+          src="images/fig3-gateway-pipeline.png"
+          alt="Gateway invocation pipeline flowchart from validate and authorize through quota, trusted context, optional elicitation, connector execution, output projection, audit, and tool result."
+          width="2400"
+          height="1351"
+          loading="lazy"
+        />
+        <figcaption>
+          Figure 3. Connector-neutral governance. Trusted context is injected by the gateway, never accepted from model arguments.
+        </figcaption>
+      </figure>
+
+      <p>Three demo tools make the policy concrete:</p>
+      <ul>
+        <li>
+          <code>search_candidates</code> —
+          recruiting search with a tiny demo quota and an output allowlist.
+          Email, phone, and similar fields never leave the gateway as field names the model can latch onto.
+        </li>
+        <li>
+          <code>advance_candidate_stage</code> —
+          a write that pauses for human approval through MCP elicitation before the downstream mutation runs.
+        </li>
+        <li>
+          <code>secure_ping</code> —
+          outbound OAuth2 client-credentials from the gateway to a protected API.
+          The MCP client only needs <code>tools.read</code>; it never sees the token dance.
+        </li>
+      </ul>
+      <p>
+        That last point matters.
+        Machine-to-machine auth to sensitive backends belongs next to the connection definition,
+        not copied into every agent host.
+      </p>
+
+      <h2>When Feign still wins</h2>
+      <p>
+        I am not arguing that MCP replaces every HTTP client in your estate.
+      </p>
+      <figure class="diagram">
+        <img
+          src="images/table2-when-to-choose.png"
+          alt="Comparison table: when to prefer governed MCP tools versus Feign or RestClient across three decision rows."
+          width="2400"
+          height="1351"
+          loading="lazy"
+        />
+        <figcaption>Table 2. When to choose which client style.</figcaption>
+      </figure>
+      <div class="visually-hidden">
+        <table>
+          <caption>When to choose which client</caption>
+          <thead>
+            <tr><th>Prefer governed MCP tools</th><th>Prefer Feign / RestClient</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Many systems, shared authZ and audit, agent-ready actions</td>
+              <td>One tight dependency you own end to end</td>
+            </tr>
+            <tr>
+              <td>Same operations used by agents and services</td>
+              <td>Latency-critical internal CRUD with stable contracts</td>
+            </tr>
+            <tr>
+              <td>Need approvals, quotas, and output allowlists in one place</td>
+              <td>No model in the path and no cross-team governance story</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Tradeoffs of the gateway path are real: an extra hop, JSON schemas instead of generated Feign types,
+        and sync REST facades must define what happens when elicitation waits on a human.
+        Those are design choices, not reasons to skip the plane.
+      </p>
+
+      <h2>Why this showed up while building hiring product surfaces</h2>
+      <p>
+        Building ITJobOpportunities forced the same rule into product form.
+        Résumé text, skills, and job-fit flows sit next to data you must not casually echo into logs or model context.
+        When an assistant can “search candidates” or “advance a stage,” the dangerous part is not the LLM call.
+        It is unbounded arguments, missing tenant binding, and generous response payloads.
+      </p>
+      <p>
+        A gateway that injects tenant and subject, strips fields, and audits hashes
+        matches how I want agent-shaped hiring features to behave:
+        useful actions, boring controls, no hope-based security in the prompt.
+      </p>
+
+      <h2>Takeaways</h2>
+      <div class="takeaways">
+        <ul>
+          <li>Treat MCP tools as the shared integration surface; keep domain REST as the product API.</li>
+          <li>Put scopes, quotas, approvals, trusted context, output projection, and audit in one gateway pipeline.</li>
+          <li>Let a Spring REST service be an MCP client when callers should not speak MCP.</li>
+          <li>Keep outbound client-credentials and downstream secrets on the connection, not in every consumer.</li>
+          <li>Use Feign where there is no agent path and no shared governance requirement.</li>
+        </ul>
+      </div>
+
+      <h2>Try the POC</h2>
+      <p>
+        The runnable stack lives here:
+        <a href="https://github.com/josalero/learning-with-me/tree/main/java-mcp">github.com/josalero/learning-with-me/java-mcp</a>.
+        Compose brings up the gateway, demo backends, Postgres, a CLI MCP client, and a REST facade on port 9082.
+        The docs walk through search, quota, approve/decline writes, SQL inventory, and secure ping.
+      </p>
+      <p>
+        If you are already on Spring AI 2.0 for transactional agent workflows,
+        the next design question is not “can the model call a tool?”
+        It is “who enforces what that tool is allowed to mean?”
+      </p>
+      <p>
+        Where are you drawing that line today: in Feign interceptors, in each service, or in a shared tool plane?
+      </p>
+
+      <footer class="meta">
+        <p>
+          Related reading:
+          <a href="https://my-tech-profile.dev/insights/from-apis-to-actions-rethinking-back-end-design-for-agents">From APIs to Actions</a>
+          ·
+          <a href="https://my-tech-profile.dev/insights/what-spring-ai-2-0-actually-gives-you-for-transactional-agent-workflows">Spring AI 2.0 transactional agent workflows</a>
+        </p>
+        <p class="tags">#Java #SpringBoot #SpringAI #MCP #SoftwareArchitecture</p>
+      </footer>
+    </article>
+  </div>
+</body>
+</html>

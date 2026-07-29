@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="788" viewBox="0 0 1400 788">
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1f2937"/></marker>
+    <filter id="s" x="-4%" y="-4%" width="108%" height="112%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.08"/></filter>
+  </defs>
+  <rect width="1400" height="788" fill="#f4f1ea"/>
+  <text x="48" y="56" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="36" font-weight="700" fill="#0f172a">Feign sprawl</text>
+  <text x="48" y="88" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#475569">Each consumer owns its own HTTP client and policy surface</text>
+
+  <rect x="40" y="120" width="340" height="560" rx="20" fill="#dbeafe"/>
+  <rect x="1020" y="120" width="340" height="560" rx="20" fill="#dcfce7"/>
+  <text x="210" y="158" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#1e3a5f" letter-spacing="2">CONSUMERS</text>
+  <text x="700" y="158" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#9a3412" letter-spacing="2">HTTP CLIENTS</text>
+  <text x="1190" y="158" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#14532d" letter-spacing="2">BACKENDS</text>
+
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#0f172a">
+    <rect x="70" y="200" width="280" height="96" rx="14" fill="#fff" stroke="#1e4a6e" stroke-width="2.5" filter="url(#s)"/>
+    <text x="210" y="257" text-anchor="middle">Agent / service A</text>
+    <path d="M360 248 H430" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a)"/>
+    <rect x="440" y="200" width="320" height="96" rx="14" fill="#ffedd5" stroke="#9a3412" stroke-width="2.5" filter="url(#s)"/>
+    <text x="600" y="257" text-anchor="middle">Feign Recruiting</text>
+    <path d="M770 248 H1040" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a)"/>
+    <rect x="1050" y="200" width="280" height="96" rx="14" fill="#fff" stroke="#166534" stroke-width="2.5" filter="url(#s)"/>
+    <text x="1190" y="257" text-anchor="middle">Recruiting API</text>
+
+    <rect x="70" y="360" width="280" height="96" rx="14" fill="#fff" stroke="#1e4a6e" stroke-width="2.5" filter="url(#s)"/>
+    <text x="210" y="417" text-anchor="middle">Agent / service B</text>
+    <path d="M360 408 H430" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a)"/>
+    <rect x="440" y="360" width="320" height="96" rx="14" fill="#ffedd5" stroke="#9a3412" stroke-width="2.5" filter="url(#s)"/>
+    <text x="600" y="417" text-anchor="middle">Feign Inventory</text>
+    <path d="M770 408 H1040" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a)"/>
+    <rect x="1050" y="360" width="280" height="96" rx="14" fill="#fff" stroke="#166534" stroke-width="2.5" filter="url(#s)"/>
+    <text x="1190" y="417" text-anchor="middle">SQL / inventory</text>
+
+    <rect x="70" y="520" width="280" height="96" rx="14" fill="#fff" stroke="#1e4a6e" stroke-width="2.5" filter="url(#s)"/>
+    <text x="210" y="577" text-anchor="middle">Agent / service C</text>
+    <path d="M360 568 H430" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a)"/>
+    <rect x="440" y="520" width="320" height="96" rx="14" fill="#ffedd5" stroke="#9a3412" stroke-width="2.5" filter="url(#s)"/>
+    <text x="600" y="577" text-anchor="middle">Feign Protected API</text>
+    <path d="M770 568 H1040" stroke="#1f2937" stroke-width="3" fill="none" marker-end="url(#a)"/>
+    <rect x="1050" y="520" width="280" height="96" rx="14" fill="#fff" stroke="#166534" stroke-width="2.5" filter="url(#s)"/>
+    <text x="1190" y="577" text-anchor="middle">Protected API</text>
+  </g>
+
+  <text x="700" y="740" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#475569">Governance (authZ, quotas, PII, audit) is duplicated per client</text>
+</svg>

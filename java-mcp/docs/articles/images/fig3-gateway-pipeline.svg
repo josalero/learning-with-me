@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="788" viewBox="0 0 1400 788">
+  <defs>
+    <marker id="a3" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1f2937"/></marker>
+    <filter id="s3" x="-4%" y="-4%" width="108%" height="112%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.08"/></filter>
+  </defs>
+  <rect width="1400" height="788" fill="#f4f1ea"/>
+  <text x="40" y="48" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#0f172a">Gateway invocation pipeline</text>
+  <text x="40" y="78" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#475569">Decline ends the call - only accepted writes reach the connector</text>
+
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" filter="url(#s3)">
+    <rect x="60" y="110" width="380" height="52" rx="12" fill="#1e4a6e"/>
+    <text x="250" y="143" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">MCP tools/call</text>
+    <path d="M250 162 V180" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+
+    <rect x="60" y="180" width="380" height="48" rx="12" fill="#fff" stroke="#1e4a6e" stroke-width="2"/>
+    <text x="250" y="211" text-anchor="middle" font-size="17" font-weight="600" fill="#0f172a">1. Validate args</text>
+    <path d="M250 228 V246" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+
+    <rect x="60" y="246" width="380" height="48" rx="12" fill="#fff" stroke="#1e4a6e" stroke-width="2"/>
+    <text x="250" y="277" text-anchor="middle" font-size="17" font-weight="600" fill="#0f172a">2. Authorize scopes / roles</text>
+    <path d="M250 294 V312" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+
+    <rect x="60" y="312" width="380" height="48" rx="12" fill="#fff" stroke="#1e4a6e" stroke-width="2"/>
+    <text x="250" y="343" text-anchor="middle" font-size="17" font-weight="600" fill="#0f172a">3. Quota per subject</text>
+    <path d="M250 360 V378" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+
+    <rect x="60" y="378" width="380" height="48" rx="12" fill="#fff" stroke="#1e4a6e" stroke-width="2"/>
+    <text x="250" y="409" text-anchor="middle" font-size="17" font-weight="600" fill="#0f172a">4. Inject trusted context</text>
+    <path d="M250 426 V460" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+
+    <polygon points="250,460 380,545 250,630 120,545" fill="#fff7ed" stroke="#c2410c" stroke-width="2.5"/>
+    <text x="250" y="538" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Write needs</text>
+    <text x="250" y="560" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">approval?</text>
+
+    <path d="M250 630 V680" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+    <text x="220" y="665" font-size="14" font-weight="700" fill="#475569">No</text>
+
+    <path d="M380 545 H520" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+    <text x="430" y="530" font-size="14" font-weight="700" fill="#475569">Yes</text>
+    <rect x="520" y="513" width="240" height="64" rx="12" fill="#fff" stroke="#1e4a6e" stroke-width="2"/>
+    <text x="640" y="552" text-anchor="middle" font-size="17" font-weight="600" fill="#0f172a">5. Elicitation</text>
+
+    <path d="M640 577 V704 H440" stroke="#15803d" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+    <text x="670" y="640" font-size="14" font-weight="700" fill="#15803d">Accept</text>
+
+    <path d="M760 545 H900" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+    <text x="810" y="530" font-size="14" font-weight="700" fill="#be123c">Decline</text>
+    <rect x="900" y="513" width="220" height="64" rx="12" fill="#ffe4e6" stroke="#be123c" stroke-width="2.5"/>
+    <text x="1010" y="542" text-anchor="middle" font-size="17" font-weight="700" fill="#be123c">access_denied</text>
+    <text x="1010" y="562" text-anchor="middle" font-size="13" fill="#9f1239">stop - no mutation</text>
+
+    <rect x="60" y="680" width="390" height="48" rx="12" fill="#fff" stroke="#1e4a6e" stroke-width="2"/>
+    <text x="255" y="711" text-anchor="middle" font-size="17" font-weight="600" fill="#0f172a">6. Execute connector</text>
+
+    <path d="M460 704 H500" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+    <rect x="500" y="680" width="250" height="48" rx="12" fill="#fff" stroke="#1e4a6e" stroke-width="2"/>
+    <text x="625" y="711" text-anchor="middle" font-size="16" font-weight="600" fill="#0f172a">7. Project / strip</text>
+
+    <path d="M760 704 H810" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+    <rect x="810" y="680" width="250" height="48" rx="12" fill="#fff" stroke="#1e4a6e" stroke-width="2"/>
+    <text x="935" y="711" text-anchor="middle" font-size="16" font-weight="600" fill="#0f172a">8. Audit + arg hash</text>
+
+    <path d="M1070 704 H1120" stroke="#1f2937" stroke-width="2.5" fill="none" marker-end="url(#a3)"/>
+    <rect x="1120" y="680" width="220" height="48" rx="12" fill="#1e4a6e"/>
+    <text x="1230" y="711" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">9. Tool result</text>
+  </g>
+
+  <text x="700" y="760" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#475569">Tenant and subject are injected in step 4 - never accepted from tool arguments</text>
+</svg>
