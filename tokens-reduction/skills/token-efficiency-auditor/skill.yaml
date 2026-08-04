@@ -7,9 +7,9 @@ modes:
   - review
 status: active
 summary: >-
-  Audit Spring AI and LangChain4j codebases for token waste in prompts, tools,
-  RAG, memory, and agents. Prefer the token-audit CLI for stable finding IDs,
-  then deepen with skill rules and produce a structured report.
+  Canonical skill (rules/scripts/template) for Spring AI 2.0 token-waste audits.
+  Prefer the token-audit CLI for stable finding IDs, then deepen with skill rules.
+  Thin catalog pointer: josalero/agent-skills skills/token-efficiency-auditor.
 areas:
   - ai
   - cost

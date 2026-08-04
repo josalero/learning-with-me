@@ -8,6 +8,11 @@ description: >-
 
 # Token Efficiency Auditor
 
+Canonical skill for this POC (rules, scripts, report template). A thin installable
+pointer also lives in
+[agent-skills/skills/token-efficiency-auditor](https://github.com/josalero/agent-skills/tree/main/skills/token-efficiency-auditor)
+for catalog/pack install — edit **this** tree when changing audit guidance.
+
 Audit a repository for inefficient AI / LLM usage and produce a structured report.
 
 ## When to use
