@@ -7,12 +7,14 @@ import java.util.Locale;
  * Output formats for a written scan report.
  */
 public enum ReportFormat {
-	/** Plain text, mirroring the console output. */
+	/** Plain text, mirroring the console output (no ANSI). */
 	TEXT("txt"),
 	/** Machine-readable JSON, suitable for CI. */
 	JSON("json"),
-	/** Markdown report matching the sample audit report. */
-	MARKDOWN("md");
+	/** Markdown report with emoji severity markers. */
+	MARKDOWN("md"),
+	/** Self-contained HTML report with colored severity pills. */
+	HTML("html");
 
 	private final String extension;
 
@@ -30,7 +32,7 @@ public enum ReportFormat {
 	}
 
 	/**
-	 * Parses an explicit format name such as {@code json}, {@code md}, or {@code text}.
+	 * Parses an explicit format name such as {@code json}, {@code md}, {@code html}, or {@code text}.
 	 *
 	 * @param value format name
 	 * @return matching format
@@ -44,6 +46,7 @@ public enum ReportFormat {
 			case "text", "txt" -> TEXT;
 			case "json" -> JSON;
 			case "md", "markdown" -> MARKDOWN;
+			case "html", "htm" -> HTML;
 			default -> throw new IllegalArgumentException("Unknown report format: " + value);
 		};
 	}
@@ -63,6 +66,7 @@ public enum ReportFormat {
 		return switch (name.substring(dot + 1)) {
 			case "json" -> JSON;
 			case "md", "markdown" -> MARKDOWN;
+			case "html", "htm" -> HTML;
 			default -> TEXT;
 		};
 	}

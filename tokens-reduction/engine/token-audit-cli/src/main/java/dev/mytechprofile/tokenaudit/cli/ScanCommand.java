@@ -6,10 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 
 import dev.mytechprofile.tokenaudit.Finding;
-import dev.mytechprofile.tokenaudit.FindingOrigin;
 import dev.mytechprofile.tokenaudit.Framework;
 import dev.mytechprofile.tokenaudit.TokenAuditResult;
 import dev.mytechprofile.tokenaudit.TokenAuditor;
@@ -49,10 +49,18 @@ public final class ScanCommand implements Callable<Integer> {
 
 	@Option(
 			names = "--format",
-			description = "Explicit report format for every --out file (text|json|md). "
+			description = "Explicit report format for every --out file (text|json|md|html). "
 					+ "Default: inferred from each file's extension."
 	)
 	private String format;
+
+	@Option(
+			names = "--color",
+			description = "Console colors: auto (default), always, never. "
+					+ "Also respects NO_COLOR / FORCE_COLOR.",
+			defaultValue = "auto"
+	)
+	private String color;
 
 	@Option(
 			names = "--llm-review",
@@ -118,22 +126,7 @@ public final class ScanCommand implements Callable<Integer> {
 						semanticReview.completionTokens()
 				);
 			}
-			for (Finding finding : result.findings()) {
-				String origin = finding.origin() == FindingOrigin.AI_INFERRED
-						? " [AI-INFERRED]"
-						: "";
-				System.out.printf(
-						"[%s]%s %s (%s) @ %s%n  %s%n  → %s%n",
-						finding.severity(),
-						origin,
-						finding.id(),
-						finding.area(),
-						finding.location(),
-						finding.message(),
-						finding.recommendation()
-				);
-			}
-			System.out.printf("%n%d finding(s) in %s%n", result.findings().size(), result.projectPath());
+			System.out.print(ReportFormatter.text(result, consoleColorEnabled()));
 			writeReports(result);
 			return 0;
 		}
@@ -145,6 +138,14 @@ public final class ScanCommand implements Callable<Integer> {
 			System.err.println("error: could not write report: " + ex.getCause().getMessage());
 			return 2;
 		}
+	}
+
+	private boolean consoleColorEnabled() {
+		return switch (color == null ? "auto" : color.trim().toLowerCase(Locale.ROOT)) {
+			case "always", "on", "yes", "true" -> true;
+			case "never", "off", "no", "false" -> false;
+			default -> SeverityPalette.ansiEnabled();
+		};
 	}
 
 	private void writeReports(TokenAuditResult result) {

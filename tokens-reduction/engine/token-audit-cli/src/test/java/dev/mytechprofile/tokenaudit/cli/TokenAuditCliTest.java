@@ -47,13 +47,15 @@ class TokenAuditCliTest {
 	void scan_writesReportFiles_inferringFormatFromExtension() throws Exception {
 		Path json = tempDir.resolve("out/report.json");
 		Path markdown = tempDir.resolve("out/report.md");
+		Path html = tempDir.resolve("out/report.html");
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		PrintStream original = System.out;
 		System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
 		try {
 			int code = new CommandLine(new TokenAuditCli()).execute(
 					"scan", tempDir.toString(), "--framework", "spring-ai",
-					"--out", json.toString(), "--out", markdown.toString());
+					"--out", json.toString(), "--out", markdown.toString(),
+					"--out", html.toString());
 			assertEquals(0, code);
 		}
 		finally {
@@ -62,10 +64,12 @@ class TokenAuditCliTest {
 
 		assertTrue(Files.exists(json), "JSON report should be created");
 		assertTrue(Files.exists(markdown), "Markdown report should be created");
+		assertTrue(Files.exists(html), "HTML report should be created");
 		String jsonBody = Files.readString(json);
 		assertTrue(jsonBody.contains("\"findingCount\": 0"), "JSON should report zero findings");
 		String markdownBody = Files.readString(markdown);
 		assertTrue(markdownBody.contains("# Token Efficiency Audit Report"), "Markdown should have a title");
+		assertTrue(Files.readString(html).contains("<!doctype html>"), "HTML should be a document");
 		assertTrue(out.toString(StandardCharsets.UTF_8).contains("report:"), "console should note each file");
 	}
 

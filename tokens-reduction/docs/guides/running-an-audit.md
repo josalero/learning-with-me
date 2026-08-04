@@ -18,18 +18,26 @@ Interpret IDs with [finding-catalog.md](../reference/finding-catalog.md).
 
 ## Saving reports to files
 
-By default the scan only prints to the console. Add `--out <file>` (repeatable) to
-write a report; the format is inferred from the extension (`.json`, `.md`, `.txt`)
-or forced with `--format`:
+By default the scan only prints to the console (severity colors when the terminal
+supports them; `--color always|never|auto`). Add `--out <file>` (repeatable) to
+write a report; the format is inferred from the extension
+(`.json`, `.md`, `.html`, `.txt`) or forced with `--format`:
 
 ```bash
 ./gradlew :token-audit-cli:run \
   --args='scan ../examples/spring-ai-support-assistant --framework spring-ai \
-    --out ../reports/audit.md --out ../reports/audit.json'
+    --out ../reports/audit.md --out ../reports/audit.json --out ../reports/audit.html'
 ```
 
+| Format | Color |
+| --- | --- |
+| Console | ANSI severity colors (respects `NO_COLOR` / `FORCE_COLOR`) |
+| Markdown | Emoji severity markers (🔴 / 🟠 / 🟡) |
+| HTML | Colored severity pills and card accents |
+| JSON | `severityColor` hex field (no ANSI) |
+
 From the repo root, `make audit` (or `make scan PROJECT=…`) does this for you and
-drops `token-audit-<name>.{md,json}` into the git-ignored `reports/` directory.
+drops `token-audit-<name>.{md,json,html}` into the git-ignored `reports/` directory.
 
 ## Skill-assisted report
 

@@ -64,10 +64,11 @@ Focused core fixture test only:
 
 IDs are documented in [reference/finding-catalog.md](reference/finding-catalog.md).
 
-`make audit` (and `make scan`) additionally write `reports/token-audit-<name>.md`
-and `.json` (git-ignored). To write a report from the raw CLI, add repeatable
-`--out <file>` options; format is inferred from the extension or forced with
-`--format text|json|md`.
+`make audit` (and `make scan`) additionally write `reports/token-audit-<name>.md`,
+`.json`, and `.html` (git-ignored). Markdown uses emoji severity markers; HTML
+uses colored pills; the console uses ANSI colors. To write a report from the raw
+CLI, add repeatable `--out <file>` options; format is inferred from the extension
+or forced with `--format text|json|md|html`.
 
 ## 3. Offline example app (optional smoke)
 

@@ -9,13 +9,14 @@ jenv shell 25
   --args='scan ../examples/spring-ai-support-assistant --framework spring-ai'
 ```
 
-Write report files (console output is unchanged). Format is inferred from the
-extension (`.json`, `.md`, `.txt`); `--out` is repeatable and `--format` forces one:
+Console severity tags are colorized (`--color auto|always|never`). Write report
+files with `--out` (repeatable); format is inferred from the extension
+(`.json`, `.md`, `.html`, `.txt`) or forced with `--format`:
 
 ```bash
 ./gradlew :token-audit-cli:run \
   --args='scan ../examples/spring-ai-support-assistant --framework spring-ai \
-    --out ../reports/audit.md --out ../reports/audit.json'
+    --out ../reports/audit.md --out ../reports/audit.json --out ../reports/audit.html'
 ```
 
 Optional semantic pass:

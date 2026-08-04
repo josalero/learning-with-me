@@ -41,8 +41,8 @@ make help     # list every target
 
 Scan any other project: `make scan PROJECT=/path/to/app FRAMEWORK=spring-ai`.
 
-`make audit` / `make scan` also write `token-audit-<name>.md` and `.json` into the
-git-ignored `reports/` directory (console output is unchanged).
+`make audit` / `make scan` also write `token-audit-<name>.{md,json,html}` into the
+git-ignored `reports/` directory (console uses ANSI severity colors).
 
 Prefer raw Gradle? The equivalent is:
 
