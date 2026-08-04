@@ -1,0 +1,9 @@
+rootProject.name = 'token-audit'
+
+include 'token-audit-core'
+include 'token-audit-cli'
+include 'token-audit-llm-reviewer'
+include 'token-audit-openrouter'
+
+include 'spring-ai-support-assistant'
+project(':spring-ai-support-assistant').projectDir = file('../examples/spring-ai-support-assistant')

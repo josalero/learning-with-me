@@ -1,0 +1,20 @@
+plugins {
+	id 'application'
+}
+
+dependencies {
+	implementation project(':token-audit-core')
+	implementation project(':token-audit-llm-reviewer')
+	implementation project(':token-audit-openrouter')
+	implementation 'info.picocli:picocli:4.7.6'
+	annotationProcessor 'info.picocli:picocli-codegen:4.7.6'
+}
+
+application {
+	mainClass = 'dev.mytechprofile.tokenaudit.cli.TokenAuditCli'
+}
+
+tasks.named('run', JavaExec).configure {
+	standardInput = System.in
+	workingDir = rootProject.projectDir
+}

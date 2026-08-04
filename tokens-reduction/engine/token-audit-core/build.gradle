@@ -1,0 +1,10 @@
+dependencies {
+	// AST-based analyzers (see AstAnalyzers); pure-Java, offline, no transitive runtime deps.
+	implementation 'com.github.javaparser:javaparser-core:3.28.2'
+	// Offline BPE token counting (OpenAI cl100k_base / o200k_base); no network.
+	implementation 'com.knuddels:jtokkit:1.1.0'
+}
+
+tasks.named('test', Test).configure {
+	systemProperty 'exampleProjectDir', rootProject.file('../examples/spring-ai-support-assistant').absolutePath
+}

@@ -1,0 +1,4 @@
+dependencies {
+	implementation project(':token-audit-core')
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.3'
+}

@@ -1,0 +1,4 @@
+dependencies {
+	implementation project(':token-audit-llm-reviewer')
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.3'
+}

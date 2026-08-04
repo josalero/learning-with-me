@@ -1,0 +1,31 @@
+id: token-efficiency-auditor
+display_name: Token Efficiency Auditor
+domain: ai
+kind: general
+modes:
+  - coding
+  - review
+status: active
+summary: >-
+  Audit Spring AI and LangChain4j codebases for token waste in prompts, tools,
+  RAG, memory, and agents. Prefer the token-audit CLI for stable finding IDs,
+  then deepen with skill rules and produce a structured report.
+areas:
+  - ai
+  - cost
+  - observability
+tags:
+  - tokens
+  - spring-ai
+  - langchain4j
+  - rag
+  - agents
+targets:
+  codex: true
+  cursor: true
+  copilot: true
+  claude: true
+  opencode: true
+owners:
+  - josalero
+stability: experimental

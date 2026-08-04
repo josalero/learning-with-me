@@ -1,0 +1,13 @@
+plugins {
+	id 'application'
+}
+
+dependencies {
+	implementation platform('org.springframework.ai:spring-ai-bom:2.0.0')
+	implementation 'org.springframework.ai:spring-ai-client-chat'
+	implementation 'org.springframework.ai:spring-ai-vector-store'
+}
+
+application {
+	mainClass = 'com.example.support.SupportApplication'
+}
