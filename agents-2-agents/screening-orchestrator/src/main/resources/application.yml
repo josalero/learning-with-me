@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: screening-orchestrator
+  ai:
+    # OpenRouter via OpenAI-compatible API (Spring AI 2 requires /v1 on the base URL)
+    openai:
+      api-key: ${OPENROUTER_API_KEY}
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+      chat:
+        options:
+          model: ${OPENROUTER_CHAT_MODEL:openai/gpt-4o-mini}
+
+remote:
+  agents:
+    urls:
+      - ${SKILLS_AGENT_URL:http://localhost:8081/a2a}
+
+logging:
+  level:
+    com.learning.a2a.orchestrator: INFO

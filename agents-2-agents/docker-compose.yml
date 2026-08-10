@@ -1,0 +1,40 @@
+services:
+  skills-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: skills-agent
+    container_name: a2a-skills-agent
+    ports:
+      - "8081:8081"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in the environment or a .env file}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_CHAT_MODEL: ${OPENROUTER_CHAT_MODEL:-openai/gpt-4o-mini}
+      # Agent Card URL must be reachable by other containers on this network
+      A2A_AGENT_PUBLIC_URL: http://skills-agent:8081/a2a/
+    networks:
+      - a2a
+
+  screening-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: screening-orchestrator
+    container_name: a2a-screening-orchestrator
+    ports:
+      - "8080:8080"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in the environment or a .env file}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_CHAT_MODEL: ${OPENROUTER_CHAT_MODEL:-openai/gpt-4o-mini}
+      SKILLS_AGENT_URL: http://skills-agent:8081/a2a
+    depends_on:
+      skills-agent:
+        condition: service_healthy
+    networks:
+      - a2a
+
+networks:
+  a2a:
+    driver: bridge

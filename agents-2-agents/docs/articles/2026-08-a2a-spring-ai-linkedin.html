@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent2Agent on Spring Boot: one specialist, one orchestrator, no megaprompt — José Alemán</title>
+  <meta name="description" content="I used to dump skills matching, salary checks, and summary writing into one Spring AI agent. Agent2Agent fixed the boundary, not the model." />
+  <meta name="author" content="José Adrián Alemán Rojas" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;family=Kalam:wght@400;700&amp;display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --surface: #fffef9;
+      --surface-elevated: #fffef9;
+      --on-surface: #131b2e;
+      --on-surface-muted: #45464d;
+      --outline: #3d5a4a;
+      --outline-variant: #bec6e0;
+      --accent: #3d5a4a;
+      --accent-soft: #cde5d6;
+      --accent-on-soft: #364b40;
+      --note-yellow: #fff0a7;
+      --paper-dot: #ded9ca;
+      --code-panel-surface: #fffef9;
+      --code-panel-header-bg: #e8efe9;
+      --code-panel-header-border: #c5d4ca;
+      --code-panel-header-text: #3d5a4a;
+      --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+      --font-sketch: "Kalam", cursive;
+      --font-mono: "DM Mono", ui-monospace, monospace;
+      --shadow-color: rgba(19, 27, 46, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      color: var(--on-surface);
+      background-color: var(--surface);
+      background-image: radial-gradient(var(--paper-dot) 0.75px, transparent 0.75px);
+      background-size: 18px 18px;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+    }
+
+    a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    a:focus-visible {
+      outline: 2px solid #131b2e;
+      outline-offset: 2px;
+    }
+
+    .page {
+      width: min(100% - 2rem, 48rem);
+      margin: 0 auto;
+      padding: 3rem 0 4.5rem;
+    }
+
+    .back-link {
+      font-size: 0.875rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 0.85rem;
+      margin-top: 1.5rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--on-surface-muted);
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      background: #e8efe9;
+      color: var(--accent);
+      padding: 0.25rem 0.75rem;
+    }
+
+    h1 {
+      margin: 1.25rem 0 0;
+      font-family: var(--font-sketch);
+      font-size: clamp(2.25rem, 4vw, 3rem);
+      font-weight: 700;
+      line-height: 1.08;
+      letter-spacing: -0.01em;
+      color: #131b2e;
+      overflow-wrap: break-word;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin: 1.5rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tags li span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      max-width: 100%;
+      border: 1px solid #3d5a4a;
+      border-radius: 4px 3px 5px 3px;
+      background: #cde5d6;
+      color: #364b40;
+      padding: 0.375rem 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+
+    .share-row {
+      margin-top: 1.5rem;
+      padding: 1rem 0;
+      border-top: 1px dashed #bec6e0;
+      border-bottom: 1px dashed #bec6e0;
+      font-size: 0.875rem;
+      color: var(--on-surface-muted);
+    }
+
+    .hero {
+      margin: 2rem 0 0;
+      max-width: 48rem;
+      border: 2px solid #3d5a4a;
+      border-radius: 6px 4px 7px 5px;
+      background: #fffef9;
+      padding: 0.5rem 0.5rem 0.75rem;
+      box-shadow: 5px 6px 0 rgba(19, 27, 46, 0.14);
+    }
+
+    .hero img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 3px 2px 4px 3px;
+      background: #131b2e;
+    }
+
+    .hero figcaption {
+      margin-top: 0.75rem;
+      text-align: center;
+      font-size: 0.875rem;
+      color: var(--on-surface-muted);
+    }
+
+    .layout {
+      display: grid;
+      gap: 2rem;
+      margin-top: 2.5rem;
+    }
+
+    @media (min-width: 1024px) {
+      .page {
+        width: min(100% - 2rem, 76rem);
+      }
+
+      .layout {
+        grid-template-columns: 15rem minmax(0, 46rem);
+        justify-content: center;
+        align-items: start;
+        gap: 3rem;
+      }
+    }
+
+    .toc {
+      display: none;
+      position: sticky;
+      top: 1rem;
+      border: 2px solid #3d5a4a;
+      border-radius: 6px 4px 7px 5px;
+      background: #fffef9;
+      padding: 1rem;
+      box-shadow: 4px 5px 0 rgba(19, 27, 46, 0.12);
+    }
+
+    @media (min-width: 1024px) {
+      .toc { display: block; }
+    }
+
+    .toc h2 {
+      margin: 0 0 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--on-surface);
+    }
+
+    .toc ol {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-size: 0.875rem;
+      line-height: 1.45;
+    }
+
+    .toc a {
+      color: var(--on-surface);
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    .toc a:hover { color: var(--accent); text-decoration: underline; }
+
+    .toc-mobile {
+      margin-top: 2rem;
+      border: 2px solid #131b2e;
+      border-radius: 5px 3px 6px 4px;
+      background: #fffef9;
+      padding: 1rem;
+      box-shadow: 3px 4px 0 rgba(19, 27, 46, 0.14);
+    }
+
+    @media (min-width: 1024px) {
+      .toc-mobile { display: none; }
+    }
+
+    .toc-mobile summary {
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .toc-mobile ol {
+      margin: 1rem 0 0;
+      padding-left: 1.1rem;
+      font-size: 0.875rem;
+    }
+
+    .reading {
+      min-width: 0;
+      max-width: 48rem;
+    }
+
+    .article-body {
+      margin-top: 2.5rem;
+      font-size: 1.0625rem;
+      line-height: 1.75;
+      color: var(--on-surface);
+    }
+
+    .article-body > * + * { margin-top: 1.25rem; }
+
+    .article-body p { margin: 0; text-align: left; line-height: 1.75; }
+
+    .article-body h2 {
+      scroll-margin-top: 5rem;
+      margin: 2.5rem 0 0;
+      font-family: var(--font-sketch);
+      font-size: 1.875rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--on-surface);
+    }
+
+    .article-body h3 {
+      scroll-margin-top: 5rem;
+      margin: 2rem 0 0;
+      font-family: var(--font-sketch);
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--on-surface);
+    }
+
+    .article-body ul,
+    .article-body ol {
+      margin: 0;
+      padding-left: 1.5rem;
+    }
+
+    .article-body li { margin-top: 0.5rem; }
+
+    .article-body ul { list-style: disc; }
+    .article-body ol { list-style: decimal; }
+
+    .article-body blockquote {
+      margin: 1rem 0 0;
+      border-left: 4px solid #3d5a4a;
+      border-radius: 3px 5px 4px 6px;
+      background: #fff0a7;
+      padding: 0.75rem 1rem;
+    }
+
+    .article-body blockquote p {
+      margin: 0;
+      font-style: italic;
+    }
+
+    .article-body code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      border: 1px solid #3d5a4a;
+      border-radius: 3px 4px 3px 4px;
+      background: #cde5d6;
+      padding: 0.125rem 0.35rem;
+    }
+
+    .article-body pre code {
+      border: 0;
+      background: transparent;
+      padding: 0;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: var(--on-surface);
+      white-space: pre;
+    }
+
+    .code-block {
+      margin: 1.5rem 0 0;
+      overflow: hidden;
+      border: 1px solid var(--outline);
+      border-radius: 0.375rem;
+      background: var(--code-panel-surface);
+      box-shadow:
+        0 1px 2px rgba(19, 27, 46, 0.04),
+        0 10px 28px -18px rgba(19, 27, 46, 0.1);
+    }
+
+    .code-block__caption {
+      border-bottom: 1px solid var(--code-panel-header-border);
+      background: var(--code-panel-header-bg);
+      padding: 0.5rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--code-panel-header-text);
+    }
+
+    .code-block pre {
+      margin: 0;
+      max-height: 28rem;
+      overflow: auto;
+      padding: 1rem;
+      background: transparent;
+    }
+
+    .dl {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .dl li {
+      margin-top: 0.85rem;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .dl strong {
+      display: inline;
+      color: #131b2e;
+    }
+
+    .footer-nav {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 2px dashed #bec6e0;
+      font-size: 0.875rem;
+    }
+
+    .hashtags {
+      margin-top: 1.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      color: var(--on-surface-muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <p><a class="back-link" href="https://my-tech-profile.dev/insights">← Back to Insights</a></p>
+
+    <div class="layout">
+      <aside class="toc" aria-label="On this page">
+        <h2>On this page</h2>
+        <ol>
+          <li><a href="#why-this-showed-up">Why this showed up</a></li>
+          <li><a href="#the-thesis">The thesis</a></li>
+          <li><a href="#mental-model">Mental model</a></li>
+          <li><a href="#what-i-wired">What I wired</a></li>
+          <li><a href="#docker-failure-mode">Docker failure mode</a></li>
+          <li><a href="#openrouter-note">OpenRouter note</a></li>
+          <li><a href="#what-i-would-not-claim">What I would not claim</a></li>
+          <li><a href="#takeaways">Takeaways</a></li>
+        </ol>
+      </aside>
+
+      <div class="reading">
+        <article>
+          <header>
+            <div class="meta">
+              <span class="badge">Architecture</span>
+              <span>Aug 10, 2026</span>
+              <span aria-hidden="true">•</span>
+              <span>8 min read</span>
+            </div>
+            <h1>Agent2Agent on Spring Boot: one specialist, one orchestrator, no megaprompt</h1>
+            <ul class="tags" aria-label="Article topics">
+              <li><span>Spring AI</span></li>
+              <li><span>A2A</span></li>
+              <li><span>Java</span></li>
+              <li><span>Spring Boot</span></li>
+              <li><span>Software architecture</span></li>
+            </ul>
+            <div class="share-row">
+              Insight draft for <a href="https://my-tech-profile.dev">My Tech Profile</a> / LinkedIn long-form.
+            </div>
+          </header>
+
+          <figure class="hero">
+            <img
+              src="./2026-08-a2a-spring-ai-banner.png"
+              alt="Sketchnote-style diagram: recruiter HTTP to orchestrator to skills agent, returning a screening verdict with score from domain code"
+              width="1600"
+              height="900"
+              loading="eager"
+              decoding="async"
+            />
+            <figcaption>Flow: recruiter → orchestrator → skills agent → verdict (score stays in Java).</figcaption>
+          </figure>
+
+          <details class="toc-mobile">
+            <summary>On this page</summary>
+            <ol>
+              <li><a href="#why-this-showed-up">Why this showed up</a></li>
+              <li><a href="#the-thesis">The thesis</a></li>
+              <li><a href="#mental-model">Mental model</a></li>
+              <li><a href="#what-i-wired">What I wired</a></li>
+              <li><a href="#docker-failure-mode">Docker failure mode</a></li>
+              <li><a href="#openrouter-note">OpenRouter note</a></li>
+              <li><a href="#what-i-would-not-claim">What I would not claim</a></li>
+              <li><a href="#takeaways">Takeaways</a></li>
+            </ol>
+          </details>
+
+          <section class="article-body" aria-label="Article body">
+            <p>I used to dump skills matching, salary checks, and summary writing into one Spring AI agent.</p>
+            <p>It worked in demos. It fell apart the moment I needed a second team (or a second service) to own one capability without inheriting the whole prompt.</p>
+            <p>That is the problem Agent2Agent (A2A) is meant to solve: a standard way for agents to <strong>discover</strong> each other and <strong>exchange work</strong>, even when they run as separate apps.</p>
+
+            <h2 id="why-this-showed-up">Why this showed up in my work</h2>
+            <p>At ITJobOpportunities I keep building screening and assessment flows: résumé signals, job fit, Code Training Lab exercises, recruiter-facing summaries. The temptation is always the same. One fat system prompt. One <code>ChatClient</code>. Every new rule bolted on until nobody wants to touch it.</p>
+            <p>I wanted the opposite shape: small specialists with clear ownership, and an orchestrator that only decides whom to call. A2A gave me a protocol for that shape instead of another private REST convention between "agent" microservices.</p>
+            <p>So I built a short exercise on <strong>Java 26</strong>, <strong>Spring Boot 4.1</strong>, <strong>Spring AI 2</strong>, and the Spring AI Community <strong>spring-ai-a2a</strong> server starter, with <strong>OpenRouter</strong> behind the OpenAI-compatible client. Two processes. One happy path a recruiter can hit with curl.</p>
+
+            <h2 id="the-thesis">The thesis</h2>
+            <p>A2A is discovery plus messages. Your product still decides what is deterministic and what is generative.</p>
+            <p>In my skills matcher, overlap scoring lives in plain Java. The LLM calls a tool, then writes a short summary. The orchestrator never invents a fit percentage. That split is the architecture lesson. The protocol is just how the two Spring apps talk.</p>
+
+            <blockquote>
+              <p>"A2A is not another ChatClient wrapper. It is how agents find each other and exchange work."</p>
+            </blockquote>
+
+            <h2 id="mental-model">Mental model (four nouns)</h2>
+            <ul class="dl">
+              <li><strong>Agent Card</strong> — JSON metadata: name, skills, public URL</li>
+              <li><strong>Message</strong> — Natural-language task from a client agent</li>
+              <li><strong>Task</strong> — Server-side unit of work created from that message</li>
+              <li><strong>Artifact</strong> — Result payload (usually text parts) returned on the task</li>
+            </ul>
+
+            <div class="code-block">
+              <div class="code-block__caption">Flow</div>
+              <pre><code>Recruiter HTTP
+  → Screening orchestrator (A2A client + ChatClient + tool)
+    → Skills matcher (A2A server + ChatClient + match-skills tool)
+      → Artifact text
+  → Short screening verdict</code></pre>
+            </div>
+
+            <p>Notice the double hop through an LLM. That is normal. One model plans the delegation. The specialist model (or the same provider with a different system prompt) decides when to call tools. Cost and latency follow. Do not pretend this is a free abstraction.</p>
+
+            <h2 id="what-i-wired">What I actually wired</h2>
+
+            <h3>Skills agent (A2A server)</h3>
+            <p>Spring AI Community autoconfiguration needs three beans you own:</p>
+            <ol>
+              <li><code>AgentCard</code> — who you are and where clients should call you</li>
+              <li><code>AgentExecutor</code> — how an inbound A2A message becomes a reply</li>
+              <li><code>ChatClient</code> — Spring AI entry point with tools registered</li>
+            </ol>
+            <p>I keep packages boring on purpose:</p>
+            <ul>
+              <li><code>domain</code> — <code>SkillsMatcher</code> computes score / matched / missing</li>
+              <li><code>tools</code> — <code>@Tool</code> adapter only</li>
+              <li><code>config</code> — ChatClient, Agent Card, AgentExecutor</li>
+            </ul>
+            <p>The card is served at <code>/.well-known/agent-card.json</code> under context path <code>/a2a</code>. Clients discover first. Then they send work.</p>
+            <p>Minimal executor shape:</p>
+
+            <div class="code-block">
+              <div class="code-block__caption">Java</div>
+              <pre><code>@Bean
+AgentExecutor agentExecutor(ChatClient skillsChatClient) {
+  return new DefaultAgentExecutor(skillsChatClient, (client, ctx) -&gt; {
+    String userMessage = DefaultAgentExecutor.extractTextFromMessage(ctx.getMessage());
+    return client.prompt().user(userMessage).call().content();
+  });
+}</code></pre>
+            </div>
+
+            <h3>Screening orchestrator (A2A client + REST)</h3>
+            <p>On startup, <code>AgentRegistry</code> loads cards from configured base URLs. If the skills agent is down, the orchestrator fails fast. I prefer that over a silent empty registry.</p>
+            <p>The LLM gets one tool: <code>send-message-to-agent(agentName, task)</code>. The system prompt lists discovered agents by name and tells the model not to score candidates itself.</p>
+            <p>The public API stays thin:</p>
+
+            <div class="code-block">
+              <div class="code-block__caption">HTTP</div>
+              <pre><code>POST /api/v1/screenings
+Content-Type: application/json
+
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "jobTitle": "Backend Developer",
+  "requiredSkills": "Java, Spring Boot, AWS, Kafka",
+  "candidateSkills": "Java, Spring Boot, Azure, Kafka",
+  "expectedSalary": 110000
+}</code></pre>
+            </div>
+
+            <p>For that sample, deterministic scoring lands around <strong>75%</strong> with <code>aws</code> missing. The verdict prose can vary by model. The number should not.</p>
+
+            <blockquote>
+              <p>"If the score matters to a recruiter, compute it in Java and let the LLM narrate."</p>
+            </blockquote>
+
+            <h2 id="docker-failure-mode">The failure mode that burns people in Docker</h2>
+            <p>Discovery URL and Agent Card <code>url</code> are not the same concern.</p>
+            <p>Your client can fetch the card from <code>http://skills-agent:8081/a2a/.well-known/agent-card.json</code> and still fail on send if the card advertises <code>http://localhost:8081/a2a/</code>. Inside a container, <code>localhost</code> is the container itself.</p>
+            <p>Treat the published card URL as part of the contract. In Compose I set:</p>
+            <ul>
+              <li><code>A2A_AGENT_PUBLIC_URL=http://skills-agent:8081/a2a/</code></li>
+              <li><code>SKILLS_AGENT_URL=http://skills-agent:8081/a2a</code></li>
+            </ul>
+            <p>Same lesson shows up in any registry-driven system. Metadata that points at the wrong network view is worse than no metadata.</p>
+
+            <blockquote>
+              <p>"In Docker, the Agent Card URL is part of your API contract. <code>localhost</code> is a bug."</p>
+            </blockquote>
+
+            <h2 id="openrouter-note">OpenRouter note (Spring AI 2)</h2>
+            <p>I route chat through OpenRouter with the OpenAI starter:</p>
+            <ul>
+              <li><code>spring.ai.openai.base-url=https://openrouter.ai/api/v1</code> (include <code>/v1</code>)</li>
+              <li><code>spring.ai.openai.api-key=${OPENROUTER_API_KEY}</code></li>
+              <li>model id like <code>openai/gpt-4o-mini</code></li>
+            </ul>
+            <p>Spring AI 2’s OpenAI Java SDK appends <code>/chat/completions</code> to the base URL. Dropping <code>/v1</code> is a quiet 404.</p>
+
+            <h2 id="what-i-would-not-claim">What I would not claim yet</h2>
+            <p>This exercise is not a production hiring mesh. No auth on the A2A surface. No streaming. No multi-tenant isolation. No eval harness for the orchestrator’s tool choices.</p>
+            <p>It is enough to prove the boundary: specialist ownership, protocol discovery, deterministic scoring where trust matters, generative text where language helps.</p>
+            <p>When I look at recruiter AI assessments and screening on ITJobOpportunities, that boundary is the design I want to keep as capabilities multiply. Protocols come and go. Owning the score in code ages better than hoping the prompt remembers your rubric.</p>
+
+            <h2 id="takeaways">Takeaways</h2>
+            <ul>
+              <li>Start with <strong>one</strong> specialist agent and one orchestrator. Add agents only after discovery and Docker networking are boring.</li>
+              <li>Put <strong>Agent Card URL</strong> in config per environment. Never hardcode <code>localhost</code> for anything that other containers must call.</li>
+              <li>Keep high-stakes numbers in <strong>domain services</strong>; expose them with <code>@Tool</code>.</li>
+              <li>Fail startup if remote cards cannot load. Empty registries create worse bugs later.</li>
+              <li>Budget for <strong>two LLM hops</strong> and measure them before you celebrate the architecture diagram.</li>
+            </ul>
+
+            <h2 id="close">Close</h2>
+            <p>If you are splitting agent capabilities across services, what is the first capability you would refuse to keep inside the orchestrator prompt?</p>
+
+            <p class="hashtags">#SpringAI #A2A #Java #SpringBoot #SoftwareArchitecture</p>
+          </section>
+
+          <p class="footer-nav">
+            <a class="back-link" href="https://my-tech-profile.dev/insights">← Back to Insights</a>
+          </p>
+        </article>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

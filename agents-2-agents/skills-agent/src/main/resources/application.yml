@@ -1,0 +1,29 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /a2a
+
+a2a:
+  agent:
+    # Clients use this URL from the Agent Card to send messages.
+    # Override in Docker: http://skills-agent:8081/a2a/
+    public-url: ${A2A_AGENT_PUBLIC_URL:http://localhost:8081/a2a/}
+
+spring:
+  application:
+    name: skills-agent
+  ai:
+    a2a:
+      server:
+        enabled: true
+    # OpenRouter via OpenAI-compatible API (Spring AI 2 requires /v1 on the base URL)
+    openai:
+      api-key: ${OPENROUTER_API_KEY}
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+      chat:
+        options:
+          model: ${OPENROUTER_CHAT_MODEL:openai/gpt-4o-mini}
+
+logging:
+  level:
+    org.springaicommunity.a2a: INFO
