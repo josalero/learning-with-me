@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Research Agents — Spring AI vs LangChain4j</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#0f172a',
+            mist: '#f8fafc',
+            accent: '#0d9488',
+            spring: '#6db33f',
+            chain: '#1e40af'
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer></script>
+</head>
+<body class="bg-mist text-ink min-h-screen">
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-white focus:px-3 focus:py-2 focus:rounded">
+    Skip to main content
+  </a>
+
+  <header class="border-b border-slate-200 bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <p class="text-sm font-medium uppercase tracking-wide text-accent">Learning lab</p>
+      <h1 class="mt-1 text-2xl font-semibold sm:text-3xl">Multi-agent research comparison</h1>
+      <p class="mt-2 max-w-3xl text-slate-600">
+        Same planner → researcher → writer/critic pipeline, run with
+        <strong>Spring AI 2.0</strong> or <strong>LangChain4j 1.18</strong> via OpenRouter.
+      </p>
+    </div>
+  </header>
+
+  <main id="main" class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <section aria-labelledby="pipeline-heading" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="pipeline-heading" class="text-lg font-semibold">Pipeline diagrams</h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Same roles and prompts; Spring AI owns the loop in Java, LangChain4j declares it with agentic builders.
+            Diagram highlight follows the selected engine below.
+          </p>
+        </div>
+      </div>
+
+      <figure class="pipeline-figure mt-5" aria-labelledby="shared-flow-caption">
+        <figcaption id="shared-flow-caption" class="pipeline-figure__caption">
+          Shared research contract
+        </figcaption>
+        <ol class="pipeline-flow pipeline-flow--detailed" aria-label="Shared agent sequence with inputs and outputs">
+          <li class="pipeline-stage">
+            <div class="pipeline-node" data-role="planner">
+              <span class="pipeline-node__step">1</span>
+              <span class="pipeline-node__label">Planner</span>
+              <span class="pipeline-node__hint">default chat model</span>
+            </div>
+            <p class="pipeline-io"><span>in</span> topic, depth</p>
+            <p class="pipeline-io pipeline-io--out"><span>out</span> ResearchPlan</p>
+          </li>
+          <li class="pipeline-arrow" aria-hidden="true"></li>
+          <li class="pipeline-stage">
+            <div class="pipeline-node" data-role="researcher">
+              <span class="pipeline-node__step">2</span>
+              <span class="pipeline-node__label">Researcher</span>
+              <span class="pipeline-node__hint">:online model</span>
+            </div>
+            <p class="pipeline-io"><span>in</span> plan questions</p>
+            <p class="pipeline-io pipeline-io--out"><span>out</span> List&lt;Finding&gt;</p>
+          </li>
+          <li class="pipeline-arrow" aria-hidden="true"></li>
+          <li class="pipeline-loop" aria-label="Writer and critic revision loop">
+            <div class="pipeline-loop__agents">
+              <div class="pipeline-node" data-role="writer">
+                <span class="pipeline-node__step">3</span>
+                <span class="pipeline-node__label">Writer</span>
+                <span class="pipeline-node__hint">markdown draft</span>
+              </div>
+              <span class="pipeline-loop__cycle" aria-hidden="true">↻</span>
+              <div class="pipeline-node" data-role="critic">
+                <span class="pipeline-node__step">4</span>
+                <span class="pipeline-node__label">Critic</span>
+                <span class="pipeline-node__hint">score + notes</span>
+              </div>
+            </div>
+            <p class="pipeline-loop__note">
+              Exit when <code>critique.passes(threshold)</code> or revisions ≥ <code>maxRevisions</code>
+            </p>
+            <p class="pipeline-io"><span>seed</span> Critique.none() on first write</p>
+          </li>
+          <li class="pipeline-arrow" aria-hidden="true"></li>
+          <li class="pipeline-stage">
+            <div class="pipeline-node pipeline-node--out" data-role="report">
+              <span class="pipeline-node__step">5</span>
+              <span class="pipeline-node__label">Report</span>
+              <span class="pipeline-node__hint">SSE step + report</span>
+            </div>
+            <p class="pipeline-io pipeline-io--out"><span>out</span> ResearchReport</p>
+          </li>
+        </ol>
+        <dl class="pipeline-legend">
+          <div>
+            <dt>Prompts</dt>
+            <dd><code>shared-prompts/*.system.txt</code> on both apps</dd>
+          </div>
+          <div>
+            <dt>API</dt>
+            <dd><code>POST /research</code> · <code>GET /research/stream</code></dd>
+          </div>
+          <div>
+            <dt>Step event</dt>
+            <dd><code>agent</code>, <code>input</code>, <code>output</code>, <code>elapsedMs</code></dd>
+          </div>
+        </dl>
+      </figure>
+
+      <div id="pipeline-compare" class="pipeline-compare mt-6" data-engine="spring-ai">
+        <article class="pipeline-card pipeline-card--spring" data-engine="spring-ai" aria-labelledby="spring-pipe-title">
+          <h3 id="spring-pipe-title" class="pipeline-card__title">Spring AI 2.0</h3>
+          <p class="pipeline-card__subtitle">
+            Explicit Java control flow in <code>ResearchOrchestrator</code>
+          </p>
+
+          <svg class="pipeline-svg" viewBox="0 0 360 268" role="img" aria-labelledby="spring-pipe-desc">
+            <title id="spring-pipe-desc">Spring AI: UI/API to orchestrator to ChatClient agents, then an explicit writer-critic Java loop, then OpenRouter</title>
+            <defs>
+              <marker id="arrow-spring" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#4d7c0f" />
+              </marker>
+            </defs>
+            <rect x="8" y="8" width="88" height="36" rx="8" class="pipe-box pipe-box--ui" />
+            <text x="52" y="30" text-anchor="middle" class="pipe-text">UI / API</text>
+            <line x1="96" y1="26" x2="128" y2="26" class="pipe-line pipe-line--spring" marker-end="url(#arrow-spring)" />
+            <rect x="132" y="8" width="120" height="36" rx="8" class="pipe-box pipe-box--spring" />
+            <text x="192" y="24" text-anchor="middle" class="pipe-text">Orchestrator</text>
+            <text x="192" y="38" text-anchor="middle" class="pipe-text-sm">+ StepTrace</text>
+            <line x1="192" y1="44" x2="192" y2="64" class="pipe-line pipe-line--spring" marker-end="url(#arrow-spring)" />
+            <rect x="118" y="68" width="148" height="44" rx="8" class="pipe-box pipe-box--agent" />
+            <text x="192" y="86" text-anchor="middle" class="pipe-text">ChatClient agents</text>
+            <text x="192" y="102" text-anchor="middle" class="pipe-text-sm">.entity(ResearchPlan…)</text>
+            <line x1="192" y1="112" x2="192" y2="130" class="pipe-line pipe-line--spring" marker-end="url(#arrow-spring)" />
+            <rect x="88" y="134" width="208" height="72" rx="8" class="pipe-box pipe-box--loop" />
+            <text x="192" y="154" text-anchor="middle" class="pipe-text">while (true) in Java</text>
+            <text x="192" y="172" text-anchor="middle" class="pipe-text-sm">write(topic, findings, critique)</text>
+            <text x="192" y="188" text-anchor="middle" class="pipe-text-sm">critique(draft) → break if pass / max</text>
+            <line x1="192" y1="206" x2="192" y2="224" class="pipe-line pipe-line--spring" marker-end="url(#arrow-spring)" />
+            <rect x="118" y="228" width="148" height="32" rx="8" class="pipe-box pipe-box--or" />
+            <text x="192" y="248" text-anchor="middle" class="pipe-text">OpenRouter</text>
+          </svg>
+
+          <details class="orch-details">
+            <summary>More orchestration detail</summary>
+            <ol class="orch-flow" aria-label="Spring AI orchestration detail">
+              <li class="orch-step">
+                <span class="orch-step__badge">1</span>
+                <div>
+                  <strong>planner.plan(topic, depth)</strong>
+                  <p>Local <code>ResearchPlan</code> via ChatClient entity mapping</p>
+                </div>
+              </li>
+              <li class="orch-step">
+                <span class="orch-step__badge">2</span>
+                <div>
+                  <strong>researcher.research(plan)</strong>
+                  <p><code>researchChatClient</code> (:online) → local <code>List&lt;Finding&gt;</code></p>
+                </div>
+              </li>
+              <li class="orch-step orch-step--loop">
+                <span class="orch-step__badge">loop</span>
+                <div>
+                  <strong>write → critique until exit</strong>
+                  <p>Break when <code>passes(threshold)</code> or <code>revisions ≥ max</code></p>
+                </div>
+              </li>
+            </ol>
+            <div class="orch-meta">
+              <p><strong>State:</strong> stack locals (<code>plan</code>, <code>findings</code>, <code>draft</code>, <code>critique</code>)</p>
+              <p><strong>Observability:</strong> <code>StepTrace.record(...)</code> → SSE <code>step</code></p>
+            </div>
+          </details>
+        </article>
+
+        <article class="pipeline-card pipeline-card--chain" data-engine="langchain4j" aria-labelledby="chain-pipe-title">
+          <h3 id="chain-pipe-title" class="pipeline-card__title">LangChain4j</h3>
+          <p class="pipeline-card__subtitle">
+            Declarative <code>langchain4j-agentic</code> sequence + scope
+          </p>
+
+          <svg class="pipeline-svg" viewBox="0 0 360 268" role="img" aria-labelledby="chain-pipe-desc">
+            <title id="chain-pipe-desc">LangChain4j: UI/API to orchestrator to sequenceBuilder over AgenticScope, then loopBuilder review loop, then OpenRouter</title>
+            <defs>
+              <marker id="arrow-chain" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#1d4ed8" />
+              </marker>
+            </defs>
+            <rect x="8" y="8" width="88" height="36" rx="8" class="pipe-box pipe-box--ui" />
+            <text x="52" y="30" text-anchor="middle" class="pipe-text">UI / API</text>
+            <line x1="96" y1="26" x2="128" y2="26" class="pipe-line pipe-line--chain" marker-end="url(#arrow-chain)" />
+            <rect x="132" y="8" width="120" height="36" rx="8" class="pipe-box pipe-box--chain" />
+            <text x="192" y="24" text-anchor="middle" class="pipe-text">Orchestrator</text>
+            <text x="192" y="38" text-anchor="middle" class="pipe-text-sm">+ AgentListener</text>
+            <line x1="192" y1="44" x2="192" y2="64" class="pipe-line pipe-line--chain" marker-end="url(#arrow-chain)" />
+            <rect x="100" y="68" width="184" height="44" rx="8" class="pipe-box pipe-box--agent" />
+            <text x="192" y="86" text-anchor="middle" class="pipe-text">sequenceBuilder</text>
+            <text x="192" y="102" text-anchor="middle" class="pipe-text-sm">planner → researcher → loop</text>
+            <line x1="192" y1="112" x2="192" y2="130" class="pipe-line pipe-line--chain" marker-end="url(#arrow-chain)" />
+            <rect x="88" y="134" width="208" height="72" rx="8" class="pipe-box pipe-box--loop" />
+            <text x="192" y="154" text-anchor="middle" class="pipe-text">loopBuilder review</text>
+            <text x="192" y="172" text-anchor="middle" class="pipe-text-sm">@Agent outputKeys in scope</text>
+            <text x="192" y="188" text-anchor="middle" class="pipe-text-sm">exit: critique.passes(threshold)</text>
+            <line x1="192" y1="206" x2="192" y2="224" class="pipe-line pipe-line--chain" marker-end="url(#arrow-chain)" />
+            <rect x="118" y="228" width="148" height="32" rx="8" class="pipe-box pipe-box--or" />
+            <text x="192" y="248" text-anchor="middle" class="pipe-text">OpenRouter</text>
+          </svg>
+
+          <details class="orch-details">
+            <summary>More orchestration detail</summary>
+            <ol class="orch-flow" aria-label="LangChain4j orchestration detail">
+              <li class="orch-step">
+                <span class="orch-step__badge">keys</span>
+                <div>
+                  <strong>AgenticScope</strong>
+                  <p><code>plan</code>, <code>findingsDoc</code>, <code>draft</code>, <code>critique</code> (+ seeded none)</p>
+                </div>
+              </li>
+              <li class="orch-step orch-step--loop">
+                <span class="orch-step__badge">loop</span>
+                <div>
+                  <strong>loopBuilder(writer, critic)</strong>
+                  <p><code>maxIterations = maxRevisions + 1</code>, <code>testExitAtLoopEnd(true)</code></p>
+                </div>
+              </li>
+              <li class="orch-step">
+                <span class="orch-step__badge">out</span>
+                <div>
+                  <strong>ReportAssembler</strong>
+                  <p>Scope + <code>StepCollectingListener</code> → <code>ResearchReport</code></p>
+                </div>
+              </li>
+            </ol>
+            <div class="orch-meta">
+              <p><strong>State:</strong> shared <code>AgenticScope</code> (not Java locals)</p>
+              <p><strong>Observability:</strong> inherited <code>AgentListener</code> → SSE <code>step</code></p>
+            </div>
+          </details>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="controls-heading" class="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 id="controls-heading" class="text-lg font-semibold">Run a scenario</h2>
+
+      <form id="research-form" class="mt-4 grid gap-4 md:grid-cols-2" novalidate>
+        <div class="md:col-span-2">
+          <label for="topic" class="block text-sm font-medium">Research topic</label>
+          <input
+            id="topic"
+            name="topic"
+            type="text"
+            required
+            maxlength="500"
+            value="Java virtual threads"
+            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
+
+        <div>
+          <label for="depth" class="block text-sm font-medium">Depth (questions)</label>
+          <select
+            id="depth"
+            name="depth"
+            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          >
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+
+        <fieldset>
+          <legend class="text-sm font-medium">Engine</legend>
+          <div class="mt-2 flex flex-wrap gap-3" role="radiogroup" aria-label="Engine selection">
+            <label class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 has-[:checked]:border-spring has-[:checked]:bg-green-50">
+              <input type="radio" name="engine" value="spring-ai" checked class="accent-spring" />
+              <span>Spring AI 2.0</span>
+            </label>
+            <label class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 has-[:checked]:border-chain has-[:checked]:bg-blue-50">
+              <input type="radio" name="engine" value="langchain4j" class="accent-chain" />
+              <span>LangChain4j</span>
+            </label>
+            <label class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 has-[:checked]:border-accent has-[:checked]:bg-teal-50">
+              <input type="radio" name="engine" value="compare" class="accent-accent" />
+              <span>Compare both</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="md:col-span-2 flex flex-wrap gap-3">
+          <button
+            type="submit"
+            id="run-btn"
+            class="rounded-lg bg-accent px-4 py-2 font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Run research
+          </button>
+          <button
+            type="button"
+            id="reset-btn"
+            class="rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
+
+      <p id="status" class="mt-4 text-sm text-slate-600" role="status" aria-live="polite">
+        Ready. Enter a topic and choose an engine.
+      </p>
+      <p id="error" class="mt-2 hidden text-sm text-red-700" role="alert"></p>
+    </section>
+
+    <section aria-labelledby="timeline-heading" class="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="timeline-heading" class="text-lg font-semibold">Agent step timeline</h2>
+          <p id="timeline-help" class="mt-1 text-sm text-slate-500">
+            Each step shows the agent input and output (expand/collapse as needed).
+          </p>
+        </div>
+      </div>
+
+      <div id="timeline-root" class="timeline-root mt-4" data-mode="single">
+        <div class="timeline-column" data-engine="single">
+          <ol id="timeline" class="space-y-3">
+            <li class="text-sm text-slate-500">No steps yet. Run a research job to see planner, researcher, writer, and critic inputs and outputs.</li>
+          </ol>
+        </div>
+        <div class="timeline-column" data-engine="spring-ai" hidden>
+          <h3 class="timeline-column__title timeline-column__title--spring">Spring AI</h3>
+          <ol id="timeline-spring" class="space-y-3"></ol>
+        </div>
+        <div class="timeline-column" data-engine="langchain4j" hidden>
+          <h3 class="timeline-column__title timeline-column__title--chain">LangChain4j</h3>
+          <ol id="timeline-chain" class="space-y-3"></ol>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="compare-heading" class="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 id="compare-heading" class="text-lg font-semibold">Compare elapsed time</h2>
+      <div id="compare" class="mt-4 text-sm text-slate-500">
+        Choose <em>Compare both</em> to see side-by-side timings.
+      </div>
+    </section>
+
+    <section aria-labelledby="report-heading" class="report-panel mt-8">
+      <div class="report-panel__header">
+        <div>
+          <h2 id="report-heading" class="text-lg font-semibold">Final report</h2>
+          <p id="report-help" class="mt-1 text-sm text-slate-500">Markdown from the writer agent, rendered for reading.</p>
+        </div>
+        <div id="meta" class="report-meta" aria-live="polite">
+          <span class="report-chip report-chip--muted">No report yet</span>
+        </div>
+      </div>
+      <div id="report" class="report-body" aria-live="polite">
+        <p class="report-placeholder">Waiting for a completed run.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 py-6 text-center text-sm text-slate-500">
+    Ports: UI 8090 · Spring AI 8091 · LangChain4j 8092 · OpenRouter required
+  </footer>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

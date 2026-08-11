@@ -1,0 +1,19 @@
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+}
+
+processResources {
+    from("${rootDir}/shared-prompts") {
+        into 'prompts'
+    }
+}
+
+bootJar {
+    archiveBaseName = 'spring-ai-app'
+}

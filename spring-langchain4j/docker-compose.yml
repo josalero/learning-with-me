@@ -1,0 +1,56 @@
+name: spring-langchain4j
+
+services:
+  spring-ai-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: spring-ai-app
+    ports:
+      - "8091:8091"
+    environment:
+      SERVER_PORT: 8091
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in .env or the environment}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_CHAT_MODEL: ${OPENROUTER_CHAT_MODEL:-openai/gpt-4o-mini}
+      OPENROUTER_RESEARCH_MODEL: ${OPENROUTER_RESEARCH_MODEL:-openai/gpt-4o-mini:online}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8091/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  langchain4j-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: langchain4j-app
+    ports:
+      - "8092:8092"
+    environment:
+      SERVER_PORT: 8092
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in .env or the environment}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_CHAT_MODEL: ${OPENROUTER_CHAT_MODEL:-openai/gpt-4o-mini}
+      OPENROUTER_RESEARCH_MODEL: ${OPENROUTER_RESEARCH_MODEL:-openai/gpt-4o-mini:online}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8092/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    depends_on:
+      spring-ai-app:
+        condition: service_healthy
+      langchain4j-app:
+        condition: service_healthy

@@ -1,0 +1,21 @@
+dependencyManagement {
+    imports {
+        mavenBom "dev.langchain4j:langchain4j-bom:${langchain4jVersion}"
+    }
+}
+
+dependencies {
+    implementation 'dev.langchain4j:langchain4j'
+    implementation 'dev.langchain4j:langchain4j-open-ai'
+    implementation "dev.langchain4j:langchain4j-agentic:${langchain4jVersion}-beta28"
+}
+
+processResources {
+    from("${rootDir}/shared-prompts") {
+        into 'prompts'
+    }
+}
+
+bootJar {
+    archiveBaseName = 'langchain4j-app'
+}

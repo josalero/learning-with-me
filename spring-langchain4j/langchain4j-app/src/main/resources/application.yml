@@ -1,0 +1,33 @@
+server:
+  port: 8092
+
+spring:
+  application:
+    name: langchain4j-app
+  threads:
+    virtual:
+      enabled: true
+
+research:
+  engine: langchain4j
+  framework: LangChain4j
+  framework-version: "1.18.1"
+  chat-model: ${OPENROUTER_CHAT_MODEL:openai/gpt-4o-mini}
+  research-model: ${OPENROUTER_RESEARCH_MODEL:openai/gpt-4o-mini:online}
+  pass-threshold: 9
+  max-revisions: 2
+  default-depth: 3
+  sse-timeout-ms: 600000
+  temperature: 0.2
+  openrouter:
+    api-key: ${OPENROUTER_API_KEY:}
+    base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
