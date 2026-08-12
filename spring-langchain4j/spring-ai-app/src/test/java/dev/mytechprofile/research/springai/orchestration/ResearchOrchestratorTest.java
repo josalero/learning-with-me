@@ -112,7 +112,8 @@ class ResearchOrchestratorTest {
                 threshold,
                 maxRevisions,
                 3,
-                600_000L
+                600_000L,
+                4096
         );
     }
 }

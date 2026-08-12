@@ -25,6 +25,7 @@ research:
   max-revisions: 2
   default-depth: 3
   sse-timeout-ms: 600000
+  max-tokens: ${OPENROUTER_MAX_TOKENS:4096}
 
 management:
   endpoints:

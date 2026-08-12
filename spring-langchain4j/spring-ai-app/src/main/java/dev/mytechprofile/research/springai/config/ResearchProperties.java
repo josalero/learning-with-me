@@ -12,6 +12,7 @@ public record ResearchProperties(
         int passThreshold,
         int maxRevisions,
         int defaultDepth,
-        long sseTimeoutMs
+        long sseTimeoutMs,
+        int maxTokens
 ) {
 }

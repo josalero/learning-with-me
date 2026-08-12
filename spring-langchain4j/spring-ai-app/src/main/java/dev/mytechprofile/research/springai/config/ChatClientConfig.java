@@ -17,8 +17,11 @@ public class ChatClientConfig {
     @Bean
     @Primary
     @Qualifier("chatClient")
-    ChatClient chatClient(ChatModel chatModel) {
-        return ChatClient.builder(chatModel).build();
+    ChatClient chatClient(ChatModel chatModel, ResearchProperties properties) {
+        return ChatClient.builder(chatModel)
+                .defaultOptions(OpenAiChatOptions.builder()
+                        .maxTokens(properties.maxTokens()))
+                .build();
     }
 
     @Bean
@@ -26,7 +29,8 @@ public class ChatClientConfig {
     ChatClient researchChatClient(ChatModel chatModel, ResearchProperties properties) {
         return ChatClient.builder(chatModel)
                 .defaultOptions(OpenAiChatOptions.builder()
-                        .model(properties.researchModel()))
+                        .model(properties.researchModel())
+                        .maxTokens(properties.maxTokens()))
                 .build();
     }
 }

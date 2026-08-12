@@ -8,6 +8,7 @@ Copy [`.env.example`](../.env.example) to `.env` before `docker compose up`.
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Both apps |
 | `OPENROUTER_CHAT_MODEL` | `openai/gpt-4o-mini` | Planner, writer, critic |
 | `OPENROUTER_RESEARCH_MODEL` | `openai/gpt-4o-mini:online` | Researcher (web search) |
+| `OPENROUTER_MAX_TOKENS` | `4096` | Max completion tokens for every model call (both apps) |
 
 ## Spring AI mapping
 
@@ -17,7 +18,7 @@ spring.ai.openai.base-url: ${OPENROUTER_BASE_URL}
 spring.ai.openai.chat.options.model: ${OPENROUTER_CHAT_MODEL}
 ```
 
-`ChatClientConfig` builds `researchChatClient` with default `OpenAiChatOptions` model → `OPENROUTER_RESEARCH_MODEL`.
+`ChatClientConfig` builds both clients with `OpenAiChatOptions.maxTokens` from `research.max-tokens`, and sets `researchChatClient` model → `OPENROUTER_RESEARCH_MODEL`.
 
 ## LangChain4j mapping
 
@@ -37,6 +38,7 @@ Bound via `research.openrouter.*` and `research.*` properties. Agents + review l
 | `research.default-depth` | 3 | Depth when the request omits it |
 | `research.sse-timeout-ms` | 600000 | SSE emitter timeout |
 | `research.temperature` | 0.2 | LangChain4j OpenAI client temperature |
+| `research.max-tokens` | 4096 | Max completion tokens (`OPENROUTER_MAX_TOKENS`); applied on both engines |
 
 ## Shared prompts
 

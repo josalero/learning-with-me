@@ -14,6 +14,7 @@ public record ResearchProperties(
         int defaultDepth,
         long sseTimeoutMs,
         double temperature,
+        int maxTokens,
         OpenRouter openrouter
 ) {
     public record OpenRouter(String apiKey, String baseUrl) {

@@ -151,6 +151,7 @@ class ResearchOrchestratorFakeModelTest {
                 3,
                 600_000L,
                 0.2,
+                4096,
                 new ResearchProperties.OpenRouter("test-key", "https://openrouter.ai/api/v1")
         );
     }

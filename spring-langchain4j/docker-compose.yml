@@ -15,6 +15,7 @@ services:
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       OPENROUTER_CHAT_MODEL: ${OPENROUTER_CHAT_MODEL:-openai/gpt-4o-mini}
       OPENROUTER_RESEARCH_MODEL: ${OPENROUTER_RESEARCH_MODEL:-openai/gpt-4o-mini:online}
+      OPENROUTER_MAX_TOKENS: ${OPENROUTER_MAX_TOKENS:-4096}
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8091/actuator/health"]
       interval: 10s
@@ -36,6 +37,7 @@ services:
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       OPENROUTER_CHAT_MODEL: ${OPENROUTER_CHAT_MODEL:-openai/gpt-4o-mini}
       OPENROUTER_RESEARCH_MODEL: ${OPENROUTER_RESEARCH_MODEL:-openai/gpt-4o-mini:online}
+      OPENROUTER_MAX_TOKENS: ${OPENROUTER_MAX_TOKENS:-4096}
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8092/actuator/health"]
       interval: 10s

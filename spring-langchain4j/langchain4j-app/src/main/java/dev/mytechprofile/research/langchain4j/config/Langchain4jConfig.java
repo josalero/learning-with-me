@@ -33,6 +33,7 @@ public class Langchain4jConfig {
                 .baseUrl(properties.openrouter().baseUrl())
                 .modelName(modelName)
                 .temperature(properties.temperature())
+                .maxTokens(properties.maxTokens())
                 .logRequests(false)
                 .logResponses(false)
                 .build();
