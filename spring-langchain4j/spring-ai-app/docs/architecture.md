@@ -41,10 +41,10 @@ dev.mytechprofile.research.springai
 |---|---|
 | `ResearchController` | `GET /meta`, `POST /research`, `GET /research/stream` (SSE) |
 | `PlannerAgent` / `ResearcherAgent` / `WriterAgent` / `CriticAgent` | Single-method role ports (ISP) |
-| `ChatClient*Agent` | ChatClient implementations; researcher uses `researchChatClient` and one-shot `.entity(ResearchFindings.class)` |
+| `ChatClient*Agent` | ChatClient implementations; researcher uses `researchChatClient` and one-shot `.entity(ResearchFindings.class)`; writer takes `ResearchFindings` |
 | `ResearchOrchestrator` | Explicit pipeline orchestration; accepts `Consumer<StepEvent>` |
 | `StepTrace` | Thread-safe step list with input/output text + optional listeners |
-| `ResearchProperties` | engine id, models, thresholds, default depth, SSE timeout |
+| `ResearchProperties` | engine id, models, thresholds, default depth, SSE timeout, `maxTokens` |
 
 ## Request flow
 
@@ -61,11 +61,9 @@ sequenceDiagram
   Orch->>Agents: plan(topic, depth)
   Agents->>OR: ChatClient entity ResearchPlan
   Orch->>Agents: research(plan)
-  loop each question
-    Agents->>OR: researchChatClient
-  end
+  Agents->>OR: researchChatClient entity ResearchFindings
   loop until score passes or max revisions
-    Orch->>Agents: write(topic, findings, critique)
+    Orch->>Agents: write(topic, findingsDoc, critique)
     Orch->>Agents: critique(draft)
   end
   Orch-->>Controller: ResearchReport
@@ -75,14 +73,15 @@ sequenceDiagram
 
 `spring.ai.openai.*` points at OpenRouter. `ChatClientConfig` exposes:
 
-- `chatClient` — default chat model
-- `researchChatClient` — same base model with `OpenAiChatOptions` model override to `:online`
+- `chatClient` — default chat model + `OpenAiChatOptions.maxTokens` from `research.max-tokens`
+- `researchChatClient` — same base options with model override to `OPENROUTER_RESEARCH_MODEL` (`:online`)
 
-Agents never import OpenAI option types.
+Agents never import OpenAI option types. Shared env/property docs: [../../docs/configuration.md](../../docs/configuration.md).
 
 ## Testing
 
 - `ResearchOrchestratorTest` — fake role ports (lambdas), asserts step order and revision limits
+- `ResearchFindingsTest` — domain wrapper for structured researcher output
 - `ResearchReportContractTest` — shared JSON fixture field shape (`critique` has `score` + `notes` only)
 
-Also see [../../docs/configuration.md](../../docs/configuration.md) for env vars, thresholds, and shared prompts.
+Also see [../../docs/configuration.md](../../docs/configuration.md) for env vars, thresholds, max tokens, and shared prompts.

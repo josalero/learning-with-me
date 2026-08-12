@@ -69,6 +69,7 @@ Single required secret, `OPENROUTER_API_KEY`, enforced in Compose with `${OPENRO
 - Spring AI: `spring.ai.openai.api-key`, `base-url`, `chat.options.model`
 - LangChain4j: same env vars bound via `@ConfigurationProperties`
 - `OPENROUTER_CHAT_MODEL` default `openai/gpt-4o-mini`, `OPENROUTER_RESEARCH_MODEL` default `openai/gpt-4o-mini:online`
+- `OPENROUTER_MAX_TOKENS` default `4096` → `research.max-tokens` on both engines
 
 ## UI
 

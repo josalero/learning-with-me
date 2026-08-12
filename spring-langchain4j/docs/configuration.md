@@ -26,6 +26,7 @@ Manual beans in `Langchain4jConfig`:
 
 - `chatModel` → `OPENROUTER_CHAT_MODEL`
 - `researchChatModel` → `OPENROUTER_RESEARCH_MODEL`
+- both → `temperature` from `research.temperature`, `maxTokens` from `research.max-tokens`
 
 Bound via `research.openrouter.*` and `research.*` properties. Agents + review loop are beans in `ResearchPipelineConfig`.
 

@@ -13,6 +13,8 @@ No database. State lives in the in-flight request / LangChain4j `AgenticScope`.
 
 Pass/fail for the critic loop uses config `research.pass-threshold`. Domain `Critique` is `{ score, notes }` only (`Critique.passes(threshold)` / `Critique.none()`).
 
+Model calls on both engines share `research.max-tokens` / `OPENROUTER_MAX_TOKENS` (default 4096). See [configuration.md](configuration.md).
+
 ## Topology
 
 ```mermaid

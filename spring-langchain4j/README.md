@@ -66,8 +66,10 @@ Errors use RFC 7807 `ProblemDetail` (`ApiExceptionHandler` in each app).
 | Structured output | `ChatClient.call().entity(...)` | `@Agent` return types |
 | Step events | Internal `StepTrace` + `Consumer<StepEvent>` | `AgentListener` (`agentId` timing) |
 | OpenRouter | `spring-ai-starter-model-openai` + `ChatClientConfig` | Manual `OpenAiChatModel` beans |
+| Max tokens | `OpenAiChatOptions.maxTokens` via `research.max-tokens` | `OpenAiChatModel.maxTokens` via same property |
 | Graph lifecycle | Per-request Java control flow | Agents + review loop as beans; sequence per request |
 | System prompts | `shared-prompts/` → `classpath:prompts/` | Same shared files |
+| Researcher / writer DTO | `ResearchFindings` | Same `ResearchFindings` (`findingsDoc`) |
 
 Both apps use the same package layers: `api` → `orchestration` → `agents` → `domain`.
 

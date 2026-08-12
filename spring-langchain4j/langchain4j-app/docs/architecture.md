@@ -52,6 +52,15 @@ dev.mytechprofile.research.langchain4j
 
 `ResearchFindings` is the shared researcher/writer domain shape in both apps (same exercise). LangChain4j also needs a POJO root because its collection output parser does not accept a bare `List`.
 
+## OpenRouter wiring
+
+`Langchain4jConfig` builds two `OpenAiChatModel` beans (no LangChain4j Spring Boot starter):
+
+- `chatModel` → `OPENROUTER_CHAT_MODEL`
+- `researchChatModel` → `OPENROUTER_RESEARCH_MODEL` (`:online`)
+
+Both use `research.temperature` and `research.max-tokens` (`OPENROUTER_MAX_TOKENS`, default 4096). Shared env/property docs: [../../docs/configuration.md](../../docs/configuration.md).
+
 ## Request flow
 
 ```mermaid
@@ -86,4 +95,4 @@ sequenceDiagram
 - `StepCollectingListenerTest` — tracked roles + nested agentId timing
 - `ResearchReportContractTest` — shared JSON fixture field shape (`critique` has `score` + `notes` only)
 
-Also see [../../docs/configuration.md](../../docs/configuration.md) for env vars, thresholds, and shared prompts.
+Also see [../../docs/configuration.md](../../docs/configuration.md) for env vars, thresholds, max tokens, and shared prompts.
