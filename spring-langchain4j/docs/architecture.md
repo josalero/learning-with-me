@@ -5,8 +5,8 @@
 Both engines run the same research pipeline:
 
 1. **Planner** — structured list of research questions (depth 1–5)
-2. **Researcher** — answers each question with OpenRouter `:online` model
-3. **Writer** — markdown report from findings
+2. **Researcher** — one structured call → `ResearchFindings` (OpenRouter `:online` model)
+3. **Writer** — markdown report from `ResearchFindings` (+ optional critique notes)
 4. **Critic** — score + notes; loop with writer until score ≥ threshold or max revisions
 
 No database. State lives in the in-flight request / LangChain4j `AgenticScope`.
@@ -43,8 +43,8 @@ Each app mirrors the same layers so the comparison stays about orchestration sty
 
 ```
 api/             ResearchRequest, EngineMeta, ResearchController, ApiExceptionHandler
-domain/          Critique, Finding, ResearchPlan, ResearchReport, StepEvent, ResearchRole, ResearchCommand
-agents/          role ports / @Agent interfaces (+ Spring AI ChatClient impls)
+domain/          Critique, Finding, ResearchFindings, ResearchPlan, ResearchReport, StepEvent, ResearchRole, ResearchCommand
+agents/          role ports / @Agent interfaces (+ Spring AI ChatClient impls); researcher/writer share ResearchFindings
 config/          ResearchProperties, model/client beans, PromptResources, AppConfig
 orchestration/   ResearchOrchestrator (+ StepTrace or StepCollectingListener / ReportAssembler)
 ```

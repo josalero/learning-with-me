@@ -12,7 +12,7 @@ Spring AI 2.0 has no dedicated multi-agent orchestration API. This app follows A
 
 - One role port + ChatClient implementation per agent (planner, researcher, writer, critic)
 - Shared system prompts from `classpath:prompts/` (same files as LangChain4j)
-- Structured output via `.entity(...)`
+- Structured output via `.entity(...)` — researcher returns `ResearchFindings` (same domain object as LangChain4j)
 - A hand-written `ResearchOrchestrator` owns sequence + writer/critic loop
 - Per-request `StepTrace` publishes step events for the report and SSE
 
@@ -22,7 +22,7 @@ Spring AI 2.0 has no dedicated multi-agent orchestration API. This app follows A
 dev.mytechprofile.research.springai
 ├── SpringAiResearchApplication
 ├── api/                 ResearchRequest, EngineMeta, ResearchController, ApiExceptionHandler
-├── domain/              Critique, Finding, ResearchPlan, ResearchReport, StepEvent, ResearchRole, ResearchCommand
+├── domain/              Critique, Finding, ResearchFindings, ResearchPlan, ResearchReport, StepEvent, ResearchRole, ResearchCommand
 ├── agents/              role ports + ChatClient* implementations
 ├── config/              ResearchProperties, ChatClientConfig, AppConfig, PromptResources
 └── orchestration/
@@ -41,7 +41,7 @@ dev.mytechprofile.research.springai
 |---|---|
 | `ResearchController` | `GET /meta`, `POST /research`, `GET /research/stream` (SSE) |
 | `PlannerAgent` / `ResearcherAgent` / `WriterAgent` / `CriticAgent` | Single-method role ports (ISP) |
-| `ChatClient*Agent` | ChatClient implementations; researcher uses `researchChatClient` |
+| `ChatClient*Agent` | ChatClient implementations; researcher uses `researchChatClient` and one-shot `.entity(ResearchFindings.class)` |
 | `ResearchOrchestrator` | Explicit pipeline orchestration; accepts `Consumer<StepEvent>` |
 | `StepTrace` | Thread-safe step list with input/output text + optional listeners |
 | `ResearchProperties` | engine id, models, thresholds, default depth, SSE timeout |

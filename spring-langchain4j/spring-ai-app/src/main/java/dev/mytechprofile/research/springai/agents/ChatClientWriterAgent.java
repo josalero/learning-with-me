@@ -1,14 +1,12 @@
 package dev.mytechprofile.research.springai.agents;
 
-import java.util.List;
-
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import dev.mytechprofile.research.springai.config.PromptResources;
 import dev.mytechprofile.research.springai.domain.Critique;
-import dev.mytechprofile.research.springai.domain.Finding;
+import dev.mytechprofile.research.springai.domain.ResearchFindings;
 
 @Component
 public class ChatClientWriterAgent implements WriterAgent {
@@ -22,26 +20,19 @@ public class ChatClientWriterAgent implements WriterAgent {
     }
 
     @Override
-    public String write(String topic, List<Finding> findings, Critique previousCritique) {
-        StringBuilder findingsBlock = new StringBuilder();
-        for (Finding finding : findings) {
-            findingsBlock.append("Q: ").append(finding.question()).append('\n')
-                    .append("A: ").append(finding.answer()).append("\n\n");
-        }
-        Critique critique = previousCritique == null ? Critique.none() : previousCritique;
+    public String write(String topic, ResearchFindings findingsDoc, Critique critique) {
+        Critique notes = critique == null ? Critique.none() : critique;
         String draft = chatClient.prompt()
                 .user(u -> u.text("""
                         Topic: {topic}
-
-                        Findings:
-                        {findings}
-
-                        Critique notes to address:
-                        {critique}
+                        Findings: {findingsDoc}
+                        Critique notes to address: {critique}
+                        If critique notes exist, revise the prior draft accordingly.
+                        Return only the markdown report.
                         """)
                         .param("topic", topic)
-                        .param("findings", findingsBlock.toString())
-                        .param("critique", critique.notes()))
+                        .param("findingsDoc", findingsDoc)
+                        .param("critique", notes))
                 .call()
                 .content();
         if (draft == null || draft.isBlank()) {

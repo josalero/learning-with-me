@@ -1,14 +1,11 @@
 package dev.mytechprofile.research.springai.agents;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import dev.mytechprofile.research.springai.config.PromptResources;
-import dev.mytechprofile.research.springai.domain.Finding;
+import dev.mytechprofile.research.springai.domain.ResearchFindings;
 import dev.mytechprofile.research.springai.domain.ResearchPlan;
 
 @Component
@@ -23,15 +20,20 @@ public class ChatClientResearcherAgent implements ResearcherAgent {
     }
 
     @Override
-    public List<Finding> research(ResearchPlan plan) {
-        List<Finding> findings = new ArrayList<>();
-        for (String question : plan.questions()) {
-            String answer = chatClient.prompt()
-                    .user(question)
-                    .call()
-                    .content();
-            findings.add(new Finding(question, answer == null ? "" : answer.trim()));
+    public ResearchFindings research(ResearchPlan plan) {
+        ResearchFindings findingsDoc = chatClient.prompt()
+                .user(u -> u.text("""
+                        For each question in this plan, provide a concise factual answer.
+                        Plan: {plan}
+                        Return structured JSON with a findings array of objects that each have
+                        question and answer fields.
+                        """)
+                        .param("plan", plan))
+                .call()
+                .entity(ResearchFindings.class);
+        if (findingsDoc == null || findingsDoc.findings() == null || findingsDoc.findings().isEmpty()) {
+            throw new IllegalStateException("Researcher returned no findings");
         }
-        return List.copyOf(findings);
+        return findingsDoc;
     }
 }

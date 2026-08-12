@@ -50,7 +50,7 @@ dev.mytechprofile.research.langchain4j
 | `StepCollectingListener` | Role normalize via `ResearchRole`; timing keyed by `agentId`; records input/output text |
 | `ReportAssembler` | Map scope → `ResearchReport` |
 
-`ResearchFindings` wraps `List<Finding>` because LangChain4j’s collection output parser expects a POJO root, not a bare `List`.
+`ResearchFindings` is the shared researcher/writer domain shape in both apps (same exercise). LangChain4j also needs a POJO root because its collection output parser does not accept a bare `List`.
 
 ## Request flow
 

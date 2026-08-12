@@ -1,8 +1,6 @@
 package dev.mytechprofile.research.springai.agents;
 
-import java.util.List;
-
-import dev.mytechprofile.research.springai.domain.Finding;
+import dev.mytechprofile.research.springai.domain.ResearchFindings;
 import dev.mytechprofile.research.springai.domain.ResearchPlan;
 
 /**
@@ -10,5 +8,5 @@ import dev.mytechprofile.research.springai.domain.ResearchPlan;
  */
 public interface ResearcherAgent {
 
-    List<Finding> research(ResearchPlan plan);
+    ResearchFindings research(ResearchPlan plan);
 }

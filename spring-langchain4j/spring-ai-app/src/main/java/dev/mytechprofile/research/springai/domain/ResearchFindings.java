@@ -1,4 +1,4 @@
-package dev.mytechprofile.research.langchain4j.domain;
+package dev.mytechprofile.research.springai.domain;
 
 import java.util.List;
 

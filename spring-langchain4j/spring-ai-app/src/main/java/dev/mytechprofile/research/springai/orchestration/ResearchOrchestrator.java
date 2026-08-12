@@ -16,6 +16,7 @@ import dev.mytechprofile.research.springai.config.ResearchProperties;
 import dev.mytechprofile.research.springai.domain.Critique;
 import dev.mytechprofile.research.springai.domain.Finding;
 import dev.mytechprofile.research.springai.domain.ResearchCommand;
+import dev.mytechprofile.research.springai.domain.ResearchFindings;
 import dev.mytechprofile.research.springai.domain.ResearchPlan;
 import dev.mytechprofile.research.springai.domain.ResearchReport;
 import dev.mytechprofile.research.springai.domain.ResearchRole;
@@ -24,8 +25,8 @@ import dev.mytechprofile.research.springai.domain.StepEvent;
 /**
  * Explicit Spring AI orchestration: planner → researcher → writer/critic loop.
  *
- * <p>Scenario: topic "Java virtual threads", depth 3 → plan questions, research each
- * with the online model, draft a report, critique until score ≥ threshold or max revisions.
+ * <p>Same scenario as langchain4j-app: topic → ResearchPlan → ResearchFindings →
+ * draft/critique loop until score ≥ threshold or max revisions.
  */
 @Service
 public class ResearchOrchestrator {
@@ -79,7 +80,8 @@ public class ResearchOrchestrator {
                 System.currentTimeMillis() - t0);
 
         t0 = System.currentTimeMillis();
-        List<Finding> findings = researcher.research(plan);
+        ResearchFindings findingsDoc = researcher.research(plan);
+        List<Finding> findings = findingsDoc.findings() == null ? List.of() : findingsDoc.findings();
         trace.record(
                 ResearchRole.RESEARCHER,
                 "completed",
@@ -93,7 +95,7 @@ public class ResearchOrchestrator {
 
         while (true) {
             t0 = System.currentTimeMillis();
-            draft = writer.write(topic, findings, critique);
+            draft = writer.write(topic, findingsDoc, critique);
             String writerInput = """
                     topic: %s
 

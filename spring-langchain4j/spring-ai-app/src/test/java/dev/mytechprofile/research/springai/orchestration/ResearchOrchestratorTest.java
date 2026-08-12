@@ -16,6 +16,7 @@ import dev.mytechprofile.research.springai.config.ResearchProperties;
 import dev.mytechprofile.research.springai.domain.Critique;
 import dev.mytechprofile.research.springai.domain.Finding;
 import dev.mytechprofile.research.springai.domain.ResearchCommand;
+import dev.mytechprofile.research.springai.domain.ResearchFindings;
 import dev.mytechprofile.research.springai.domain.ResearchPlan;
 import dev.mytechprofile.research.springai.domain.ResearchReport;
 
@@ -28,10 +29,10 @@ class ResearchOrchestratorTest {
 
         PlannerAgent planner = (topic, depth) ->
                 new ResearchPlan(List.of("Q1", "Q2", "Q3").subList(0, depth));
-        ResearcherAgent researcher = plan -> plan.questions().stream()
+        ResearcherAgent researcher = plan -> new ResearchFindings(plan.questions().stream()
                 .map(q -> new Finding(q, "answer for " + q))
-                .toList();
-        WriterAgent writer = (topic, findings, previousCritique) -> {
+                .toList());
+        WriterAgent writer = (topic, findingsDoc, critique) -> {
             writes.incrementAndGet();
             return "# Draft " + writes.get();
         };
@@ -65,8 +66,8 @@ class ResearchOrchestratorTest {
         AtomicInteger critiques = new AtomicInteger();
 
         PlannerAgent planner = (topic, depth) -> new ResearchPlan(List.of("Q1"));
-        ResearcherAgent researcher = plan -> List.of(new Finding("Q1", "A1"));
-        WriterAgent writer = (topic, findings, previousCritique) -> "# Draft " + writes.incrementAndGet();
+        ResearcherAgent researcher = plan -> new ResearchFindings(List.of(new Finding("Q1", "A1")));
+        WriterAgent writer = (topic, findingsDoc, critique) -> "# Draft " + writes.incrementAndGet();
         CriticAgent critic = draft -> {
             critiques.incrementAndGet();
             return new Critique(3, "Needs work");
@@ -91,8 +92,8 @@ class ResearchOrchestratorTest {
     void run_notifiesStepListeners() {
         List<String> seen = new ArrayList<>();
         PlannerAgent planner = (topic, depth) -> new ResearchPlan(List.of("Q1"));
-        ResearcherAgent researcher = plan -> List.of(new Finding("Q1", "A1"));
-        WriterAgent writer = (topic, findings, previousCritique) -> "draft";
+        ResearcherAgent researcher = plan -> new ResearchFindings(List.of(new Finding("Q1", "A1")));
+        WriterAgent writer = (topic, findingsDoc, critique) -> "draft";
         CriticAgent critic = draft -> new Critique(8, "ok");
 
         new ResearchOrchestrator(planner, researcher, writer, critic, properties(7, 1))
