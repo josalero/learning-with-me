@@ -1,0 +1,32 @@
+id: hitl-lean
+roles:
+  - id: product-owner
+    kind: PRODUCT_OWNER
+    model: ${MODEL_FAST}
+    prompt: prompts/product-owner.md
+    temperature: 0.2
+  - id: developer
+    kind: DEVELOPER
+    model: ${MODEL_STRONG}
+    prompt: prompts/developer.md
+    temperature: 0.0
+  - id: pr-reviewer
+    kind: PR_REVIEWER
+    model: ${MODEL_STRONG}
+    prompt: prompts/pr-reviewer.md
+    temperature: 0.0
+  - id: stakeholder
+    kind: STAKEHOLDER
+    model: ${MODEL_FAST}
+    prompt: prompts/stakeholder.md
+    temperature: 0.3
+policy:
+  maxSpecRework: 1
+  maxImplementationAttempts: 2
+  maxReviewCycles: 1
+  maxQaCycles: 1
+  maxStakeholderCycles: 1
+  qaPassThreshold: 80
+  stakeholderMode: HUMAN
+  maxDeveloperToolCalls: 25
+  maxReadOnlyToolCalls: 10

@@ -1,0 +1,6 @@
+diff --git a/src/main/java/dev/mytechprofile/users/api/UserController.java b/src/main/java/dev/mytechprofile/users/api/UserController.java
+--- a/src/main/java/dev/mytechprofile/users/api/UserController.java
++++ b/src/main/java/dev/mytechprofile/users/api/UserController.java
+@@
+-        return store.find(id).orElseThrow();
++        return store.find(id).orElseThrow(() -> new UserNotFoundException(id));

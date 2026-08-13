@@ -1,0 +1,32 @@
+name: software-dev-team
+
+services:
+  sdlc-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "${SDLC_PORT:-8095}:8095"
+    environment:
+      SERVER_PORT: 8095
+      SDLC_HOME: /data
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_MAX_TOKENS: ${OPENROUTER_MAX_TOKENS:-8192}
+      SDLC_LLM_TIMEOUT: ${SDLC_LLM_TIMEOUT:-PT3M}
+      MODEL_FAST: ${MODEL_FAST:-openai/gpt-4o-mini}
+      MODEL_STRONG: ${MODEL_STRONG:-openai/gpt-4o-mini}
+      SDLC_OFFLINE: ${SDLC_OFFLINE:-false}
+    volumes:
+      - ./config:/data/config
+      - ./prompts:/data/prompts
+      - ./seeds:/data/seeds
+      - ./docs:/data/docs
+      - ./workspace:/data/workspace
+      - ./runs:/data/runs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8095/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 50s

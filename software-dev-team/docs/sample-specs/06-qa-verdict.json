@@ -1,0 +1,17 @@
+{
+  "decision": "PASS",
+  "score": 100,
+  "results": [
+    {
+      "acceptanceCriterionId": "AC-1",
+      "status": "PASS",
+      "evidence": "UserControllerTest.unknownIdReturns404ProblemDetail asserted 404 and application/problem+json"
+    },
+    {
+      "acceptanceCriterionId": "AC-2",
+      "status": "PASS",
+      "evidence": "UserControllerTest.createWithBlankNameReturns400 asserted 400 and no stored user"
+    }
+  ],
+  "missingTests": []
+}

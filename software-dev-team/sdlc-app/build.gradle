@@ -1,0 +1,60 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:4.1.0'
+        mavenBom "dev.langchain4j:langchain4j-bom:${langchain4jVersion}"
+    }
+}
+
+dependencies {
+    implementation project(':sdlc-core')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    implementation 'dev.langchain4j:langchain4j'
+    implementation 'dev.langchain4j:langchain4j-open-ai'
+    implementation "dev.langchain4j:langchain4j-agentic:${langchain4jAgenticVersion}"
+
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jackson2Version}"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jackson2Version}"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${jackson2Version}"
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation "com.tngtech.archunit:archunit-junit5:${archunitVersion}"
+}
+
+bootJar {
+    archiveBaseName = 'sdlc-app'
+    archiveClassifier = ''
+}
+
+tasks.named('bootRun') {
+    workingDir = rootProject.projectDir
+}
+
+tasks.named('test') {
+    useJUnitPlatform {
+        excludeTags 'llm'
+    }
+}
+
+tasks.register('llmTest', Test) {
+    description = 'Runs tests that call a real LLM (requires OPENROUTER_API_KEY).'
+    group = 'verification'
+    useJUnitPlatform {
+        includeTags 'llm'
+    }
+    shouldRunAfter test
+}
+
+tasks.named('check') {
+    dependsOn test
+}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI SDLC Team</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+      /* Tailwind CDN compiles @apply in the browser. Fine for this lab UI. */
+      .tab-btn {
+        @apply rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600;
+      }
+      .tab-btn[aria-selected="true"] {
+        @apply bg-blue-50 text-blue-800;
+      }
+      .input {
+        @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600;
+      }
+      .btn-primary {
+        @apply rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-50;
+      }
+      .btn-secondary {
+        @apply rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-50;
+      }
+      .chip {
+        @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+      }
+      .step-card {
+        @apply flex scroll-mt-6 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm;
+      }
+      .step-num {
+        @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white;
+      }
+      .watch-list {
+        @apply mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700;
+      }
+      [data-accent="sky"] .step-num {
+        @apply bg-sky-700;
+      }
+      [data-accent="sky"].step-card {
+        @apply border-l-4 border-l-sky-600;
+      }
+      [data-accent="teal"] .step-num {
+        @apply bg-teal-700;
+      }
+      [data-accent="teal"].step-card {
+        @apply border-l-4 border-l-teal-600;
+      }
+      [data-accent="indigo"] .step-num {
+        @apply bg-indigo-700;
+      }
+      [data-accent="indigo"].step-card {
+        @apply border-l-4 border-l-indigo-600;
+      }
+      [data-accent="violet"] .step-num {
+        @apply bg-violet-700;
+      }
+      [data-accent="violet"].step-card {
+        @apply border-l-4 border-l-violet-600;
+      }
+      [data-accent="amber"] .step-num {
+        @apply bg-amber-700;
+      }
+      [data-accent="amber"].step-card {
+        @apply border-l-4 border-l-amber-500;
+      }
+      [data-accent="rose"] .step-num {
+        @apply bg-rose-700;
+      }
+      [data-accent="rose"].step-card {
+        @apply border-l-4 border-l-rose-600;
+      }
+      .step-card[aria-current="step"] {
+        @apply ring-2 ring-blue-700 ring-offset-2;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <header class="border-b border-slate-200 bg-white">
+      <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="text-sm font-medium text-blue-700">AI SDLC Team</p>
+          <h1 class="text-2xl font-semibold tracking-tight">Software delivery desk</h1>
+        </div>
+        <div class="flex flex-col items-start gap-1 sm:items-end">
+          <p id="mode-chip" class="chip bg-slate-200 text-slate-800">Checking mode…</p>
+          <p class="text-sm text-slate-600">Walk the six samples in order, then read Results.</p>
+        </div>
+      </div>
+    </header>
+
+    <nav class="border-b border-slate-200 bg-white" aria-label="Primary">
+      <div class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2" role="tablist">
+        <button type="button" class="tab-btn" role="tab" aria-selected="true" data-tab="feature" id="tab-feature">
+          Samples
+        </button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="teams" id="tab-teams">
+          Teams
+        </button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="projects" id="tab-projects">
+          Projects
+        </button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="results" id="tab-results">
+          Results
+        </button>
+      </div>
+    </nav>
+
+    <main class="mx-auto max-w-6xl px-4 py-6">
+      <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+      <p id="banner" class="mb-4 hidden rounded-md border px-3 py-2 text-sm" role="alert"></p>
+
+      <section id="panel-feature" role="tabpanel" aria-labelledby="tab-feature">
+        <div class="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-4">
+          <h2 class="text-lg font-semibold text-slate-900">Walk the POC in six samples</h2>
+          <p class="mt-1 max-w-3xl text-sm text-slate-700">
+            Each card is a different question. Run step 1 first. After Results, come back and run the next
+            number. Offline walks the pipeline with canned JSON and does not implement the feature.
+          </p>
+          <ol id="lab-progress" class="mt-3 flex flex-wrap gap-2" aria-label="Sample order"></ol>
+        </div>
+        <ol id="lab-scenarios" class="mb-8 grid min-h-24 list-none gap-4 p-0" aria-live="polite"></ol>
+
+        <details class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <summary class="cursor-pointer text-base font-semibold text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+            Custom run
+          </summary>
+          <p id="loaded-sample" class="mt-2 hidden text-sm text-slate-600"></p>
+          <form id="run-form" class="mt-4 grid gap-4">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="grid gap-1 text-sm font-medium">
+              Team
+              <select id="run-team" name="teamId" required class="input"></select>
+            </label>
+            <label class="grid gap-1 text-sm font-medium">
+              Project
+              <select id="run-project" name="projectId" required class="input"></select>
+            </label>
+          </div>
+          <label class="grid gap-1 text-sm font-medium">
+            Feature request
+            <textarea
+              id="run-feature"
+              name="featureRequest"
+              required
+              rows="5"
+              class="input font-normal"
+              placeholder="What should the team implement?"
+            ></textarea>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button type="submit" class="btn-primary">Start run</button>
+            <button type="button" id="demo-fill" class="btn-secondary">Fill demo feature</button>
+            <button type="button" id="seed-workspace" class="btn-secondary">Seed workspace</button>
+            <button type="button" id="reset-workspace" class="btn-secondary">Reset workspace</button>
+          </div>
+        </form>
+        </details>
+      </section>
+
+      <section id="panel-teams" class="hidden" role="tabpanel" aria-labelledby="tab-teams" hidden>
+        <h2 class="mb-3 text-lg font-semibold">Teams</h2>
+        <div id="teams-list" class="mb-6 overflow-x-auto rounded-xl border border-slate-200 bg-white"></div>
+        <h3 class="mb-2 text-base font-semibold">Create or update team</h3>
+        <form id="team-form" class="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <label class="grid gap-1 text-sm font-medium">
+            Team id
+            <input id="team-id" name="id" required class="input" placeholder="default-scrum-team" />
+          </label>
+          <fieldset class="grid gap-2">
+            <legend class="text-sm font-medium">Roles</legend>
+            <p class="text-sm font-normal text-slate-600">A Developer role is required to execute features.</p>
+            <div id="team-roles" class="grid gap-3"></div>
+            <button type="button" id="add-role" class="btn-secondary w-fit">Add role</button>
+          </fieldset>
+          <fieldset class="grid gap-3 sm:grid-cols-2">
+            <legend class="text-sm font-medium">Policy</legend>
+            <label class="grid gap-1 text-sm font-medium">maxSpecRework <input id="p-spec" type="number" min="1" value="2" class="input" /></label>
+            <label class="grid gap-1 text-sm font-medium">maxImplementationAttempts <input id="p-impl" type="number" min="1" value="3" class="input" /></label>
+            <label class="grid gap-1 text-sm font-medium">maxReviewCycles <input id="p-rev" type="number" min="1" value="3" class="input" /></label>
+            <label class="grid gap-1 text-sm font-medium">maxQaCycles <input id="p-qa" type="number" min="1" value="3" class="input" /></label>
+            <label class="grid gap-1 text-sm font-medium">maxStakeholderCycles <input id="p-sh" type="number" min="1" value="2" class="input" /></label>
+            <label class="grid gap-1 text-sm font-medium">qaPassThreshold <input id="p-th" type="number" min="0" max="100" value="80" class="input" /></label>
+            <label class="grid gap-1 text-sm font-medium">maxDeveloperToolCalls <input id="p-dev-tools" type="number" min="1" value="25" class="input" /></label>
+            <label class="grid gap-1 text-sm font-medium">maxReadOnlyToolCalls <input id="p-read-tools" type="number" min="1" value="10" class="input" /></label>
+            <label class="grid gap-1 text-sm font-medium">
+              stakeholderMode
+              <select id="p-mode" class="input">
+                <option value="AGENT">AGENT</option>
+                <option value="HUMAN">HUMAN</option>
+              </select>
+            </label>
+          </fieldset>
+          <div class="flex flex-wrap gap-2">
+            <button type="submit" class="btn-primary">Save team</button>
+            <button type="button" id="team-reset" class="btn-secondary">Clear form</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="panel-projects" class="hidden" role="tabpanel" aria-labelledby="tab-projects" hidden>
+        <h2 class="mb-3 text-lg font-semibold">Projects</h2>
+        <div id="projects-list" class="mb-6 overflow-x-auto rounded-xl border border-slate-200 bg-white"></div>
+        <h3 class="mb-2 text-base font-semibold">Create or update project</h3>
+        <form id="project-form" class="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="grid gap-1 text-sm font-medium">Project id <input id="proj-id" required class="input" placeholder="users-service-java" /></label>
+            <label class="grid gap-1 text-sm font-medium">
+              Seed
+              <select id="proj-seed" required class="input"></select>
+            </label>
+            <label class="grid gap-1 text-sm font-medium">repoPath <input id="proj-repo" required class="input" placeholder="workspace/users-service-java" /></label>
+            <label class="grid gap-1 text-sm font-medium">branchPrefix <input id="proj-branch" class="input" value="feature/" /></label>
+            <label class="grid gap-1 text-sm font-medium">
+              Conventions
+              <select id="proj-conv" class="input"></select>
+            </label>
+            <label class="grid gap-1 text-sm font-medium">timeoutSeconds <input id="proj-timeout" type="number" min="1" value="600" class="input" /></label>
+          </div>
+          <label class="grid gap-1 text-sm font-medium">
+            sourceGlobs (one per line)
+            <textarea id="proj-globs" rows="3" class="input font-normal">src/main/**
+src/test/**</textarea>
+          </label>
+          <label class="grid gap-1 text-sm font-medium">
+            Commands JSON (name to argv array)
+            <textarea id="proj-commands" rows="5" required class="input font-mono text-xs">{
+  "test": ["./gradlew", "test", "--console=plain"]
+}</textarea>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button type="submit" class="btn-primary">Save project</button>
+            <button type="button" id="project-reset" class="btn-secondary">Clear form</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="panel-results" class="hidden" role="tabpanel" aria-labelledby="tab-results" hidden>
+        <h2 class="mb-3 text-lg font-semibold">Results</h2>
+        <p id="results-guide" class="mb-2 text-sm text-slate-600">
+          After a sample run, match the “Look for this” checklist on that card to the timeline and artifacts here.
+        </p>
+        <p id="sample-next" class="mb-3 hidden rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-950" role="status"></p>
+        <div class="grid gap-4 lg:grid-cols-5">
+          <div class="lg:col-span-2">
+            <div id="runs-list" class="min-h-40 rounded-xl border border-slate-200 bg-white"></div>
+          </div>
+          <div id="run-detail" class="min-h-40 rounded-xl border border-slate-200 bg-white p-4 lg:col-span-3">
+            <p class="text-sm text-slate-600">Select a run to inspect the timeline and artifacts.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

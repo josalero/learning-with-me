@@ -1,0 +1,13 @@
+.gradle/
+build/
+out/
+.idea/
+*.iml
+.DS_Store
+.env
+workspace/
+runs/
+seeds/**/node_modules/
+seeds/**/.gradle/
+seeds/**/build/
+!seeds/**/gradle/wrapper/gradle-wrapper.jar

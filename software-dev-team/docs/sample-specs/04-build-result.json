@@ -1,0 +1,7 @@
+{
+  "success": true,
+  "exitCode": 0,
+  "truncatedOutput": "BUILD SUCCESSFUL in 4s\n3 tests completed, 0 failed",
+  "durationMs": 4120,
+  "timedOut": false
+}

@@ -1,0 +1,13 @@
+{
+  "name": "users-service-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pretest": "npm install --ignore-scripts --no-audit --no-fund",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

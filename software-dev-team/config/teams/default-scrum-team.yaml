@@ -1,0 +1,42 @@
+id: default-scrum-team
+roles:
+  - id: product-owner
+    kind: PRODUCT_OWNER
+    model: ${MODEL_FAST}
+    prompt: prompts/product-owner.md
+    temperature: 0.2
+  - id: qa
+    kind: QA
+    model: ${MODEL_FAST}
+    prompt: prompts/qa.md
+    temperature: 0.0
+  - id: stakeholder
+    kind: STAKEHOLDER
+    model: ${MODEL_FAST}
+    prompt: prompts/stakeholder.md
+    temperature: 0.3
+  - id: tech-lead
+    kind: TECH_LEAD
+    model: ${MODEL_STRONG}
+    prompt: prompts/tech-lead.md
+    temperature: 0.1
+  - id: developer
+    kind: DEVELOPER
+    model: ${MODEL_STRONG}
+    prompt: prompts/developer.md
+    temperature: 0.0
+  - id: pr-reviewer
+    kind: PR_REVIEWER
+    model: ${MODEL_STRONG}
+    prompt: prompts/pr-reviewer.md
+    temperature: 0.0
+policy:
+  maxSpecRework: 2
+  maxImplementationAttempts: 3
+  maxReviewCycles: 3
+  maxQaCycles: 3
+  maxStakeholderCycles: 2
+  qaPassThreshold: 80
+  stakeholderMode: AGENT
+  maxDeveloperToolCalls: 25
+  maxReadOnlyToolCalls: 10

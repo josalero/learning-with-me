@@ -1,0 +1,28 @@
+server:
+  port: ${SDLC_PORT:8095}
+
+spring:
+  application:
+    name: sdlc-app
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+sdlc:
+  home: ${SDLC_HOME:.}
+  openrouter-api-key: ${OPENROUTER_API_KEY:}
+  openrouter-base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+  max-tokens: ${OPENROUTER_MAX_TOKENS:8192}
+  llm-timeout: ${SDLC_LLM_TIMEOUT:PT3M}
+  model-fast: ${MODEL_FAST:openai/gpt-4o-mini}
+  model-strong: ${MODEL_STRONG:openai/gpt-4o-mini}
+  file-read-limit-chars: 80000
+  human-approval-timeout: PT30M
+  offline: ${SDLC_OFFLINE:false}
