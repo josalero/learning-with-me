@@ -1,0 +1,8 @@
+{
+  "decision": "APPROVED",
+  "reasons": [
+    "Both acceptance criteria have tests and a green build.",
+    "The 404 body is a problem detail, not a generic 500."
+  ],
+  "followUps": []
+}

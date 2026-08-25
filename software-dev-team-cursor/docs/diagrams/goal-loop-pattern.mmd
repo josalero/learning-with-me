@@ -1,0 +1,7 @@
+flowchart LR
+  Input([Human writes the goal]) --> Work[Worker: model, script, or both]
+  Work --> Check[Checker: your code, no model]
+  Check --> Met{Goal met?}
+  Met -->|yes| Done([Exit with evidence])
+  Met -->|no, attempts left| Work
+  Met -->|no, cap reached| Stop([Escalate to a human])

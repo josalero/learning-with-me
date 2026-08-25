@@ -1,0 +1,11 @@
+.gradle
+**/build
+**/.gradle
+workspace
+runs
+.env
+.git
+.idea
+*.iml
+.DS_Store
+out

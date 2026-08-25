@@ -1,0 +1,8 @@
+flowchart LR
+  Human[Operator] -->|POST /api/v1/runs| Api[sdlc-app]
+  Human -->|optional approve| Api
+  Api --> Catalog[Team and project YAML]
+  Api --> Workspace[workspace git repo]
+  Api --> Runs[runs artifacts]
+  Api --> CursorCli[Cursor CLI chat models]
+  Workspace --> Build[Allowlisted build and test]

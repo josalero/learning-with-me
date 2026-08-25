@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A Goal the Agent Cannot Fake — José Alemán</title>
+  <meta name="description" content="A sandbox for agent workflows built on two primitives: a goal your own code checks, and a bounded loop that knows how to quit. Diagrams, Java, and ideas for personal projects." />
+  <link rel="canonical" href="https://my-tech-profile.dev/insights/a-goal-the-agent-cannot-fake" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@500;600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Kalam:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" />
+  <style>
+    :root {
+      --surface: #fffef9;
+      --on-surface: #131b2e;
+      --on-surface-muted: #45464d;
+      --outline: #3d5a4a;
+      --outline-variant: #bec6e0;
+      --accent: #3d5a4a;
+      --accent-soft: #cde5d6;
+      --accent-on-soft: #364b40;
+      --note-yellow: #fff0a7;
+      --code-panel-surface: #fffef9;
+      --code-panel-header-bg: #e8efe9;
+      --code-panel-header-border: #c5d4ca;
+      --code-panel-header-text: #3d5a4a;
+      --code-panel-scroll-track: #f5f6f8;
+      --code-panel-scroll-thumb: #e3e2df;
+      --shadow-color: rgba(19, 27, 46, 0.18);
+      --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+      --font-sketch: "Kalam", cursive;
+      --font-mono: "DM Mono", ui-monospace, monospace;
+      --container-max: 80rem;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background: var(--surface);
+      color: var(--on-surface);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .skip {
+      position: absolute;
+      left: -999px;
+      top: 0;
+      background: var(--on-surface);
+      color: var(--surface);
+      padding: 0.5rem 1rem;
+    }
+    .skip:focus { left: 1rem; top: 1rem; z-index: 20; }
+
+    .site-header {
+      border-bottom: 2px solid var(--on-surface);
+      background: var(--surface);
+    }
+    .shell {
+      margin: 0 auto;
+      width: 100%;
+      max-width: var(--container-max);
+      padding: 0 1rem;
+    }
+    @media (min-width: 640px) { .shell { padding: 0 1.5rem; } }
+
+    .site-header .shell {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      min-height: 4rem;
+    }
+    .brand {
+      font-family: var(--font-sketch);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      text-decoration: none;
+    }
+    .nav {
+      display: none;
+      gap: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    @media (min-width: 768px) { .nav { display: flex; } }
+    .nav a { color: var(--on-surface); text-decoration: none; }
+    .nav a[aria-current="page"] { color: var(--accent); }
+
+    .sketch-page {
+      min-height: 100%;
+      background: color-mix(in srgb, var(--surface) 82%, transparent);
+      padding: 3rem 0 4rem;
+    }
+
+    .back {
+      font-size: 0.875rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .back:hover { text-decoration: underline; }
+
+    article { margin-top: 1.5rem; }
+
+    .layout {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 48rem;
+    }
+    @media (min-width: 1024px) {
+      .layout {
+        display: grid;
+        grid-template-columns: 15rem minmax(0, 46rem);
+        justify-content: center;
+        gap: 3rem;
+        max-width: 76rem;
+        align-items: start;
+      }
+    }
+    @media (min-width: 1280px) {
+      .layout { grid-template-columns: 16rem minmax(0, 48rem); gap: 3.5rem; }
+    }
+
+    .toc-aside {
+      display: none;
+      position: sticky;
+      top: 1rem;
+    }
+    @media (min-width: 1024px) { .toc-aside { display: block; } }
+
+    .toc-card {
+      max-height: calc(100vh - 6rem);
+      overflow: auto;
+      border: 2px solid var(--outline);
+      border-radius: 6px 4px 7px 5px;
+      background: var(--surface);
+      padding: 1rem;
+      box-shadow: 4px 5px 0 rgba(19, 27, 46, 0.12);
+    }
+    .toc-label {
+      margin: 0 0 1rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .toc-card ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toc-card li { display: flex; gap: 0.75rem; align-items: flex-start; }
+    .toc-num {
+      flex: 0 0 auto;
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-top: 0.125rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: var(--outline);
+      color: var(--surface);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .toc-card a {
+      color: var(--on-surface);
+      text-decoration: none;
+      font-size: 0.875rem;
+      line-height: 1.35;
+    }
+    .toc-card a:hover { color: var(--accent); }
+
+    .toc-mobile {
+      margin-top: 2rem;
+      border: 2px solid var(--on-surface);
+      border-radius: 5px 3px 6px 4px;
+      background: var(--surface);
+      padding: 1rem;
+      box-shadow: 3px 4px 0 rgba(19, 27, 46, 0.14);
+    }
+    @media (min-width: 1024px) { .toc-mobile { display: none; } }
+    .toc-mobile summary {
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .toc-mobile ol { margin: 1rem 0 0; padding: 0; list-style: none; }
+    .toc-mobile li { margin: 0.5rem 0; }
+    .toc-mobile a { color: var(--on-surface); text-decoration: none; font-size: 0.875rem; }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--on-surface-muted);
+    }
+    .pill {
+      border-radius: 999px;
+      background: #e8efe9;
+      color: var(--accent);
+      padding: 0.25rem 0.75rem;
+    }
+    h1 {
+      margin: 1.25rem 0 0;
+      font-family: var(--font-sketch);
+      font-size: clamp(2.25rem, 4vw, 3rem);
+      font-weight: 700;
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+      color: #131b2e;
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 0.625rem; margin: 1.5rem 0 0; padding: 0; list-style: none; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border: 1px solid var(--outline);
+      border-radius: 4px 3px 5px 3px;
+      background: var(--accent-soft);
+      color: var(--accent-on-soft);
+      padding: 0.375rem 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+
+    .share-row {
+      margin-top: 1.5rem;
+      border-top: 1px dashed var(--outline-variant);
+      border-bottom: 1px dashed var(--outline-variant);
+      padding: 1rem 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .share-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 2px solid var(--on-surface);
+      border-radius: 4px 3px 5px 3px;
+      background: var(--surface);
+      color: var(--on-surface);
+      padding: 0.375rem 0.875rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .share-btn:hover { background: var(--note-yellow); color: var(--accent); }
+
+    .prose {
+      margin-top: 2.5rem;
+      max-width: 48rem;
+      font-size: 1.0625rem;
+      line-height: 1.75;
+      color: var(--on-surface);
+    }
+    .prose p { margin: 0 0 1.25rem; text-align: left; line-height: 1.75; }
+    .prose h2 {
+      scroll-margin-top: 7rem;
+      margin: 2.5rem 0 1rem;
+      font-family: var(--font-sketch);
+      font-size: 1.875rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--on-surface);
+    }
+    .prose a {
+      color: var(--accent);
+      font-weight: 600;
+      text-underline-offset: 4px;
+    }
+    .prose p > code, .prose li > code, .prose td > code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      border: 1px solid var(--outline);
+      border-radius: 3px 4px 3px 4px;
+      background: var(--accent-soft);
+      padding: 0.1rem 0.25rem;
+    }
+    .prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 1.5rem;
+      font-size: 0.95rem;
+    }
+    .prose th, .prose td {
+      border: 1px solid var(--outline-variant);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    .prose th {
+      background: #e8efe9;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    figure.code-block {
+      margin: 1.5rem 0;
+      overflow: hidden;
+      border: 1px solid var(--outline);
+      border-radius: 0.375rem;
+      background: var(--code-panel-surface);
+      box-shadow: 0 1px 2px rgba(19, 27, 46, 0.04), 0 10px 28px -18px rgba(19, 27, 46, 0.1);
+    }
+    figure.code-block figcaption {
+      border-bottom: 1px solid var(--code-panel-header-border);
+      background: var(--code-panel-header-bg);
+      padding: 0.5rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--code-panel-header-text);
+    }
+    figure.code-block pre {
+      margin: 0;
+      max-height: 28rem;
+      overflow: auto;
+      background: transparent;
+      padding: 0;
+      font-size: 0.875rem;
+      line-height: 1.625;
+    }
+    figure.code-block code.hljs {
+      display: block;
+      background: transparent !important;
+      padding: 1rem;
+    }
+
+    figure.diagram {
+      margin: 1.75rem 0;
+      overflow: auto;
+      border: 2px solid var(--on-surface);
+      border-radius: 5px 3px 6px 4px;
+      background: var(--surface);
+      box-shadow: 3px 4px 0 rgba(19, 27, 46, 0.14);
+    }
+    figure.diagram figcaption {
+      border-bottom: 1px solid var(--code-panel-header-border);
+      background: #e8efe9;
+      padding: 0.5rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--code-panel-header-text);
+    }
+    figure.diagram img {
+      display: block;
+      width: 100%;
+      height: auto;
+      padding: 0.75rem;
+    }
+
+    .article-end {
+      margin-top: 3rem;
+      border-top: 2px dashed var(--outline-variant);
+      padding-top: 2rem;
+      font-size: 0.875rem;
+    }
+
+    .site-footer {
+      border-top: 2px solid var(--on-surface);
+      padding: 2.5rem 0;
+      background: var(--surface);
+    }
+    .site-footer .who {
+      font-family: var(--font-sketch);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0 0 0.35rem;
+    }
+    .site-footer p { margin: 0; color: var(--on-surface-muted); font-size: 0.95rem; }
+
+    :focus-visible {
+      outline: 2px solid var(--on-surface);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#article-body">Skip to content</a>
+  <header class="site-header">
+    <div class="shell">
+      <a class="brand" href="https://my-tech-profile.dev/">José Alemán</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="https://my-tech-profile.dev/">Overview</a>
+        <a href="https://my-tech-profile.dev/experience">Experience</a>
+        <a href="https://my-tech-profile.dev/insights" aria-current="page">Insights</a>
+        <a href="https://my-tech-profile.dev/sketchnotes">Sketchnotes</a>
+        <a href="https://my-tech-profile.dev/projects">Projects</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="sketch-page">
+    <div class="shell">
+      <p><a class="back" href="https://my-tech-profile.dev/insights">← Back to Insights</a></p>
+
+      <article>
+        <div class="layout">
+          <aside class="toc-aside">
+            <nav class="toc-card" aria-label="On this page">
+              <p class="toc-label">On this page</p>
+              <ol>
+                <li><span class="toc-num" aria-hidden="true">1</span><a href="#goal-and-loop">GOAL and LOOP</a></li>
+                <li><span class="toc-num" aria-hidden="true">2</span><a href="#a-goal-the-model-cannot-fake">A Goal the Model Cannot Fake</a></li>
+                <li><span class="toc-num" aria-hidden="true">3</span><a href="#a-loop-that-knows-how-to-quit">A Loop That Knows How to Quit</a></li>
+                <li><span class="toc-num" aria-hidden="true">4</span><a href="#the-harness-around-both">The Harness Around Both</a></li>
+                <li><span class="toc-num" aria-hidden="true">5</span><a href="#watching-a-loop-run">Watching a Loop Run</a></li>
+                <li><span class="toc-num" aria-hidden="true">6</span><a href="#swap-the-worker-keep-the-harness">Swap the Worker, Keep the Harness</a></li>
+                <li><span class="toc-num" aria-hidden="true">7</span><a href="#other-things-i-want-to-put-in-this-loop">Other Things I Want to Put in This Loop</a></li>
+                <li><span class="toc-num" aria-hidden="true">8</span><a href="#what-the-playground-taught-me">What the Playground Taught Me</a></li>
+                <li><span class="toc-num" aria-hidden="true">9</span><a href="#where-the-human-is-not-optional">Where the Human Is Not Optional</a></li>
+                <li><span class="toc-num" aria-hidden="true">10</span><a href="#start-with-one-goal">Start With One Goal</a></li>
+              </ol>
+            </nav>
+          </aside>
+
+          <div>
+            <header>
+              <div class="meta">
+                <span class="pill">AI Engineering</span>
+                <p>August 13, 2026</p>
+                <span aria-hidden="true">•</span>
+                <p>11 min read</p>
+              </div>
+              <h1>A Goal the Agent Cannot Fake</h1>
+              <ul class="tags" aria-label="Article topics">
+                <li><span class="tag">Architecture</span></li>
+                <li><span class="tag">Artificial intelligence</span></li>
+                <li><span class="tag">LangChain</span></li>
+                <li><span class="tag">LLMs</span></li>
+                <li><span class="tag">Spring Boot</span></li>
+                <li><span class="tag">Java</span></li>
+              </ul>
+              <div class="share-row" aria-label="Share this page">
+                <span class="share-label">Share</span>
+                <a class="share-btn" href="https://wa.me/?text=A%20Goal%20the%20Agent%20Cannot%20Fake%20https%3A%2F%2Fmy-tech-profile.dev%2Finsights%2Fa-goal-the-agent-cannot-fake" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                <a class="share-btn" href="https://t.me/share/url?url=https%3A%2F%2Fmy-tech-profile.dev%2Finsights%2Fa-goal-the-agent-cannot-fake&amp;text=A%20Goal%20the%20Agent%20Cannot%20Fake" target="_blank" rel="noopener noreferrer">Telegram</a>
+                <a class="share-btn" href="mailto:?subject=A%20Goal%20the%20Agent%20Cannot%20Fake&amp;body=https%3A%2F%2Fmy-tech-profile.dev%2Finsights%2Fa-goal-the-agent-cannot-fake">Email</a>
+                <button class="share-btn" type="button" id="copy-link">Copy link</button>
+              </div>
+            </header>
+
+            <details class="toc-mobile">
+              <summary>On this page</summary>
+              <ol>
+                <li><a href="#goal-and-loop">GOAL and LOOP</a></li>
+                <li><a href="#a-goal-the-model-cannot-fake">A Goal the Model Cannot Fake</a></li>
+                <li><a href="#a-loop-that-knows-how-to-quit">A Loop That Knows How to Quit</a></li>
+                <li><a href="#the-harness-around-both">The Harness Around Both</a></li>
+                <li><a href="#watching-a-loop-run">Watching a Loop Run</a></li>
+                <li><a href="#swap-the-worker-keep-the-harness">Swap the Worker, Keep the Harness</a></li>
+                <li><a href="#other-things-i-want-to-put-in-this-loop">Other Things I Want to Put in This Loop</a></li>
+                <li><a href="#what-the-playground-taught-me">What the Playground Taught Me</a></li>
+                <li><a href="#where-the-human-is-not-optional">Where the Human Is Not Optional</a></li>
+                <li><a href="#start-with-one-goal">Start With One Goal</a></li>
+              </ol>
+            </details>
+
+            <section class="prose" id="article-body" aria-label="Article body">
+              <p>I did not build this to replace anyone. I built it because I wanted somewhere to be wrong about agents where being wrong is free.</p>
+              <p>The playground is six LLM roles pointed at a real git repository. Product Owner, Tech Lead, Developer, PR Reviewer, QA, Stakeholder. Java 26, Spring Boot 4.1, LangChain4j 1.18. The Developer edits files. A deterministic gate runs the project's own test command. The reviewer reads an actual git diff.</p>
+              <p>It does not open pull requests on your service. It does not talk to your issue tracker. It does not deploy. Those are not missing features, they are the boundary that makes the sandbox worth having.</p>
+              <p>The roles are a familiar shape to hang a workflow on, nothing more. What I actually walked away with is smaller than "an AI team" and far more reusable: two primitives, a GOAL and a LOOP, that change how any personal project uses an agent.</p>
+
+              <h2 id="goal-and-loop">GOAL and LOOP</h2>
+              <p>Every agent demo I have enjoyed and then quietly abandoned had the same hole. The agent decides when it is finished.</p>
+              <p>That works right up until it does not, and you cannot tell the difference from the transcript. The model says the tests pass. The model says the docs are updated. The model says the bug is fixed. Sometimes that is true. You find out later, by hand.</p>
+              <p>A GOAL is a condition your own code evaluates. Not a rubric in a prompt, not a self-assessment, not a confidence score. Something you could assert in a unit test with the model switched off.</p>
+              <p>A LOOP is bounded iteration toward that goal. A worker attempts, a checker evaluates, and the whole thing has a cap and a name for what happens when the cap is reached.</p>
+              <figure class="diagram">
+                <figcaption>The pattern, minus the job titles</figcaption>
+                <img src="diagrams/goal-loop-pattern.png" alt="Flow from a human-written goal to a worker, then to a checker, then to a decision that either exits with evidence, retries while attempts remain, or escalates to a human when the cap is reached."
+                     loading="lazy" decoding="async" />
+              </figure>
+              <p>That is the whole pattern. The interesting part is that the worker is the easiest piece to replace and the least important to get right. Swap models freely. The checker is what makes the run mean something.</p>
+
+              <h2 id="a-goal-the-model-cannot-fake">A Goal the Model Cannot Fake</h2>
+              <p>In this playground the goals are typed records, because a record with a compact constructor is the cheapest place to put a rule that a model cannot argue with.</p>
+              <p>The Tech Lead cannot satisfy a brief with a convincing paragraph. <code>AiSpec.covers(brief)</code> is a plain Java check: every acceptance-criterion id appears once in traceability, with a planned test name attached. No planned test, the spec loop keeps going until the cap.</p>
+              <p>The reviewer is the same idea. Findings carry a severity, only error and blocker count, and the constructor recomputes the decision rather than trusting what the model reported:</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">public ReviewVerdict {
+    findings = findings == null ? List.of() : List.copyOf(findings);
+    blockingCount = (int) findings.stream()
+            .filter(ReviewFinding::blocking)
+            .count();
+    decision = blockingCount &gt; 0 ? REQUEST_CHANGES : APPROVE;
+}</code></pre>
+              </figure>
+              <p>QA is stricter still. If the planned test already ran on a green build, reconciliation upgrades the row. The model does not get a vote against JUnit XML:</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">if (gate.success() &amp;&amp; ran(planned, gate)) {
+    results.add(new QaResult(criterion.id(), QaVerdict.PASS, evidence(planned, gate)));
+    continue;
+}</code></pre>
+              </figure>
+              <p>I have watched chat-shaped "QA agents" mark every criterion PASS and then fail the run with <code>score=0</code>. Once the verdict is a record, that contradiction becomes impossible in the constructor instead of unlikely in a prompt. Prompts still matter, and mine restate the exit condition so the model is not fighting the record. The record still wins.</p>
+
+              <h2 id="a-loop-that-knows-how-to-quit">A Loop That Knows How to Quit</h2>
+              <p>The implementation loop is LangChain4j <code>loopBuilder</code> with an exit condition written in Java, and a build gate that is an action rather than a chat model:</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">return AgenticServices.loopBuilder()
+        .name("implementation-loop")
+        .subAgents(agents.developer(role, context, policy), buildGateAction(context))
+        .maxIterations(policy.maxImplementationAttempts())
+        .testExitAtLoopEnd(true)
+        .exitCondition(scope -&gt; {
+            BuildResult build = RunStateFactory.read(
+                    scope, StateKeys.BUILD_RESULT, BuildResult.none());
+            return build.success();
+        })
+        .build();</code></pre>
+              </figure>
+              <p>Review and QA wrap their rework in <code>conditionalBuilder</code>, so the Developer runs again only when the previous verdict actually asked for changes.</p>
+              <p>Caps live in YAML because I wanted to tune the process without redeploying logic:</p>
+              <figure class="code-block">
+                <figcaption>yaml</figcaption>
+                <pre><code class="language-yaml">policy:
+  maxSpecRework: 2
+  maxImplementationAttempts: 3
+  maxReviewCycles: 3
+  maxQaCycles: 3
+  maxStakeholderCycles: 2
+  qaPassThreshold: 80
+  stakeholderMode: AGENT</code></pre>
+              </figure>
+              <p>Hitting a cap produces <code>ESCALATED</code>, which is a real outcome with artifacts attached, not a spinner that lies. An agent loop without a cap is a defect with a monthly bill.</p>
+
+              <h2 id="the-harness-around-both">The Harness Around Both</h2>
+              <p>The application holds no product domain. It loads a team file and a project file, copies a seed into a gitignored workspace, and runs the roles as an agentic graph. The core module has no LangChain4j and no Spring, so the records and ports can be tested with no model in the room.</p>
+              <figure class="diagram">
+                <figcaption>System context</figcaption>
+                <img src="diagrams/system-context.png" alt="The operator posts a run to sdlc-app, which reads team and project YAML, writes to a workspace git repo and to run artifacts, calls Cursor CLI chat models, and runs an allowlisted build and test inside the workspace."
+                     loading="lazy" decoding="async" />
+              </figure>
+              <p>Who is in the loop and what technology it runs against are separate axes on purpose. Change the roster without touching Java. Change Gradle for npm by swapping the seed and the project file.</p>
+              <figure class="diagram">
+                <figcaption>Composition vs technology</figcaption>
+                <img src="diagrams/composition-vs-technology.png" alt="Team YAML becomes a team blueprint and project YAML becomes a project profile. Both feed the pipeline, while the project profile selects the seed that is copied into the workspace."
+                     loading="lazy" decoding="async" />
+              </figure>
+              <p>Nested loops, each with its own goal:</p>
+              <figure class="diagram">
+                <figcaption>Four loops, four goals</figcaption>
+                <img src="diagrams/four-loops-four-goals.png" alt="Four nested loops with their own goals: the spec loop traces every acceptance criterion to a planned test, the implementation loop runs until the build is green, the review loop runs until there are no blocking findings, and the QA loop runs until the score clears the threshold. The stakeholder then approves, rejects back to the Product Owner, or the run ends escalated."
+                     loading="lazy" decoding="async" />
+              </figure>
+
+              <h2 id="watching-a-loop-run">Watching a Loop Run</h2>
+              <p>A run starts with <code>POST /api/v1/runs</code>. Artifacts land under <code>runs/&lt;id&gt;/</code>. Git commits locally and never pushes. The UI follows step events over SSE.</p>
+              <figure class="diagram">
+                <figcaption>Happy path</figcaption>
+                <img src="diagrams/sequence-happy-path.png" alt="A complete run from POST /api/v1/runs through Product Owner, Tech Lead, Developer, build gate, PR Reviewer, QA and Stakeholder, finishing as COMPLETED with artifacts."
+                     loading="lazy" decoding="async" />
+              </figure>
+              <p>The happy path is the boring one. The run I learn from is the one where the goal is already met and the loop refuses to believe it:</p>
+              <figure class="diagram">
+                <figcaption>Rework after the build is already green</figcaption>
+                <img src="diagrams/sequence-rework.png" alt="With the build already green, the reviewer requests changes, the developer reworks, the gate re-runs, the reviewer approves, and QA still fails, sending the run into the QA rework loop until it passes or reaches the cap."
+                     loading="lazy" decoding="async" />
+              </figure>
+              <p>That second diagram is the reason the playground exists. You cannot see that shape in a chat window.</p>
+
+              <h2 id="swap-the-worker-keep-the-harness">Swap the Worker, Keep the Harness</h2>
+              <p>Workers are deliberately boring. The Developer is an <code>@Agent</code> interface whose tools are list, read, write, and delete inside a path jail. The prompt says plainly that running tests is not its job:</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">@UserMessage("""
+        AI spec:
+        {{aiSpec}}
+
+        Review feedback (may be empty):
+        {{reviewFeedback}}
+
+        Use listFiles, readFile, writeFile, and deleteFile.
+        Do not run tests; the build gate runs the allowlisted test command after your turn.
+        Return JSON for ChangeSummary.
+        """)
+@Agent(description = "Implements the AI spec by editing the repository",
+        outputKey = StateKeys.CHANGE_SUMMARY)
+ChangeSummary implement(
+        @V(StateKeys.AI_SPEC) AiSpec aiSpec,
+        @V(StateKeys.REVIEW_FEEDBACK) String reviewFeedback,
+        @V(StateKeys.BUILD_FEEDBACK) String buildFeedback);</code></pre>
+              </figure>
+              <p>The checker on the other side is an argv array from project configuration, never a shell string the model composed:</p>
+              <figure class="code-block">
+                <figcaption>yaml</figcaption>
+                <pre><code class="language-yaml">commands:
+  build: ["./gradlew", "compileJava", "--console=plain"]
+  test: ["./gradlew", "test", "--console=plain"]
+  check: ["./gradlew", "check", "--console=plain"]</code></pre>
+              </figure>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">if (!isAllowlisted(profile, argv)) {
+    throw new CommandNotAllowedException(
+            "Command argv is not allowlisted for project " + profile.id() + ": " + argv);
+}</code></pre>
+              </figure>
+              <p>Tools are permissions, and permissions are the architecture. I would not give a brand new script unrestricted shell access on my laptop either.</p>
+
+              <h2 id="other-things-i-want-to-put-in-this-loop">Other Things I Want to Put in This Loop</h2>
+              <p>The roles happen to be a scrum cell because that was the shape in front of me. The pattern does not care. Anywhere you can write a checker, you can run this, and most of my personal projects have at least one checker sitting unused in the build already.</p>
+              <table>
+                <thead>
+                  <tr><th>Playground</th><th>Goal your code checks</th><th>What loops</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Docs parity</td><td>Every public type and method has a doc comment with a sample</td><td>Agent edits comments, an AST scan re-runs</td></tr>
+                  <tr><td>Coverage on changed lines</td><td>JaCoCo threshold on the diff, not the whole repo</td><td>Agent adds tests, the report re-runs</td></tr>
+                  <tr><td>Flaky hunter</td><td>Suite runs 20 times with identical results</td><td>Agent quarantines or fixes, the runner repeats</td></tr>
+                  <tr><td>Migration rehearsal</td><td>Compile and tests green on the new toolchain</td><td>Agent patches deprecations, the build re-runs</td></tr>
+                  <tr><td>Frontend budget</td><td>Accessibility violations at zero, bundle under a byte cap</td><td>Agent edits components, the audit re-runs</td></tr>
+                  <tr><td>Retrieval quality</td><td>Golden question set scores above a threshold</td><td>Agent tunes chunking and prompts, the eval re-runs</td></tr>
+                  <tr><td>Writing pipeline</td><td>Links resolve, style rules pass, structure is complete</td><td>Writer and editor roles, a linter decides</td></tr>
+                  <tr><td>Model bake-off</td><td>One fixed goal, several models, same seed</td><td>Nothing changes but the worker</td></tr>
+                </tbody>
+              </table>
+              <p>A few of those are worth more than the rest.</p>
+              <p>The migration rehearsal is the one I keep coming back to. Moving a service across Java or Spring Boot majors is mostly a long tail of mechanical edits with a brutally clear definition of done. The build either compiles and passes or it does not. That is a goal no model can talk its way past, and a cap keeps a stubborn dependency from eating an afternoon of tokens.</p>
+              <p>The retrieval loop is the one that maps directly onto founder work. On ITJobOpportunities the scoring between a candidate profile and a job is the thing people will argue with, so the model handles messy text and my code owns the number. Same split here. Put a golden set behind a threshold, let the worker tune, and the eval decides. The model is noisy. The scorer is the product.</p>
+              <p>The bake-off is the cheapest experiment in the list and the most clarifying. Fix the goal, fix the seed, change only the model, and read attempts and wall clock. It tells you more about a model in one evening than a month of vibes, and it costs one config edit.</p>
+
+              <h2 id="what-the-playground-taught-me">What the Playground Taught Me</h2>
+              <p>The feature I kept running was ordinary. Return a 404 with a problem detail when the id is unknown, and reject a blank name on create. The first Developer pass usually got it. The run still fell apart afterward, which is exactly why the exercise was worth doing.</p>
+              <p>One failure was empty reviewer content. A reasoning model put its JSON in the thinking channel, or nowhere at all, and the framework tried to parse null into a verdict. That is not a model that cannot review code. That is an output contract with no adapter behind it.</p>
+              <p>Another was the diff. Build output landed in <code>git add</code>, filled the truncated diff, and the reviewer requested changes because a controller "was not in the diff." It was in the commit. The reviewer simply never saw it.</p>
+              <p>A third was QA scoring 67 because two criteria "had no test in the log," when the XML report showed both methods had already run. Stakeholder rejected, the outer loop restarted, and expensive roles re-explained a feature that existed.</p>
+              <p>None of those needed a better model. They needed a gitignore, pathspecs, a real test report, and a reconciliation step. Once the evidence was structured, approval stopped being a personality trait of whichever model I had configured that week.</p>
+              <p>That is the honest value of a playground. Every one of those bugs is invisible in a demo and obvious in a run you can replay.</p>
+
+              <h2 id="where-the-human-is-not-optional">Where the Human Is Not Optional</h2>
+              <p>Someone has to write the goal, and that is not a leftover chore. It is the entire job.</p>
+              <p>Deciding that "done" means every criterion traces to a named test, that a blocking finding outranks an approving tone, that a score below the threshold means rework rather than a shrug, all of that is judgment. The loop only automates the patience required to keep checking. Work moves upstream into defining done. It does not evaporate.</p>
+              <p>There is also a clear list of things I would not put behind this pattern. Anything needing product judgment about what should exist. Security boundaries. A data migration you cannot roll back. Anywhere the cost of a wrong answer is paid by someone who never saw the run.</p>
+              <p>And the last mile stays human by design. The best outcome this playground produces is a branch with a diff, a list of executed tests, and a verdict a person can read and disagree with. Somebody still has to disagree with it.</p>
+
+              <h2 id="start-with-one-goal">Start With One Goal</h2>
+              <p>If you want to try this in a personal project, do not start with six roles. Start with one goal your code can check today.</p>
+              <p>Pick something already in your build. A coverage threshold. A linter with zero warnings. A schema that validates. A golden set with a score. Then write the smallest loop around it: a worker that attempts, your checker, a cap, and a clear escalation when the cap is reached.</p>
+              <p>Keep the worker replaceable and the checker precious. Log the artifacts so you can replay a run instead of remembering it. Give the loop a boring name and a hard stop.</p>
+              <p>The lesson that survived all of this is not that six personas can imitate a team. It is that an agent becomes useful the moment it stops being the source of truth for whether it succeeded.</p>            </section>
+
+            <p class="article-end"><a class="back" href="https://my-tech-profile.dev/insights">← Back to Insights</a></p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <p class="who">José Adrián Alemán Rojas</p>
+      <p>Technical writing on backend platforms, architecture, and shipping reliable software.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/yaml.min.js"></script>
+  <script>
+    document.querySelectorAll("pre code[class^='language-']").forEach((el) => hljs.highlightElement(el));
+    document.getElementById("copy-link").addEventListener("click", async function () {
+      const url = "https://my-tech-profile.dev/insights/a-goal-the-agent-cannot-fake";
+      try {
+        await navigator.clipboard.writeText(url);
+        this.textContent = "Copied";
+        setTimeout(() => { this.textContent = "Copy link"; }, 2000);
+      } catch {
+        this.textContent = "Copy link";
+      }
+    });
+  </script>
+</body>
+</html>

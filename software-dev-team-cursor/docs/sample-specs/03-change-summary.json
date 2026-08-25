@@ -1,0 +1,9 @@
+{
+  "filesTouched": [
+    "src/main/java/dev/mytechprofile/users/api/UserController.java",
+    "src/main/java/dev/mytechprofile/users/api/ApiExceptionHandler.java",
+    "src/test/java/dev/mytechprofile/users/api/UserControllerTest.java"
+  ],
+  "rationale": "GET unknown id now throws a not-found exception mapped to RFC 9457. POST validates name is not blank.",
+  "notes": "Existing list/get-found tests still pass."
+}

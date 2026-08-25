@@ -1,0 +1,13 @@
+id: users-service-node
+seed: seeds/users-service-node
+repoPath: workspace/users-service-node
+branchPrefix: feature/
+sourceGlobs:
+  - "src/**"
+  - "test/**"
+  - "*.js"
+  - "package.json"
+conventions: docs/conventions/node.md
+commands:
+  test: ["npm", "test"]
+timeoutSeconds: 180

@@ -1,0 +1,8 @@
+flowchart TB
+  TeamYaml[config/teams/*.yaml] --> TeamBlueprint
+  ProjectYaml[config/projects/*.yaml] --> ProjectProfile
+  TeamBlueprint --> Pipeline[Sdlc pipeline]
+  ProjectProfile --> Pipeline
+  Seed[seeds/stack-id] --> Workspace[workspace/stack-id]
+  ProjectProfile --> Seed
+  Pipeline --> Workspace

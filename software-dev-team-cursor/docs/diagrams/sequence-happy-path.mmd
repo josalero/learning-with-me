@@ -1,0 +1,27 @@
+sequenceDiagram
+    actor Operator
+    participant API as sdlc-app
+    participant PO as Product Owner
+    participant TL as Tech Lead
+    participant Dev as Developer
+    participant Gate as Build gate
+    participant PR as PR Reviewer
+    participant QA as QA
+    participant SH as Stakeholder
+
+    Operator->>API: POST /api/v1/runs
+    API->>PO: featureRequest
+    PO-->>API: FeatureBrief
+    API->>TL: brief + file tree
+    TL-->>API: AiSpec (ACs traced)
+    API->>Dev: spec + tools
+    Dev-->>API: ChangeSummary
+    API->>Gate: allowlisted test argv
+    Gate-->>API: BuildResult success
+    API->>PR: spec + git diff
+    PR-->>API: APPROVE
+    API->>QA: ACs + diff + executed tests
+    QA-->>API: PASS
+    API->>SH: brief + spec + QA
+    SH-->>API: APPROVED
+    API-->>Operator: COMPLETED + artifacts

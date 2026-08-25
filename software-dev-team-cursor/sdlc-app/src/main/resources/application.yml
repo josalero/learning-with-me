@@ -1,0 +1,28 @@
+server:
+  port: ${SDLC_PORT:8096}
+
+spring:
+  application:
+    name: sdlc-app
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+sdlc:
+  home: ${SDLC_HOME:.}
+  cursor-api-key: ${CURSOR_API_KEY:}
+  cursor-cli-command: ${SDLC_CURSOR_CLI:agent}
+  max-tokens: ${CURSOR_MAX_TOKENS:8192}
+  llm-timeout: ${SDLC_LLM_TIMEOUT:PT3M}
+  model-fast: ${MODEL_FAST:composer-2.5}
+  model-strong: ${MODEL_STRONG:composer-2.5}
+  file-read-limit-chars: 80000
+  human-approval-timeout: PT30M
+  offline: ${SDLC_OFFLINE:false}

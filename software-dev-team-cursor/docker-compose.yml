@@ -1,0 +1,36 @@
+name: software-dev-team-cursor
+
+services:
+  sdlc-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        INSTALL_CURSOR_CLI: ${INSTALL_CURSOR_CLI:-true}
+    ports:
+      - "${SDLC_PORT:-8096}:8096"
+    environment:
+      SERVER_PORT: 8096
+      SDLC_HOME: /data
+      CURSOR_API_KEY: ${CURSOR_API_KEY:-}
+      # Not overridable from .env on purpose: a host path like
+      # /Users/<you>/.local/bin/agent does not exist in this container.
+      SDLC_CURSOR_CLI: agent
+      CURSOR_MAX_TOKENS: ${CURSOR_MAX_TOKENS:-8192}
+      SDLC_LLM_TIMEOUT: ${SDLC_LLM_TIMEOUT:-PT3M}
+      MODEL_FAST: ${MODEL_FAST:-composer-2.5}
+      MODEL_STRONG: ${MODEL_STRONG:-composer-2.5}
+      SDLC_OFFLINE: ${SDLC_OFFLINE:-false}
+    volumes:
+      - ./config:/data/config
+      - ./prompts:/data/prompts
+      - ./seeds:/data/seeds
+      - ./docs:/data/docs
+      - ./workspace:/data/workspace
+      - ./runs:/data/runs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8096/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 50s

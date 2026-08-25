@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant API as sdlc-app
+    participant Dev as Developer
+    participant Gate as Build gate
+    participant PR as PR Reviewer
+    participant QA as QA
+
+    Note over Dev,Gate: L2 already green
+    API->>PR: spec + git diff
+    PR-->>API: REQUEST_CHANGES
+    API->>Dev: reviewFeedback
+    Dev-->>API: ChangeSummary
+    API->>Gate: test argv
+    Gate-->>API: BuildResult
+    API->>PR: new source-only diff
+    PR-->>API: APPROVE
+    API->>QA: ACs + executed tests
+    QA-->>API: FAIL
+    Note over API: L4 rework until PASS or cap

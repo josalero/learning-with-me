@@ -1,0 +1,29 @@
+{
+  "summary": "Return RFC 9457 404 for unknown user ids and reject blank names on create. Keep the in-memory store.",
+  "filesToChange": [
+    "src/main/java/dev/mytechprofile/users/api/UserController.java",
+    "src/main/java/dev/mytechprofile/users/api/UserRequest.java",
+    "src/main/java/dev/mytechprofile/users/api/ApiExceptionHandler.java",
+    "src/test/java/dev/mytechprofile/users/api/UserControllerTest.java"
+  ],
+  "apiContract": "GET /api/v1/users/{id} -> 200 User or 404 application/problem+json. POST /api/v1/users -> 201 User or 400 when name is blank. JSON fields stay lowerCamelCase.",
+  "dataModel": "User(id, name, email) unchanged. No new tables.",
+  "testPlan": [
+    "unknownIdReturns404ProblemDetail",
+    "createWithBlankNameReturns400"
+  ],
+  "risks": [
+    "Do not change list/update/delete behavior.",
+    "Do not log names or emails."
+  ],
+  "traceability": [
+    {
+      "acceptanceCriterionId": "AC-1",
+      "plannedTest": "UserControllerTest.unknownIdReturns404ProblemDetail"
+    },
+    {
+      "acceptanceCriterionId": "AC-2",
+      "plannedTest": "UserControllerTest.createWithBlankNameReturns400"
+    }
+  ]
+}

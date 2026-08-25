@@ -1,0 +1,28 @@
+{
+  "title": "Unknown user 404 and blank-name rejection",
+  "problem": "Clients cannot distinguish a missing user from a server error, and create accepts empty names.",
+  "userStories": [
+    "As an API client, I get a 404 problem detail when the user id does not exist.",
+    "As an API client, I get a 400 when I create a user with a blank name."
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "given": "no user is stored for the requested id",
+      "when": "GET /api/v1/users/{id}",
+      "then": "the response is 404 with an RFC 9457 problem detail (type, title, status, detail)"
+    },
+    {
+      "id": "AC-2",
+      "given": "a create request with a blank or whitespace-only name",
+      "when": "POST /api/v1/users",
+      "then": "the response is 400 and no user is stored"
+    }
+  ],
+  "outOfScope": [
+    "Authentication",
+    "Persistence beyond the in-memory store",
+    "OpenAPI generation"
+  ],
+  "priority": "must"
+}

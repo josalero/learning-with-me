@@ -1,0 +1,13 @@
+id: users-service-java
+seed: seeds/users-service-java
+repoPath: workspace/users-service-java
+branchPrefix: feature/
+sourceGlobs:
+  - "src/main/**"
+  - "src/test/**"
+conventions: docs/conventions/java.md
+commands:
+  build: ["./gradlew", "compileJava", "--console=plain"]
+  test: ["./gradlew", "test", "--console=plain"]
+  check: ["./gradlew", "check", "--console=plain"]
+timeoutSeconds: 600

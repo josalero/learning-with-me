@@ -1,0 +1,61 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.0' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'com.diffplug.spotless' version '7.2.1'
+    id 'checkstyle'
+}
+
+ext {
+    langchain4jVersion = '1.18.1'
+    langchain4jAgenticVersion = '1.18.1-beta28'
+    jackson2Version = '2.18.3'
+    archunitVersion = '1.4.2'
+}
+
+allprojects {
+    group = 'dev.mytechprofile.sdlc'
+    version = '0.1.0-SNAPSHOT'
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+    apply plugin: 'com.diffplug.spotless'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(26)
+        }
+    }
+
+    checkstyle {
+        toolVersion = '10.21.4'
+        configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+        maxWarnings = 0
+    }
+
+    spotless {
+        java {
+            target 'src/**/*.java'
+            palantirJavaFormat('2.74.0')
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        testLogging {
+            events 'passed', 'skipped', 'failed'
+        }
+    }
+}
+
+spotless {
+    format 'misc', {
+        target '*.gradle', '.gitignore', '*.md'
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
