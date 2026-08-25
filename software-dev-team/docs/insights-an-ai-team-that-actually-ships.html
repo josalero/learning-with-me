@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>An AI Team That Actually Ships (And Why Most Don't) — José Alemán</title>
+  <meta name="description" content="Simulate a development team with six LLM roles, a real git repo, and a build gate. Short-term: run delivery scenarios. Medium-term: a catalog you can replay." />
+  <link rel="canonical" href="https://my-tech-profile.dev/insights/an-ai-team-that-actually-ships" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@500;600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Kalam:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" />
+  <style>
+    :root {
+      --surface: #fffef9;
+      --on-surface: #131b2e;
+      --on-surface-muted: #45464d;
+      --outline: #3d5a4a;
+      --outline-variant: #bec6e0;
+      --accent: #3d5a4a;
+      --accent-soft: #cde5d6;
+      --accent-on-soft: #364b40;
+      --note-yellow: #fff0a7;
+      --code-panel-surface: #fffef9;
+      --code-panel-header-bg: #e8efe9;
+      --code-panel-header-border: #c5d4ca;
+      --code-panel-header-text: #3d5a4a;
+      --code-panel-scroll-track: #f5f6f8;
+      --code-panel-scroll-thumb: #e3e2df;
+      --shadow-color: rgba(19, 27, 46, 0.18);
+      --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+      --font-sketch: "Kalam", cursive;
+      --font-mono: "DM Mono", ui-monospace, monospace;
+      --container-max: 80rem;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background: var(--surface);
+      color: var(--on-surface);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .skip {
+      position: absolute;
+      left: -999px;
+      top: 0;
+      background: var(--on-surface);
+      color: var(--surface);
+      padding: 0.5rem 1rem;
+    }
+    .skip:focus { left: 1rem; top: 1rem; z-index: 20; }
+
+    .site-header {
+      border-bottom: 2px solid var(--on-surface);
+      background: var(--surface);
+    }
+    .shell {
+      margin: 0 auto;
+      width: 100%;
+      max-width: var(--container-max);
+      padding: 0 1rem;
+    }
+    @media (min-width: 640px) { .shell { padding: 0 1.5rem; } }
+
+    .site-header .shell {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      min-height: 4rem;
+    }
+    .brand {
+      font-family: var(--font-sketch);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      text-decoration: none;
+    }
+    .nav {
+      display: none;
+      gap: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    @media (min-width: 768px) { .nav { display: flex; } }
+    .nav a { color: var(--on-surface); text-decoration: none; }
+    .nav a[aria-current="page"] { color: var(--accent); }
+
+    .sketch-page {
+      min-height: 100%;
+      background: color-mix(in srgb, var(--surface) 82%, transparent);
+      padding: 3rem 0 4rem;
+    }
+
+    .back {
+      font-size: 0.875rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .back:hover { text-decoration: underline; }
+
+    article { margin-top: 1.5rem; }
+
+    .layout {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 48rem;
+    }
+    @media (min-width: 1024px) {
+      .layout {
+        display: grid;
+        grid-template-columns: 15rem minmax(0, 46rem);
+        justify-content: center;
+        gap: 3rem;
+        max-width: 76rem;
+        align-items: start;
+      }
+    }
+    @media (min-width: 1280px) {
+      .layout { grid-template-columns: 16rem minmax(0, 48rem); gap: 3.5rem; }
+    }
+
+    .toc-aside {
+      display: none;
+      position: sticky;
+      top: 1rem;
+    }
+    @media (min-width: 1024px) { .toc-aside { display: block; } }
+
+    .toc-card {
+      max-height: calc(100vh - 6rem);
+      overflow: auto;
+      border: 2px solid var(--outline);
+      border-radius: 6px 4px 7px 5px;
+      background: var(--surface);
+      padding: 1rem;
+      box-shadow: 4px 5px 0 rgba(19, 27, 46, 0.12);
+    }
+    .toc-label {
+      margin: 0 0 1rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .toc-card ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toc-card li { display: flex; gap: 0.75rem; align-items: flex-start; }
+    .toc-num {
+      flex: 0 0 auto;
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-top: 0.125rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: var(--outline);
+      color: var(--surface);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .toc-card a {
+      color: var(--on-surface);
+      text-decoration: none;
+      font-size: 0.875rem;
+      line-height: 1.35;
+    }
+    .toc-card a:hover { color: var(--accent); }
+
+    .toc-mobile {
+      margin-top: 2rem;
+      border: 2px solid var(--on-surface);
+      border-radius: 5px 3px 6px 4px;
+      background: var(--surface);
+      padding: 1rem;
+      box-shadow: 3px 4px 0 rgba(19, 27, 46, 0.14);
+    }
+    @media (min-width: 1024px) { .toc-mobile { display: none; } }
+    .toc-mobile summary {
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .toc-mobile ol { margin: 1rem 0 0; padding: 0; list-style: none; }
+    .toc-mobile li { margin: 0.5rem 0; }
+    .toc-mobile a { color: var(--on-surface); text-decoration: none; font-size: 0.875rem; }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--on-surface-muted);
+    }
+    .pill {
+      border-radius: 999px;
+      background: #e8efe9;
+      color: var(--accent);
+      padding: 0.25rem 0.75rem;
+    }
+    h1 {
+      margin: 1.25rem 0 0;
+      font-family: var(--font-sketch);
+      font-size: clamp(2.25rem, 4vw, 3rem);
+      font-weight: 700;
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+      color: #131b2e;
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 0.625rem; margin: 1.5rem 0 0; padding: 0; list-style: none; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border: 1px solid var(--outline);
+      border-radius: 4px 3px 5px 3px;
+      background: var(--accent-soft);
+      color: var(--accent-on-soft);
+      padding: 0.375rem 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+
+    .share-row {
+      margin-top: 1.5rem;
+      border-top: 1px dashed var(--outline-variant);
+      border-bottom: 1px dashed var(--outline-variant);
+      padding: 1rem 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .share-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 2px solid var(--on-surface);
+      border-radius: 4px 3px 5px 3px;
+      background: var(--surface);
+      color: var(--on-surface);
+      padding: 0.375rem 0.875rem;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .share-btn:hover { background: var(--note-yellow); color: var(--accent); }
+
+    .prose {
+      margin-top: 2.5rem;
+      max-width: 48rem;
+      font-size: 1.0625rem;
+      line-height: 1.75;
+      color: var(--on-surface);
+    }
+    .prose p { margin: 0 0 1.25rem; text-align: left; line-height: 1.75; }
+    .prose h2 {
+      scroll-margin-top: 7rem;
+      margin: 2.5rem 0 1rem;
+      font-family: var(--font-sketch);
+      font-size: 1.875rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--on-surface);
+    }
+    .prose a {
+      color: var(--accent);
+      font-weight: 600;
+      text-underline-offset: 4px;
+    }
+    .prose p > code, .prose li > code, .prose td > code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      border: 1px solid var(--outline);
+      border-radius: 3px 4px 3px 4px;
+      background: var(--accent-soft);
+      padding: 0.1rem 0.25rem;
+    }
+    .prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 1.5rem;
+      font-size: 0.95rem;
+    }
+    .prose th, .prose td {
+      border: 1px solid var(--outline-variant);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    .prose th {
+      background: #e8efe9;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    figure.code-block {
+      margin: 1.5rem 0;
+      overflow: hidden;
+      border: 1px solid var(--outline);
+      border-radius: 0.375rem;
+      background: var(--code-panel-surface);
+      box-shadow: 0 1px 2px rgba(19, 27, 46, 0.04), 0 10px 28px -18px rgba(19, 27, 46, 0.1);
+    }
+    figure.code-block figcaption {
+      border-bottom: 1px solid var(--code-panel-header-border);
+      background: var(--code-panel-header-bg);
+      padding: 0.5rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--code-panel-header-text);
+    }
+    figure.code-block pre {
+      margin: 0;
+      max-height: 28rem;
+      overflow: auto;
+      background: transparent;
+      padding: 0;
+      font-size: 0.875rem;
+      line-height: 1.625;
+    }
+    figure.code-block code.hljs {
+      display: block;
+      background: transparent !important;
+      padding: 1rem;
+    }
+
+    figure.diagram {
+      margin: 1.75rem 0;
+      overflow: auto;
+      border: 2px solid var(--on-surface);
+      border-radius: 5px 3px 6px 4px;
+      background: var(--surface);
+      box-shadow: 3px 4px 0 rgba(19, 27, 46, 0.14);
+    }
+    figure.diagram figcaption {
+      border-bottom: 1px solid var(--code-panel-header-border);
+      background: #e8efe9;
+      padding: 0.5rem 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--code-panel-header-text);
+    }
+    figure.diagram .mermaid {
+      padding: 1rem 0.75rem 0.5rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .article-end {
+      margin-top: 3rem;
+      border-top: 2px dashed var(--outline-variant);
+      padding-top: 2rem;
+      font-size: 0.875rem;
+    }
+
+    .site-footer {
+      border-top: 2px solid var(--on-surface);
+      padding: 2.5rem 0;
+      background: var(--surface);
+    }
+    .site-footer .who {
+      font-family: var(--font-sketch);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0 0 0.35rem;
+    }
+    .site-footer p { margin: 0; color: var(--on-surface-muted); font-size: 0.95rem; }
+
+    :focus-visible {
+      outline: 2px solid var(--on-surface);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#article-body">Skip to content</a>
+  <header class="site-header">
+    <div class="shell">
+      <a class="brand" href="https://my-tech-profile.dev/">José Alemán</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="https://my-tech-profile.dev/">Overview</a>
+        <a href="https://my-tech-profile.dev/experience">Experience</a>
+        <a href="https://my-tech-profile.dev/insights" aria-current="page">Insights</a>
+        <a href="https://my-tech-profile.dev/sketchnotes">Sketchnotes</a>
+        <a href="https://my-tech-profile.dev/projects">Projects</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="sketch-page">
+    <div class="shell">
+      <p><a class="back" href="https://my-tech-profile.dev/insights">← Back to Insights</a></p>
+
+      <article>
+        <div class="layout">
+          <aside class="toc-aside">
+            <nav class="toc-card" aria-label="On this page">
+              <p class="toc-label">On this page</p>
+              <ol>
+                <li><span class="toc-num" aria-hidden="true">1</span><a href="#if-you-need-to-simulate-a-team">If You Need to Simulate a Team</a></li>
+                <li><span class="toc-num" aria-hidden="true">2</span><a href="#chat-is-not-a-delivery-process">Chat Is Not a Delivery Process</a></li>
+                <li><span class="toc-num" aria-hidden="true">3</span><a href="#architecture-an-orchestrator-not-a-users-service">Architecture: An Orchestrator, Not a Users Service</a></li>
+                <li><span class="toc-num" aria-hidden="true">4</span><a href="#sequence-one-happy-path">Sequence: One Happy Path</a></li>
+                <li><span class="toc-num" aria-hidden="true">5</span><a href="#team-composition-is-config-the-build-is-not">Team Composition Is Config. The Build Is Not.</a></li>
+                <li><span class="toc-num" aria-hidden="true">6</span><a href="#typed-records-beat-prose">Typed Records Beat Prose</a></li>
+                <li><span class="toc-num" aria-hidden="true">7</span><a href="#the-developer-edits-files-it-does-not-run-tests">The Developer Edits Files. It Does Not Run Tests.</a></li>
+                <li><span class="toc-num" aria-hidden="true">8</span><a href="#the-build-gate-is-not-an-agent">The Build Gate Is Not an Agent</a></li>
+                <li><span class="toc-num" aria-hidden="true">9</span><a href="#a-small-feature-a-long-night">A Small Feature, A Long Night</a></li>
+                <li><span class="toc-num" aria-hidden="true">10</span><a href="#where-id-push-back-on-the-hype">Where I'd Push Back on the Hype</a></li>
+                <li><span class="toc-num" aria-hidden="true">11</span><a href="#what-id-actually-recommend">What I'd Actually Recommend</a></li>
+              </ol>
+            </nav>
+          </aside>
+
+          <div>
+            <header>
+              <div class="meta">
+                <span class="pill">AI Engineering</span>
+                <p>August 13, 2026</p>
+                <span aria-hidden="true">•</span>
+                <p>12 min read</p>
+              </div>
+              <h1>An AI Team That Actually Ships (And Why Most Don't)</h1>
+              <ul class="tags" aria-label="Article topics">
+                <li><span class="tag">Architecture</span></li>
+                <li><span class="tag">Artificial intelligence</span></li>
+                <li><span class="tag">LangChain</span></li>
+                <li><span class="tag">LLMs</span></li>
+                <li><span class="tag">Spring Boot</span></li>
+                <li><span class="tag">Java</span></li>
+              </ul>
+              <div class="share-row" aria-label="Share this page">
+                <span class="share-label">Share</span>
+                <a class="share-btn" href="https://wa.me/?text=An%20AI%20Team%20That%20Actually%20Ships%20https%3A%2F%2Fmy-tech-profile.dev%2Finsights%2Fan-ai-team-that-actually-ships" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                <a class="share-btn" href="https://t.me/share/url?url=https%3A%2F%2Fmy-tech-profile.dev%2Finsights%2Fan-ai-team-that-actually-ships&amp;text=An%20AI%20Team%20That%20Actually%20Ships" target="_blank" rel="noopener noreferrer">Telegram</a>
+                <a class="share-btn" href="mailto:?subject=An%20AI%20Team%20That%20Actually%20Ships%20(And%20Why%20Most%20Don't)&amp;body=https%3A%2F%2Fmy-tech-profile.dev%2Finsights%2Fan-ai-team-that-actually-ships">Email</a>
+                <button class="share-btn" type="button" id="copy-link">Copy link</button>
+              </div>
+            </header>
+
+            <details class="toc-mobile">
+              <summary>On this page</summary>
+              <ol>
+                <li><a href="#if-you-need-to-simulate-a-team">If You Need to Simulate a Team</a></li>
+                <li><a href="#chat-is-not-a-delivery-process">Chat Is Not a Delivery Process</a></li>
+                <li><a href="#architecture-an-orchestrator-not-a-users-service">Architecture: An Orchestrator, Not a Users Service</a></li>
+                <li><a href="#sequence-one-happy-path">Sequence: One Happy Path</a></li>
+                <li><a href="#team-composition-is-config-the-build-is-not">Team Composition Is Config. The Build Is Not.</a></li>
+                <li><a href="#typed-records-beat-prose">Typed Records Beat Prose</a></li>
+                <li><a href="#the-developer-edits-files-it-does-not-run-tests">The Developer Edits Files. It Does Not Run Tests.</a></li>
+                <li><a href="#the-build-gate-is-not-an-agent">The Build Gate Is Not an Agent</a></li>
+                <li><a href="#a-small-feature-a-long-night">A Small Feature, A Long Night</a></li>
+                <li><a href="#where-id-push-back-on-the-hype">Where I'd Push Back on the Hype</a></li>
+                <li><a href="#what-id-actually-recommend">What I'd Actually Recommend</a></li>
+              </ol>
+            </details>
+
+            <section class="prose" id="article-body" aria-label="Article body">
+              <p>Someone asked me if I would trust six LLM roles to open a pull request on a real service. I said no, then I built the thing anyway, because "no" without a counterexample is just taste.</p>
+              <p>I have spent years watching delivery loops fail for boring reasons. Specs that never named a test. Reviews that argued about files that were not in the diff. QA that failed a green build because the log did not print the method name. None of that is an AI problem. It is a systems problem. Agents make it louder.</p>
+              <p>So I built a lab: Product Owner, Tech Lead, Developer, PR Reviewer, QA, Stakeholder. Java 26, Spring Boot 4.1, LangChain4j 1.18. The Developer writes files in a real git repo. A deterministic gate runs the project's test command. The reviewer sees a git diff, not a chat summary of one.</p>
+              <p>The point is not "agents can code." Plenty of demos can code. The point is whether the loop can stop.</p>
+
+              <h2 id="if-you-need-to-simulate-a-team">If You Need to Simulate a Team</h2>
+              <p>The useful question is not "will this replace my engineers." It is whether you can put a fake scrum cell on a real repo and watch what happens when the ticket is a 404, when review asks for changes, when QA disagrees with a green build, or when stakeholder sends it back.</p>
+              <p>Chat windows cannot answer that. They do not have a Product Owner artifact, a spec loop, a test command, or a cap. You cannot replay "stakeholder rejected after QA scored 67" as a scenario. You get a conversation.</p>
+              <p>This lab is a short-to-medium-term answer if you are trying to simulate a development team and exercise those scenarios on purpose.</p>
+              <p><strong>Short term (this quarter).</strong> You already have the roles, a seed that compiles, and the gates. Feed it a feature request. You get a brief, a spec with planned tests, a working tree, JUnit names, a diff, and a verdict. That is enough to demo the graph, compare models on the same ticket, and change process (caps, gitignore, reconcile) without waiting for a human sprint. The scenarios that taught me the most were not "did it code." They were empty reviewer JSON, <code>build/</code> in the diff, and QA ignoring JUnit XML.</p>
+              <p><strong>Medium term (this year).</strong> Turn those runs into a scenario catalog. Same request, expected artifacts. Did the planned test run. Did the reviewer invent a file. Did stakeholder restart a finished feature. Attach the graph to a sandbox branch if you want. Still no merge to <code>main</code>. The simulation becomes a regression suite for the process, the same way I treat evals for résumé-to-job scoring on ITJobOpportunities: the model is noisy; the scenario and the score are the product.</p>
+              <p>What this is not: an autonomous employee. It will not invent product sense, design a migration you cannot roll back, or replace code review on a security boundary. Those stay human. The lab is useful because you can fail the team in a workspace instead of in production.</p>
+              <p>The rest of this piece is how the loop is wired, and why the interesting part is the code that is not a model.</p>
+
+              <h2 id="chat-is-not-a-delivery-process">Chat Is Not a Delivery Process</h2>
+              <p>Most multi-agent coding demos are a group chat with job titles. Someone "writes a spec." Someone "implements." Someone "reviews." The output is prose. You paste it into an IDE if you still care.</p>
+              <p>That is fine for a screenshot. It is not a software process.</p>
+              <p>A process has artifacts with shapes, gates that are not optional, and a cap on how many times you are allowed to argue. If the reviewer can say FAIL because the vibe is wrong, you do not have QA. You have another writer.</p>
+              <p>I already had the vocabulary for this on Agent UI Editor: sequence, parallel, conditional, supervisor. Those nodes are coordination, not intelligence. The SDLC lab is the same instinct pointed at a git working tree. The graph is YAML. The workers are roles. The interesting part is what is not a model.</p>
+
+              <h2 id="architecture-an-orchestrator-not-a-users-service">Architecture: An Orchestrator, Not a Users Service</h2>
+              <p>The app does not contain the users CRUD domain. It loads a team YAML and a project YAML, copies a seed into a gitignored workspace, and runs the roles as a LangChain4j agentic graph. <code>sdlc-core</code> has no LangChain4j and no Spring. Records and ports live there so the loop can be tested without a model.</p>
+              <p>Notice the operator talks to HTTP. The workspace talks to an allowlisted test command. OpenRouter is a dependency, not the source of truth.</p>
+              <figure class="diagram">
+                <figcaption>System context</figcaption>
+                <pre class="mermaid">flowchart LR
+  Human[Operator] -->|POST /api/v1/runs| Api[sdlc-app]
+  Human -->|optional approve| Api
+  Api --> Catalog[Team and project YAML]
+  Api --> Workspace[workspace git repo]
+  Api --> Runs[runs artifacts]
+  Api --> OpenRouter[OpenRouter chat models]
+  Workspace --> Build[Allowlisted build and test]</pre>
+              </figure>
+              <p>Team composition and technology are two axes on purpose. Change who is on the team without touching Java. Change Gradle versus npm by swapping the seed and the project YAML.</p>
+              <figure class="diagram">
+                <figcaption>Team vs technology</figcaption>
+                <pre class="mermaid">flowchart TB
+  TeamYaml[config/teams/*.yaml] --> TeamBlueprint
+  ProjectYaml[config/projects/*.yaml] --> ProjectProfile
+  TeamBlueprint --> Pipeline[Sdlc pipeline]
+  ProjectProfile --> Pipeline
+  Seed[seeds/stack-id] --> Workspace[workspace/stack-id]
+  ProjectProfile --> Seed
+  Pipeline --> Workspace</pre>
+              </figure>
+              <p>The pipeline is nested loops with Java exit conditions. L3 and L4 only re-run the Developer when the previous verdict asked for changes. Hit a cap and the run is <code>ESCALATED</code>, not infinite.</p>
+              <figure class="diagram">
+                <figcaption>Pipeline and loops</figcaption>
+                <pre class="mermaid">flowchart TD
+  Start([Feature request]) --> PO[ProductOwner FeatureBrief]
+  PO --> SpecLoop
+  subgraph SpecLoop [L1 spec loop]
+    TL[TechLead AiSpec] --> Covered{All ACs traced?}
+    Covered -->|no and attempts left| TL
+  end
+  SpecLoop --> ImplLoop
+  subgraph ImplLoop [L2 implementation loop]
+    Dev[Developer file tools] --> Gate[Build gate real test cmd]
+    Gate --> Green{Build green?}
+    Green -->|no and attempts left| Dev
+  end
+  ImplLoop --> RevLoop
+  subgraph RevLoop [L3 review loop]
+    PR[PRReviewer git diff] --> NeedFix{REQUEST_CHANGES?}
+    NeedFix -->|yes| Rework[Developer plus rebuild]
+    Rework --> PR
+  end
+  RevLoop --> QaLoop
+  subgraph QaLoop [L4 QA loop]
+    QA[QA vs acceptance criteria] --> QaFail{FAIL?}
+    QaFail -->|yes| QaFix[Developer plus rebuild]
+    QaFix --> QA
+  end
+  QaLoop --> Commit[Commit branch write diff artifact]
+  Commit --> SH[Stakeholder]
+  SH -->|REJECTED and cycles left| PO
+  SH -->|APPROVED| Done([COMPLETED])
+  SH -->|cap reached| Escalated([ESCALATED])</pre>
+              </figure>
+
+              <h2 id="sequence-one-happy-path">Sequence: One Happy Path</h2>
+              <p>A run starts with <code>POST /api/v1/runs</code>. Artifacts land under <code>runs/&lt;id&gt;/</code>. Git never pushes. The UI follows SSE step events, then a final <code>GET</code>.</p>
+              <figure class="diagram">
+                <figcaption>Happy-path sequence</figcaption>
+                <pre class="mermaid">sequenceDiagram
+    actor Operator
+    participant API as sdlc-app
+    participant PO as Product Owner
+    participant TL as Tech Lead
+    participant Dev as Developer
+    participant Gate as Build gate
+    participant PR as PR Reviewer
+    participant QA as QA
+    participant SH as Stakeholder
+
+    Operator->>API: POST /api/v1/runs
+    API->>PO: featureRequest
+    PO-->>API: FeatureBrief
+    API->>TL: brief + file tree
+    TL-->>API: AiSpec (ACs traced)
+    API->>Dev: spec + tools
+    Dev-->>API: ChangeSummary
+    API->>Gate: allowlisted test argv
+    Gate-->>API: BuildResult success
+    API->>PR: spec + git diff
+    PR-->>API: APPROVE
+    API->>QA: ACs + diff + test output
+    QA-->>API: PASS
+    API->>SH: brief + spec + QA
+    SH-->>API: APPROVED
+    API-->>Operator: COMPLETED + artifacts</pre>
+              </figure>
+              <p>Rework is the same sequence with extra Developer plus build-gate turns inside L3 or L4. The outer stakeholder loop is the only path that restarts the Product Owner.</p>
+              <figure class="diagram">
+                <figcaption>Rework inside review and QA</figcaption>
+                <pre class="mermaid">sequenceDiagram
+    participant API as sdlc-app
+    participant Dev as Developer
+    participant Gate as Build gate
+    participant PR as PR Reviewer
+    participant QA as QA
+
+    Note over Dev,Gate: L2 already green
+    API-&gt;&gt;PR: spec + git diff
+    PR--&gt;&gt;API: REQUEST_CHANGES
+    API-&gt;&gt;Dev: reviewFeedback
+    Dev--&gt;&gt;API: ChangeSummary
+    API-&gt;&gt;Gate: test argv
+    Gate--&gt;&gt;API: BuildResult
+    API-&gt;&gt;PR: new source-only diff
+    PR--&gt;&gt;API: APPROVE
+    API-&gt;&gt;QA: ACs + executed tests
+    QA--&gt;&gt;API: FAIL
+    Note over API: L4 rework until PASS or cap</pre>
+              </figure>
+              <p>Those two sequences are the scenarios I actually care about: the happy path, and the rework path after the build is already green. A team simulator that cannot show the second one is just a chat with extra steps.</p>
+
+              <h2 id="team-composition-is-config-the-build-is-not">Team Composition Is Config. The Build Is Not.</h2>
+              <p>Java in this lab does not mention Gradle, npm, or "users CRUD." Who is on the team lives in team YAML. Caps live in the same file, because I wanted to change them without a redeploy of business logic.</p>
+              <figure class="code-block">
+                <figcaption>yaml</figcaption>
+                <pre><code class="language-yaml">policy:
+  maxSpecRework: 2
+  maxImplementationAttempts: 3
+  maxReviewCycles: 3
+  maxQaCycles: 3
+  maxStakeholderCycles: 2
+  qaPassThreshold: 80
+  stakeholderMode: AGENT</code></pre>
+              </figure>
+              <p>The default team looks like a small scrum cell:</p>
+              <table>
+                <thead>
+                  <tr><th>Role</th><th>Job</th><th>Model</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Product Owner</td><td><code>FeatureBrief</code> with Given/When/Then criteria</td><td>fast</td></tr>
+                  <tr><td>Tech Lead</td><td><code>AiSpec</code> that traces every criterion to a planned test</td><td>strong</td></tr>
+                  <tr><td>Developer</td><td>file tools, then a <code>ChangeSummary</code></td><td>strong</td></tr>
+                  <tr><td>Build gate</td><td>allowlisted test argv, not an LLM</td><td>none</td></tr>
+                  <tr><td>PR Reviewer</td><td><code>ReviewVerdict</code> against the diff</td><td>strong</td></tr>
+                  <tr><td>QA</td><td><code>QaVerdict</code> against criteria plus test output</td><td>fast</td></tr>
+                  <tr><td>Stakeholder</td><td>ship or send it back, with a cycle cap</td><td>fast</td></tr>
+                </tbody>
+              </table>
+              <p>The implementation loop is LangChain4j <code>loopBuilder</code> plus an <code>agentAction</code> that is not a chat model. Exit is <code>BuildResult.success</code>, not "the Developer said it was done."</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">return AgenticServices.loopBuilder()
+        .name("implementation-loop")
+        .subAgents(agents.developer(role, context, policy), buildGateAction(context))
+        .maxIterations(policy.maxImplementationAttempts())
+        .testExitAtLoopEnd(true)
+        .exitCondition(scope -&gt; {
+            BuildResult build = RunStateFactory.read(
+                    scope, StateKeys.BUILD_RESULT, BuildResult.none());
+            return build.success();
+        })
+        .build();</code></pre>
+              </figure>
+              <p>Review and QA wrap rework in <code>conditionalBuilder</code>: the Developer runs only when the previous verdict asked for changes. That last sentence is the whole design. An unbounded agent loop is a product defect with extra latency.</p>
+
+              <h2 id="typed-records-beat-prose">Typed Records Beat Prose</h2>
+              <p>Downstream loops branch on fields, not on whether the model sounded confident.</p>
+              <p>The Tech Lead cannot "cover" a brief with a paragraph. <code>AiSpec.covers(brief)</code> is a Java check: every acceptance-criterion id shows up once in traceability, with a planned test name. No planned test, the spec loop continues until the cap.</p>
+              <p>The reviewer is the same idea. Findings have a severity. Only error and blocker count. The compact constructor does not trust the model's <code>blockingCount</code> or its <code>decision</code> if those two disagree:</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">public ReviewVerdict {
+    findings = findings == null ? List.of() : List.copyOf(findings);
+    blockingCount = (int) findings.stream()
+            .filter(ReviewFinding::blocking)
+            .count();
+    decision = blockingCount &gt; 0 ? REQUEST_CHANGES : APPROVE;
+}</code></pre>
+              </figure>
+              <p>QA is harsher. If the planned test already ran on a green build, reconcile upgrades the row. The model does not get a veto over JUnit XML.</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">if (gate.success() &amp;&amp; ran(planned, gate)) {
+    results.add(new QaResult(criterion.id(), QaVerdict.PASS, evidence(planned, gate)));
+    continue;
+}</code></pre>
+              </figure>
+              <p>I have watched chat-based "QA agents" mark every AC PASS and still FAIL the loop with <code>score=0</code>. The record makes that a constructor problem, not a prompt problem. Prompts still matter. They restate the exit condition so the model does not fight the record. The record wins.</p>
+
+              <h2 id="the-developer-edits-files-it-does-not-run-tests">The Developer Edits Files. It Does Not Run Tests.</h2>
+              <p>The Developer is an <code>@Agent</code> interface. Tools are list/read/write/delete inside a path jail. The prompt is explicit: do not run tests. The gate owns that.</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">@UserMessage("""
+        AI spec:
+        {{aiSpec}}
+
+        Review feedback (may be empty):
+        {{reviewFeedback}}
+
+        Use listFiles, readFile, writeFile, and deleteFile.
+        Do not run tests; the build gate runs the allowlisted test command after your turn.
+        Return JSON for ChangeSummary.
+        """)
+@Agent(description = "Implements the AI spec by editing the repository",
+        outputKey = StateKeys.CHANGE_SUMMARY)
+ChangeSummary implement(
+        @V(StateKeys.AI_SPEC) AiSpec aiSpec,
+        @V(StateKeys.REVIEW_FEEDBACK) String reviewFeedback,
+        @V(StateKeys.BUILD_FEEDBACK) String buildFeedback);</code></pre>
+              </figure>
+              <p>That split is the same instinct as candidate-to-job fit scoring on ITJobOpportunities: the model handles messy text, Java owns the number a human will argue about. Here the model writes code. Java owns whether the suite passed.</p>
+
+              <h2 id="the-build-gate-is-not-an-agent">The Build Gate Is Not an Agent</h2>
+              <p>This is the part I will not negotiate.</p>
+              <p>The test command is an argv array from project YAML. Nested Gradle gets <code>--no-daemon</code> and an isolated <code>GRADLE_USER_HOME</code>. Git commits locally. Nothing pushes.</p>
+              <figure class="code-block">
+                <figcaption>yaml</figcaption>
+                <pre><code class="language-yaml">commands:
+  build: ["./gradlew", "compileJava", "--console=plain"]
+  test: ["./gradlew", "test", "--console=plain"]
+  check: ["./gradlew", "check", "--console=plain"]</code></pre>
+              </figure>
+              <p>The runner refuses anything that is not in that map. No shell string. No "the Developer asked to run this."</p>
+              <figure class="code-block">
+                <figcaption>java</figcaption>
+                <pre><code class="language-java">if (!isAllowlisted(profile, argv)) {
+    throw new CommandNotAllowedException(
+            "Command argv is not allowlisted for project " + profile.id() + ": " + argv);
+}</code></pre>
+              </figure>
+              <p>If that sounds like I do not trust the model around a working tree, good. I also do not trust a junior hire with <code>rm -rf /</code> on day one. Tools are permissions. Permissions are the architecture.</p>
+              <p>When the gate is green, that is evidence. When JUnit XML lists <code>unknownIdReturns404ProblemDetail</code>, that is evidence. An LLM saying "tests look good" is not evidence. I ended up teaching QA and the stakeholder to read the executed-test catalog instead of the truncated Gradle log, because the log never named the methods and the models kept failing a green build.</p>
+
+              <h2 id="a-small-feature-a-long-night">A Small Feature, A Long Night</h2>
+              <p>The playground service is a tiny users API. The request was ordinary: return 404 with an RFC 9457 problem detail when the id does not exist, and reject a blank name on create.</p>
+              <p>The first Developer pass often got the feature. The run still died in the loops after the gate was green.</p>
+              <p>One failure mode was empty reviewer content. A reasoning model put JSON in <code>thinking</code>, or nowhere, and LangChain4j tried to parse <code>null</code> into <code>ReviewVerdict</code>. The pipeline crashed before QA. That is not "the model is bad at code review." That is an output contract with no adapter.</p>
+              <p>Another was the diff. Gradle <code>build/</code> and <code>.gradle/</code> showed up in <code>git add</code>, filled a truncated diff, and the reviewer requested changes because <code>UserController.java</code> "was not in the diff." It was in the commit. The reviewer never saw it.</p>
+              <p>A third was QA scoring 67 because two of three criteria "had no test in the log," while JUnit XML had already run both methods. Stakeholder rejected. The outer loop restarted the whole SDLC. Expensive roles ran again to re-explain a feature that already existed.</p>
+              <p>None of those bugs needed a smarter model. They needed gitignore, pathspecs, JUnit XML, and a reconcile step that upgrades a noisy FAIL when the planned test already ran. Once that existed, APPROVE/PASS stopped being a personality trait of DeepSeek.</p>
+              <p>If you are using this as a team simulator, those three bugs are the point. A chat demo never surfaces "reviewer never saw the file" or "QA failed a green build." A scenario run does. Measure wall-clock after the first green build, not whether the first patch compiled. The waste is in the loops that do not believe the gate, and that is the process you are trying to test.</p>
+
+              <h2 id="where-id-push-back-on-the-hype">Where I'd Push Back on the Hype</h2>
+              <p>"Just add a developer agent" is the new "just add a microservice." If a ticket is a one-line fix and a human can run the tests, a six-role graph is theater.</p>
+              <p>More roles are not more quality. Each extra verdict is another chance to restart an expensive coding turn. I cap review at 3, QA at 3, stakeholder at 2. Those numbers are policy in YAML because I wanted to change them without touching Java. I also wanted the dashboard to show <code>ESCALATED</code> instead of a spinner that lies.</p>
+              <p>Do not let the reviewer invent files. If the finding cites a path that is not in the diff, it is noise. I had to write that into the prompt and then enforce it in <code>ReviewEvidence.reconcile</code>, because prompts are hints and Java is the rule.</p>
+              <p>Do not put <code>json_object</code> on a reasoning model and assume <code>content</code> will be populated. Structured output is a parser problem. Recover JSON from thinking if you must. If both are empty, fail closed into a typed fallback or stop the run with a readable error. Crashing inside a JDK proxy with <code>OutputParsingException</code> teaches the operator nothing.</p>
+              <p>And do not confuse a local lab with production autonomy. This orchestrator does not open GitHub PRs. It does not talk to your issue tracker. It does not deploy. Those are features I left out on purpose. A bounded loop against a seed service is how you learn the failure modes. Wiring it to <code>main</code> is how you learn them in incident review.</p>
+
+              <h2 id="what-id-actually-recommend">What I'd Actually Recommend</h2>
+              <p>If you want to simulate a development team this quarter, do not wait for a platform vendor to invent process for you.</p>
+              <p>One graph. Named artifacts. Typed verdicts. A build you did not generate with a prompt. Loop caps. Path jail. Allowlisted commands. Source-only diffs. Test names from the runner, not from the model's memory.</p>
+              <p>Start with a seed that already compiles. Write two scenarios: a happy-path 404, and a blank name that should fail validation. Watch where the run spends time. In my lab the strong model on Tech Lead, Developer, and Reviewer is the clock. Fast roles are cheap. Rework after a green build is the scenario you actually wanted to see.</p>
+              <p>This year, grow the catalog: review invents a file, QA ignores XML, stakeholder restarts a finished feature, cap hits <code>ESCALATED</code>. I still would not let this team merge to production unattended. I would let it fail in a workspace I can replay, with a diff, a JUnit list, and a verdict I can disagree with. That is the same bar I use for a junior on a throwaway branch: I do not need them to be magic. I need the process to make their mistakes cheap and visible.</p>
+              <p>The biggest unlock is not six personas. It is refusing to let a language model be the source of truth for "did the software work."</p>
+            </section>
+
+            <p class="article-end"><a class="back" href="https://my-tech-profile.dev/insights">← Back to Insights</a></p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <p class="who">José Adrián Alemán Rojas</p>
+      <p>Technical writing on backend platforms, architecture, and shipping reliable software.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/yaml.min.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#e8efe9",
+        primaryTextColor: "#131b2e",
+        primaryBorderColor: "#3d5a4a",
+        lineColor: "#131b2e",
+        secondaryColor: "#fff0a7",
+        tertiaryColor: "#fffef9",
+        fontFamily: "DM Sans, sans-serif",
+      },
+    });
+  </script>
+  <script>
+    document.querySelectorAll("pre code[class^='language-']").forEach((el) => hljs.highlightElement(el));
+    document.getElementById("copy-link").addEventListener("click", async function () {
+      const url = "https://my-tech-profile.dev/insights/an-ai-team-that-actually-ships";
+      try {
+        await navigator.clipboard.writeText(url);
+        this.textContent = "Copied";
+        setTimeout(() => { this.textContent = "Copy link"; }, 2000);
+      } catch {
+        this.textContent = "Copy link";
+      }
+    });
+  </script>
+</body>
+</html>

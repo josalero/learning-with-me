@@ -1,0 +1,30 @@
+flowchart TD
+  Start([Feature request]) --> PO[ProductOwner FeatureBrief]
+  PO --> SpecLoop
+  subgraph SpecLoop [L1 goal: every AC traced to a planned test]
+    TL[TechLead AiSpec] --> Covered{Covered?}
+    Covered -->|no and attempts left| TL
+  end
+  SpecLoop --> ImplLoop
+  subgraph ImplLoop [L2 goal: build is green]
+    Dev[Developer file tools] --> Gate[Build gate real test cmd]
+    Gate --> Green{Green?}
+    Green -->|no and attempts left| Dev
+  end
+  ImplLoop --> RevLoop
+  subgraph RevLoop [L3 goal: no blocking findings]
+    PR[PRReviewer git diff] --> NeedFix{REQUEST_CHANGES?}
+    NeedFix -->|yes| Rework[Developer plus rebuild]
+    Rework --> PR
+  end
+  RevLoop --> QaLoop
+  subgraph QaLoop [L4 goal: score above threshold]
+    QA[QA vs acceptance criteria] --> QaFail{FAIL?}
+    QaFail -->|yes| QaFix[Developer plus rebuild]
+    QaFix --> QA
+  end
+  QaLoop --> Commit[Commit branch write diff artifact]
+  Commit --> SH[Stakeholder]
+  SH -->|REJECTED and cycles left| PO
+  SH -->|APPROVED| Done([COMPLETED])
+  SH -->|cap reached| Escalated([ESCALATED])
