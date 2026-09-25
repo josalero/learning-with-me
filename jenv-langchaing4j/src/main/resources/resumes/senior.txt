@@ -1,0 +1,32 @@
+Sam Patel
+Staff Software Engineer
+
+Summary
+10 years of experience designing and operating Java services. Sets service boundaries, leads technical design reviews, and mentors engineers from implementation through production ownership.
+
+Experience
+
+Staff Software Engineer — Fieldnote Systems
+January 2021 – Present
+- Define the architecture for the billing platform: separate rating, invoicing, and payment services with explicit contracts.
+- Lead design reviews for cross-team changes and write the decision records other squads implement against.
+- Mentor four engineers, including promotion packets and weekly design coaching.
+- Introduce a shared library for idempotency keys and trace propagation so new services start with the same operational defaults.
+- Own the production readiness bar: SLOs, paging, rollback, and a game day before each major release.
+
+Senior Software Engineer — Copperlane Payments
+April 2018 – December 2020
+- Led the migration of a batch settlement job to an event-driven pipeline on Kafka and PostgreSQL.
+- Set the data-retention and audit approach used by three downstream services.
+- Coached mid-level engineers through their first on-call rotation and their first backward-compatible API change.
+
+Software Engineer — Ridge Software
+August 2016 – March 2018
+- Built customer and ledger APIs in Java and Spring Boot for an internal finance tool.
+- Introduced contract tests between the ledger service and the reporting job.
+
+Skills
+Java, Spring Boot, PostgreSQL, Kafka, API design, technical leadership, mentoring, incident response
+
+Education
+B.S. in Computer Science

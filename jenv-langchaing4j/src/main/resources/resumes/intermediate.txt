@@ -1,0 +1,27 @@
+Jordan Lee
+Software Engineer
+
+Summary
+4 years of experience building backend services. Delivers features from ticket to production with limited supervision, and owns a small Spring Boot service through design, release, and on-call.
+
+Experience
+
+Software Engineer — Brightpath Health
+March 2024 – Present
+- Own the appointment-reminder service: Spring Boot, PostgreSQL, and a REST API consumed by the patient portal.
+- Design the reminder schedule and retry rules, write the migration, and support the service in production.
+- Add an idempotent send endpoint so a client retry does not create a second notification.
+- Review pull requests for two teammates and document runbooks for the on-call rotation.
+
+Associate Software Engineer — Lumen Cart
+June 2022 – February 2024
+- Implemented checkout and order-status endpoints on an existing Spring Boot monolith.
+- Introduced Flyway migrations for two order tables and backfilled a status column with a verified script.
+- Cut p95 latency on the order-history query by replacing a select-all with a bounded page query.
+- Participated in incident reviews and shipped the follow-up fixes without a design partner on routine bugs.
+
+Skills
+Java, Spring Boot, PostgreSQL, REST, Flyway, JUnit, Docker, Git
+
+Education
+B.S. in Computer Science

@@ -1,0 +1,23 @@
+# Lab settings. Property roles are documented in docs/configuration.md.
+# OPENROUTER_API_KEY empty -> offline year rubric. Non-empty -> Jev on OpenRouter.
+server:
+  port: ${SERVER_PORT:8094}
+
+spring:
+  application:
+    name: jev-resume-seniority
+  main:
+    web-application-type: servlet
+
+app:
+  demo: ${APP_DEMO:true}
+  human-review-below: 0.70
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  base-url: https://openrouter.ai/api
+  decisions-path: /alpha/decisions
+  jev-model: typesafe/jev-1.13
+  chat-base-url: https://openrouter.ai/api/v1
+  chat-model: openai/gpt-4o-mini
+  explain: true

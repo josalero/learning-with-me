@@ -1,0 +1,22 @@
+Riley Chen
+Software developer
+
+Summary
+Builds small Java services with a mentor. The resume lists projects and tools and does not state a year count.
+
+Experience
+
+Software Developer — Northline Studio
+March 2025 – Present
+- Add endpoints to an internal booking API and cover them with JUnit tests.
+- Pair on pull requests before merge. Tasks are scoped by the tech lead.
+
+Projects
+- Course catalog API: list and filter endpoints, reviewed by an instructor.
+- Personal notes CLI used to practice Git.
+
+Skills
+Java, Spring Boot, JUnit, Git, SQL
+
+Education
+B.S. in Computer Science, in progress

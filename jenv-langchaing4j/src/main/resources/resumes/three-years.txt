@@ -1,0 +1,23 @@
+Morgan Ellis
+Software Engineer
+
+Summary
+3 years of experience delivering backend features on a product team, with design review on larger changes.
+
+Experience
+
+Software Engineer — Harbor & Co.
+January 2024 – Present
+- Ship order-status APIs in Spring Boot and PostgreSQL.
+- Own the release checklist for a single service, including rollback notes.
+
+Associate Software Engineer — Paperlane
+June 2023 – December 2023
+- Fixed production defects in a billing job and added regression tests.
+- Wrote the first Flyway migration for a status column.
+
+Skills
+Java, Spring Boot, PostgreSQL, REST, JUnit, Git
+
+Education
+B.S. in Computer Science

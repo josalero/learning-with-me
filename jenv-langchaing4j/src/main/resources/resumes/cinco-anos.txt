@@ -1,0 +1,22 @@
+Camila Soto
+Ingeniera de software
+
+Resumen
+5 años de experiencia entregando servicios backend con poca supervisión.
+
+Experiencia
+
+Ingeniera de software — Taller Norte
+Marzo 2022 – Presente
+- Diseña y opera un servicio de notificaciones en Spring Boot y PostgreSQL.
+- Revisa pull requests del equipo y escribe la guía de despliegue.
+
+Desarrolladora — Casa Luna
+Enero 2021 – Febrero 2022
+- Implementó endpoints de pedidos y migraciones de base de datos.
+
+Habilidades
+Java, Spring Boot, PostgreSQL, REST
+
+Formación
+Licenciatura en Ingeniería Informática

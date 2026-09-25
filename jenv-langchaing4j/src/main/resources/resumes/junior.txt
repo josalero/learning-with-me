@@ -1,0 +1,27 @@
+Alex Rivera
+Junior Software Developer
+
+Summary
+1 year of professional experience after a software-engineering bootcamp. Ships small backend changes with a mentor reviewing the design and the pull request. Comfortable with Java, Spring Boot, Git, and JUnit on a guided team.
+
+Experience
+
+Software Engineering Intern — Harborline Retail
+June 2025 – Present
+- Pair with a senior engineer on an internal inventory lookup API used by store associates.
+- Add request validation and integration tests for two Spring Boot endpoints, following an existing controller pattern.
+- Fix defects filed by QA on a product-search screen, including null handling and pagination off-by-one cases.
+- Attend sprint planning and demos; tasks are scoped and reviewed before merge.
+
+Projects
+
+Bootcamp capstone — Campus meal-plan tracker
+- Built a small REST API and a single-page UI with a partner. Instructors reviewed the schema and the deployment checklist.
+- Covered create, list, and mark-complete flows, plus a short README for local setup.
+
+Skills
+Java, Spring Boot, REST, JUnit, SQL, Git, HTML, CSS
+
+Education
+Software Engineering Bootcamp, certificate, 2025
+Coursework toward a B.S. in Computer Science, in progress

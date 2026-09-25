@@ -1,0 +1,24 @@
+Avery Shah
+Senior Software Engineer
+
+Summary
+7 years of experience designing Java services, reviewing designs, and mentoring engineers who are new to the on-call rotation.
+
+Experience
+
+Senior Software Engineer — Kindred Ledger
+April 2021 – Present
+- Set the service boundary between invoicing and payments and wrote the contract the other team implements.
+- Lead design reviews for changes that cross those services.
+- Mentor two engineers through their first backward-compatible API change.
+
+Software Engineer — Westmill
+August 2019 – March 2021
+- Built customer and ledger APIs in Spring Boot.
+- Introduced contract tests between the ledger service and the nightly report.
+
+Skills
+Java, Spring Boot, PostgreSQL, API design, mentoring
+
+Education
+B.S. in Computer Science

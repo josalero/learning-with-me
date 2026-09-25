@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resume seniority</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="banner">
+    <p class="eyebrow">Jev lab</p>
+    <h1>Resume seniority</h1>
+    <p class="lede">Paste a resume, load a text file, or start from a sample. The level is junior, intermediate, or senior.</p>
+  </header>
+
+  <main class="layout">
+    <form id="classify-form" class="panel">
+      <div class="field">
+        <label for="resume">Resume</label>
+        <textarea id="resume" name="resume" rows="14" required placeholder="Paste resume text"></textarea>
+      </div>
+
+      <fieldset class="samples">
+        <legend>Samples</legend>
+        <div id="sample-list" class="sample-list" role="group" aria-label="Sample resumes">
+          <p id="sample-status" role="status">Loading samples…</p>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <label class="file-label">
+          Load .txt
+          <input id="resume-file" type="file" accept=".txt,text/plain">
+        </label>
+        <button id="classify" type="submit">Classify resume</button>
+      </div>
+      <p id="form-error" class="error" role="alert" hidden></p>
+    </form>
+
+    <section class="panel" aria-labelledby="result-heading">
+      <h2 id="result-heading">Result</h2>
+      <div id="result" role="status" aria-live="polite">
+        <p class="empty">Classify a resume to see the level, confidence, and explanation.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

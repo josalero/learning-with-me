@@ -1,0 +1,22 @@
+Quinn Brooks
+Staff Software Engineer
+
+Summary
+9 years of experience. An early internship lasted 2 years and is called out below so the year counter must keep the higher number.
+
+Experience
+
+Staff Software Engineer — Redwood Platform
+February 2020 – Present
+- Define service boundaries for the billing platform and lead design reviews.
+- Mentor engineers and set the production-readiness bar for new services.
+
+Software Engineering Intern — Redwood Platform
+June 2017 – May 2019
+- 2 years on the internal tools team, pairing on bug fixes and small endpoints.
+
+Skills
+Java, Spring Boot, PostgreSQL, technical leadership
+
+Education
+B.S. in Computer Science
