@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'dev.mytechprofile.langchain122'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(26)
+    }
+}
+
+application {
+    mainClass = 'dev.mytechprofile.langchain122.WhatsNew'
+}
+
+dependencies {
+    implementation platform("dev.langchain4j:langchain4j-bom:${langchain4jVersion}")
+    implementation 'dev.langchain4j:langchain4j'
+    implementation 'dev.langchain4j:langchain4j-open-ai'
+    implementation 'dev.langchain4j:langchain4j-mcp'
+    runtimeOnly 'org.slf4j:slf4j-nop:2.0.17'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add('-parameters')
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    jvmArgs += '--enable-final-field-mutation=ALL-UNNAMED'
+}
+
+tasks.named('run') {
+    workingDir = rootProject.projectDir
+    jvmArgs += '--enable-final-field-mutation=ALL-UNNAMED'
+}
