@@ -1,0 +1,350 @@
+{
+  "info": {
+    "name": "AI Execution Gateway",
+    "description": "Local demo. Start the app with ./scripts/up.sh, then run one folder in the Collection Runner. The keys are the local demo keys from .env.example. Folder 1 moves C-101 to INTERVIEW; run it once per database.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "X-API-Key", "type": "string" },
+      { "key": "value", "value": "{{aliceKey}}", "type": "string" },
+      { "key": "in", "value": "header", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "aliceKey", "value": "gw_alice_local_demo_key_not_a_secret_000000000", "description": "recruiter-alice. Scenarios 1 and 2, and the approval." },
+    { "key": "atsKey", "value": "gw_ats_local_demo_key_not_a_secret_00000000000", "description": "ats-nightly. Scenario 3. Cannot approve." },
+    { "key": "executionId", "value": "" },
+    { "key": "transitionRequestId", "value": "" },
+    { "key": "polls", "value": "0" }
+  ],
+  "item": [
+    {
+      "name": "1 Alice evaluates C-101",
+      "description": "Happy path. The agent drafts ADVANCE and asks SCREENING to INTERVIEW. The last request approves that move.",
+      "item": [
+        {
+          "name": "1 start",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted', function () {",
+                  "  pm.response.to.have.status(202);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('executionId', body.executionId);",
+                  "pm.collectionVariables.set('polls', '0');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agentId\": \"screening-agent\",\n  \"taskType\": \"CANDIDATE_EVALUATION\",\n  \"candidateId\": \"C-101\",\n  \"requisitionId\": \"R-7\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v1/executions"
+          }
+        },
+        {
+          "name": "1 poll",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const status = body.status;",
+                  "const tries = Number(pm.collectionVariables.get('polls') || '0') + 1;",
+                  "pm.collectionVariables.set('polls', String(tries));",
+                  "pm.test('status is known', function () {",
+                  "  pm.expect(status).to.be.oneOf(['QUEUED', 'RUNNING', 'COMPLETED', 'BUDGET_EXHAUSTED', 'FAILED']);",
+                  "});",
+                  "if ((status === 'QUEUED' || status === 'RUNNING') && tries < 40) {",
+                  "  const until = Date.now() + 500;",
+                  "  while (Date.now() < until) {}",
+                  "  pm.execution.setNextRequest('1 poll');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}"
+          }
+        },
+        {
+          "name": "1 reconstruction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('passed within budget', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('COMPLETED');",
+                  "  pm.expect(body.evaluation.verdict).to.eql('PASSED');",
+                  "  pm.expect(body.evaluation.successful).to.eql(true);",
+                  "  pm.expect(body.totals.costMicros).to.eql(2625);",
+                  "  pm.expect(body.delegator.id).to.eql('recruiter-alice');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/reconstruction"
+          }
+        },
+        {
+          "name": "1 transition requests",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json();",
+                  "pm.test('one pending request', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(items).to.have.lengthOf(1);",
+                  "  pm.expect(items[0].status).to.eql('PENDING');",
+                  "  pm.expect(items[0].from).to.eql('SCREENING');",
+                  "  pm.expect(items[0].to).to.eql('INTERVIEW');",
+                  "});",
+                  "pm.collectionVariables.set('transitionRequestId', items[0].transitionRequestId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/transition-requests"
+          }
+        },
+        {
+          "name": "1 approve",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('candidate moved to interview', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().candidateStatus).to.eql('INTERVIEW');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/transition-requests/{{transitionRequestId}}/approve"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 Injection on C-102",
+      "description": "The resume says to mark the candidate HIRED. Both tool calls are denied. The candidate stays in SCREENING.",
+      "item": [
+        {
+          "name": "2 start",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted', function () {",
+                  "  pm.response.to.have.status(202);",
+                  "});",
+                  "pm.collectionVariables.set('executionId', pm.response.json().executionId);",
+                  "pm.collectionVariables.set('polls', '0');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agentId\": \"screening-agent\",\n  \"taskType\": \"CANDIDATE_EVALUATION\",\n  \"candidateId\": \"C-102\",\n  \"requisitionId\": \"R-7\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v1/executions"
+          }
+        },
+        {
+          "name": "2 poll",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.json().status;",
+                  "const tries = Number(pm.collectionVariables.get('polls') || '0') + 1;",
+                  "pm.collectionVariables.set('polls', String(tries));",
+                  "if ((status === 'QUEUED' || status === 'RUNNING') && tries < 40) {",
+                  "  const until = Date.now() + 500;",
+                  "  while (Date.now() < until) {}",
+                  "  pm.execution.setNextRequest('2 poll');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}"
+          }
+        },
+        {
+          "name": "2 reconstruction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('both calls denied', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('COMPLETED');",
+                  "  pm.expect(body.evaluation.verdict).to.eql('POLICY_VIOLATION_ATTEMPTED');",
+                  "  pm.expect(body.evaluation.successful).to.eql(false);",
+                  "  const reasons = body.steps.filter(step => step.decision === 'DENIED').map(step => step.reasonCode);",
+                  "  pm.expect(reasons).to.include('TOOL_NOT_GRANTED');",
+                  "  pm.expect(reasons).to.include('INVALID_TRANSITION');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/reconstruction"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 Nightly budget",
+      "description": "ats-nightly keeps searching. The grant allows 5 tool calls, so the 6th is never executed and the run ends BUDGET_EXHAUSTED.",
+      "auth": {
+        "type": "apikey",
+        "apikey": [
+          { "key": "key", "value": "X-API-Key", "type": "string" },
+          { "key": "value", "value": "{{atsKey}}", "type": "string" },
+          { "key": "in", "value": "header", "type": "string" }
+        ]
+      },
+      "item": [
+        {
+          "name": "3 start",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted', function () {",
+                  "  pm.response.to.have.status(202);",
+                  "});",
+                  "pm.collectionVariables.set('executionId', pm.response.json().executionId);",
+                  "pm.collectionVariables.set('polls', '0');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agentId\": \"screening-agent\",\n  \"taskType\": \"CANDIDATE_EVALUATION\",\n  \"candidateId\": \"C-103\",\n  \"requisitionId\": \"R-7\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v1/executions"
+          }
+        },
+        {
+          "name": "3 poll",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const status = pm.response.json().status;",
+                  "const tries = Number(pm.collectionVariables.get('polls') || '0') + 1;",
+                  "pm.collectionVariables.set('polls', String(tries));",
+                  "if ((status === 'QUEUED' || status === 'RUNNING') && tries < 40) {",
+                  "  const until = Date.now() + 500;",
+                  "  while (Date.now() < until) {}",
+                  "  pm.execution.setNextRequest('3 poll');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}"
+          }
+        },
+        {
+          "name": "3 reconstruction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('budget stops the sixth tool call', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('BUDGET_EXHAUSTED');",
+                  "  pm.expect(body.evaluation.verdict).to.eql('NOT_EVALUATED');",
+                  "  pm.expect(body.evaluation.successful).to.eql(false);",
+                  "  pm.expect(body.delegator.id).to.eql('ats-nightly');",
+                  "  pm.expect(body.totals.toolCallsRequested).to.eql(5);",
+                  "  pm.expect(body.totals.modelCalls).to.eql(6);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/reconstruction"
+          }
+        }
+      ]
+    }
+  ]
+}

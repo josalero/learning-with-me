@@ -1,0 +1,15 @@
+management:
+  tracing:
+    export:
+      enabled: false
+  otlp:
+    metrics:
+      export:
+        enabled: false
+
+logging:
+  level:
+    org.hibernate: WARN
+    org.flywaydb: WARN
+    io.opentelemetry: WARN
+    dev.langchain4j: WARN

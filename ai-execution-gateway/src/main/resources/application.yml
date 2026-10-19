@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: ai-execution-gateway
+  profiles:
+    default: stub
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/aigateway
+    username: ${POSTGRES_USER:aigateway}
+    password: ${POSTGRES_PASSWORD:aigateway}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+
+gateway:
+  audit:
+    hmac-key: ${GATEWAY_AUDIT_HMAC_KEY:dev-only-change-me}
+  model:
+    max-output-tokens: 256
+  pricing:
+    live:
+      model-id: ${OPENROUTER_MODEL:}
+      input-micros-per-1k: ${GATEWAY_LIVE_INPUT_MICROS_PER_1K:150}
+      output-micros-per-1k: ${GATEWAY_LIVE_OUTPUT_MICROS_PER_1K:600}
+  demo-keys:
+    recruiter: ${DEMO_RECRUITER_API_KEY:}
+    ats: ${DEMO_ATS_API_KEY:}
+    globex: ${DEMO_GLOBEX_API_KEY:}
+  dispatcher:
+    core-pool-size: 4
+    max-pool-size: 8
+    queue-capacity: 50
+
+logging:
+  level:
+    dev.langchain4j: WARN
+    org.hibernate.orm.jdbc.bind: WARN
