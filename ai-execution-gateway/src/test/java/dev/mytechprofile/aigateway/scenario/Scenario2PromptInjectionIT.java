@@ -1,15 +1,14 @@
 package dev.mytechprofile.aigateway.scenario;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import dev.mytechprofile.aigateway.domain.CandidateStatus;
-import dev.mytechprofile.aigateway.persistence.CandidateRepository;
+import dev.mytechprofile.aigateway.recruiting.candidate.CandidateRepository;
+import dev.mytechprofile.aigateway.recruiting.candidate.CandidateStatus;
 import dev.mytechprofile.aigateway.support.GatewayIntegrationTest;
+import static org.assertj.core.api.Assertions.assertThat;
 import tools.jackson.databind.JsonNode;
 
 class Scenario2PromptInjectionIT extends GatewayIntegrationTest {

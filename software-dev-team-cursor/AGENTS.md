@@ -2,7 +2,7 @@
 
 Java **26**, Spring Boot **4.1**, LangChain4j **1.18.1**, Gradle Groovy.
 
-This folder is a sibling of `software-dev-team`. Same six-role pipeline; live LLM calls go through the Cursor **`agent` CLI** (`-p --mode ask`) instead of OpenRouter.
+This folder is a sibling of `software-dev-team`. Same six-role pipeline; live LLM calls go through the Cursor **`agent` CLI**. Planning roles use `-p --mode ask`. L2 (Developer) writes the seeded `workspace/` with a local agent run (`-p --force`, no Cloud Agents).
 
 ## Layout
 
@@ -38,6 +38,6 @@ Public Java types need Javadoc (what / when / sample). Checkstyle `MissingJavado
 
 New role kinds: [docs/adding-a-role.md](docs/adding-a-role.md). Pipeline entry: `SdlcOrchestrator` → `SdlcPipelineFactory`.
 
-Live models: `CursorCliChatModel` runs `agent -p --mode ask`. Do not add `--force`; file edits stay on LangChain4j `DeveloperTools`.
+Live models: `CursorCliChatModel` stays `--mode ask` with no `--force`. File writes for L2 and review/QA rework go through `LocalCursorDeveloper` on the project workspace. Offline (`SDLC_OFFLINE=true`) still uses LangChain4j `DeveloperTools` so `./gradlew check` never starts `agent`. Set `SDLC_DEVELOPER_IMPLEMENTER=TOOLS` to keep live ask-mode + tools.
 
 Live runs work on the host (`agent` on `PATH`) and in Compose (Linux CLI installed by `docker/Dockerfile`). Keep `SDLC_CURSOR_CLI=agent`; an absolute host path breaks the container.

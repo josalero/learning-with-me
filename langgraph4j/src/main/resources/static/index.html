@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LangGraph4j orchestrates Cursor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-10 focus:bg-white focus:px-3 focus:py-2 focus:rounded focus:ring-2 focus:ring-teal-700">
+    Skip to main content
+  </a>
+  <header class="border-b border-slate-200 bg-white">
+    <div class="mx-auto max-w-5xl px-4 py-6">
+      <p class="text-sm font-medium uppercase tracking-wide text-teal-700">Learning lab</p>
+      <div class="mt-1 flex flex-wrap items-center gap-3">
+        <h1 class="text-2xl font-semibold">LangGraph4j orchestrates a Cursor Agent</h1>
+        <p id="mode-badge" class="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700" role="status">Loading implementer…</p>
+      </div>
+      <p class="mt-2 max-w-3xl text-slate-600">
+        Pick a scenario to exercise plan, interrupt, approve, reject, or a prompt override. The live implementer mode is server config, not a per-request switch.
+      </p>
+    </div>
+  </header>
+
+  <main id="main" class="mx-auto max-w-5xl px-4 py-8 space-y-6">
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="scenario-heading">
+      <h2 id="scenario-heading" class="text-lg font-semibold">1. Scenarios</h2>
+      <p id="scenario-status" class="mt-2 text-sm text-slate-600" role="status">Loading scenarios…</p>
+      <form id="scenario-form" class="mt-4 space-y-4" hidden>
+        <fieldset>
+          <legend class="sr-only">Choose a lab scenario</legend>
+          <div id="scenario-list" class="grid gap-3 md:grid-cols-2"></div>
+        </fieldset>
+        <div id="watch-panel" class="rounded-lg border border-slate-200 bg-slate-50 p-4" hidden>
+          <h3 class="text-sm font-semibold text-slate-800">Watch for</h3>
+          <p id="watch-expect" class="mt-1 text-sm text-slate-600"></p>
+          <ul id="watch-list" class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700"></ul>
+        </div>
+        <button type="submit" id="run-scenario"
+          class="rounded-md bg-teal-700 px-4 py-2 text-white hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 disabled:opacity-50">
+          Run scenario
+        </button>
+      </form>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="start-heading">
+      <h2 id="start-heading" class="text-lg font-semibold">2. Feature Brief</h2>
+      <p class="mt-1 text-sm text-slate-600">Selecting a scenario fills this brief. You can still edit it and start the graph yourself.</p>
+      <form id="start-form" class="mt-4 space-y-4">
+        <div>
+          <label for="brief" class="block text-sm font-medium">Brief</label>
+          <textarea id="brief" name="brief" rows="4"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700">Add a ping status of ok to the Java ping-service seed. PingService.status() must return the exact string ok.</textarea>
+        </div>
+        <button type="submit" id="start-button"
+          class="rounded-md border border-slate-300 bg-white px-4 py-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 disabled:opacity-50">
+          Start graph only
+        </button>
+      </form>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="thread-heading">
+      <h2 id="thread-heading" class="text-lg font-semibold">3. Thread</h2>
+      <p id="status" class="mt-2 text-sm text-slate-600" role="status">No thread yet. Run a scenario or start the graph.</p>
+      <dl id="thread-meta" class="mt-3 grid gap-2 text-sm sm:grid-cols-2" hidden></dl>
+      <pre id="prompt" class="mt-3 whitespace-pre-wrap rounded-md bg-slate-100 p-3 text-sm"></pre>
+      <form id="resume-form" class="mt-4 space-y-3" hidden>
+        <div>
+          <label for="prompt-override" class="block text-sm font-medium">Prompt override (optional)</label>
+          <textarea id="prompt-override" name="promptOverride" rows="3"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700"
+            placeholder="Leave blank to keep the planned prompt"></textarea>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <button type="submit" name="decision" value="APPROVE"
+            class="rounded-md bg-teal-700 px-4 py-2 text-white hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700">
+            Approve and implement
+          </button>
+          <button type="submit" name="decision" value="REJECT"
+            class="rounded-md border border-slate-300 bg-white px-4 py-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700">
+            Reject
+          </button>
+        </div>
+      </form>
+      <h3 class="mt-4 text-sm font-semibold">Steps</h3>
+      <ol id="steps" class="mt-2 list-decimal space-y-1 pl-5 text-sm"></ol>
+      <pre id="verify-output" class="mt-3 whitespace-pre-wrap rounded-md bg-slate-100 p-3 text-xs text-slate-700" hidden></pre>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="graph-heading">
+      <h2 id="graph-heading" class="text-lg font-semibold">Compiled graph</h2>
+      <pre id="mermaid" class="mt-3 overflow-x-auto whitespace-pre-wrap text-xs text-slate-700"></pre>
+    </section>
+  </main>
+
+  <script>
+    const scenarioStatusEl = document.getElementById('scenario-status');
+    const scenarioForm = document.getElementById('scenario-form');
+    const scenarioList = document.getElementById('scenario-list');
+    const watchPanel = document.getElementById('watch-panel');
+    const watchExpect = document.getElementById('watch-expect');
+    const watchList = document.getElementById('watch-list');
+    const statusEl = document.getElementById('status');
+    const promptEl = document.getElementById('prompt');
+    const stepsEl = document.getElementById('steps');
+    const resumeForm = document.getElementById('resume-form');
+    const threadMeta = document.getElementById('thread-meta');
+    const verifyOutput = document.getElementById('verify-output');
+    const modeBadge = document.getElementById('mode-badge');
+    const accents = {
+      amber: 'border-amber-300 bg-amber-50',
+      teal: 'border-teal-300 bg-teal-50',
+      rose: 'border-rose-300 bg-rose-50',
+      indigo: 'border-indigo-300 bg-indigo-50',
+      sky: 'border-sky-300 bg-sky-50'
+    };
+
+    let scenarios = [];
+    let selectedId = null;
+    let threadId = null;
+
+    function selectedScenario() {
+      return scenarios.find((item) => item.id === selectedId) || null;
+    }
+
+    function setBusy(busy) {
+      document.getElementById('run-scenario').disabled = busy;
+      document.getElementById('start-button').disabled = busy;
+    }
+
+    function showWatch(scenario) {
+      if (!scenario) {
+        watchPanel.hidden = true;
+        return;
+      }
+      watchPanel.hidden = false;
+      watchExpect.textContent = 'Expected status: ' + scenario.expectedStatus + ' · ' + scenario.durationHint;
+      watchList.replaceChildren();
+      (scenario.watchFor || []).forEach((item) => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        watchList.appendChild(li);
+      });
+    }
+
+    function renderScenarioCards() {
+      scenarioList.replaceChildren();
+      scenarios.forEach((scenario, index) => {
+        const accent = accents[scenario.accent] || 'border-slate-200 bg-white';
+        const label = document.createElement('label');
+        label.className = 'flex cursor-pointer gap-3 rounded-lg border p-4 focus-within:ring-2 focus-within:ring-teal-700 ' + accent;
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'scenario';
+        input.value = scenario.id;
+        input.checked = scenario.id === selectedId;
+        input.className = 'mt-1 text-teal-700 focus:ring-teal-700';
+        input.addEventListener('change', () => {
+          selectedId = scenario.id;
+          document.getElementById('brief').value = scenario.brief || '';
+          document.getElementById('prompt-override').value = scenario.promptOverride || '';
+          showWatch(scenario);
+        });
+        const body = document.createElement('span');
+        body.className = 'min-w-0';
+        const title = document.createElement('span');
+        title.className = 'block font-semibold';
+        title.textContent = scenario.step + '. ' + scenario.title;
+        const purpose = document.createElement('span');
+        purpose.className = 'mt-1 block text-sm text-slate-700';
+        purpose.textContent = scenario.purpose;
+        const meta = document.createElement('span');
+        meta.className = 'mt-2 block text-xs text-slate-600';
+        meta.textContent = (scenario.autoDecision ? 'Auto ' + scenario.autoDecision : 'Stops for your decision')
+          + ' · expect ' + scenario.expectedStatus;
+        body.append(title, purpose, meta);
+        label.append(input, body);
+        scenarioList.appendChild(label);
+        if (index === 0 && !selectedId) {
+          input.checked = true;
+          input.dispatchEvent(new Event('change'));
+        }
+      });
+    }
+
+    function addMeta(term, value) {
+      if (!value && value !== 0 && value !== false) {
+        return;
+      }
+      const dt = document.createElement('dt');
+      dt.className = 'font-medium text-slate-600';
+      dt.textContent = term;
+      const dd = document.createElement('dd');
+      dd.textContent = String(value);
+      threadMeta.append(dt, dd);
+    }
+
+    function render(task) {
+      threadId = task.threadId;
+      statusEl.textContent = task.status + (task.summary ? ' — ' + task.summary : '');
+      promptEl.textContent = task.prompt || '';
+      threadMeta.hidden = false;
+      threadMeta.replaceChildren();
+      addMeta('Thread', task.threadId);
+      addMeta('Status', task.status);
+      addMeta('Implementer', task.implementerMode || 'not run yet');
+      addMeta('Retries', task.retryCount);
+      addMeta('Verify passed', task.verifyPassed);
+      stepsEl.replaceChildren();
+      (task.steps || []).forEach((step) => {
+        const item = document.createElement('li');
+        item.textContent = step;
+        stepsEl.appendChild(item);
+      });
+      if (task.verifyOutput) {
+        verifyOutput.hidden = false;
+        verifyOutput.textContent = task.verifyOutput;
+      } else {
+        verifyOutput.hidden = true;
+        verifyOutput.textContent = '';
+      }
+      resumeForm.hidden = task.status !== 'WAITING_APPROVAL';
+    }
+
+    async function readJson(response, fallback) {
+      if (!response.ok) {
+        throw new Error(fallback);
+      }
+      return response.json();
+    }
+
+    document.getElementById('scenario-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const scenario = selectedScenario();
+      if (!scenario) {
+        scenarioStatusEl.textContent = 'Select a scenario first.';
+        return;
+      }
+      setBusy(true);
+      statusEl.textContent = 'Running ' + scenario.title + '…';
+      try {
+        const task = await readJson(await fetch('/api/v1/scenarios/' + scenario.id + '/run', {
+          method: 'POST'
+        }), 'Scenario failed');
+        render(task);
+        scenarioStatusEl.textContent = 'Ran ' + scenario.title + '. Compare the thread with the watch list.';
+      } catch (error) {
+        statusEl.textContent = 'Could not run the scenario. Check the API is running.';
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    document.getElementById('start-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setBusy(true);
+      statusEl.textContent = 'Planning…';
+      try {
+        const task = await readJson(await fetch('/api/v1/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brief: document.getElementById('brief').value })
+        }), 'Start failed');
+        render(task);
+      } catch (error) {
+        statusEl.textContent = 'Could not start the graph. Check the API is running.';
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    resumeForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const decision = event.submitter?.value;
+      if (!threadId || !decision) {
+        return;
+      }
+      setBusy(true);
+      statusEl.textContent = decision === 'APPROVE' ? 'Implementing…' : 'Rejecting…';
+      resumeForm.hidden = true;
+      try {
+        const override = document.getElementById('prompt-override').value.trim();
+        const task = await readJson(await fetch('/api/v1/tasks/' + threadId + '/resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            decision,
+            promptOverride: override || null
+          })
+        }), 'Resume failed');
+        render(task);
+      } catch (error) {
+        statusEl.textContent = 'Could not resume the graph.';
+      } finally {
+        setBusy(false);
+      }
+    });
+
+    fetch('/api/v1/scenarios')
+      .then((response) => readJson(response, 'Scenarios unavailable'))
+      .then((body) => {
+        scenarios = body;
+        scenarioForm.hidden = false;
+        scenarioStatusEl.textContent = 'Choose a recipe, then run it or start the graph yourself.';
+        renderScenarioCards();
+      })
+      .catch(() => {
+        scenarioStatusEl.textContent = 'Could not load scenarios. Start the API, then refresh.';
+      });
+
+    fetch('/api/v1/meta')
+      .then((response) => readJson(response, 'Meta unavailable'))
+      .then((meta) => {
+        modeBadge.textContent = 'Implementer: ' + (meta.implementerMode || 'unknown');
+      })
+      .catch(() => {
+        modeBadge.textContent = 'Implementer unavailable';
+      });
+
+    fetch('/api/v1/graph')
+      .then((response) => response.json())
+      .then((body) => {
+        document.getElementById('mermaid').textContent = body.mermaid || '';
+      })
+      .catch(() => {
+        document.getElementById('mermaid').textContent = 'Graph unavailable until the API is running.';
+      });
+  </script>
+</body>
+</html>

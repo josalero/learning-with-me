@@ -18,7 +18,9 @@ Workflow for each run:
 - [Scenario 2: Injection on C-102](docs/scenarios/02-injection-on-c-102.md)
 - [Scenario 3: Nightly budget on C-103](docs/scenarios/03-nightly-budget-c-103.md)
 
-The live model adapter is **LangChain4j 1.22** (`OpenAiChatModel` against OpenRouter). The gateway owns the tool loop and calls `ChatModel.chat(ChatRequest)`. It does not use LangChain4j `AiServices` automatic tool execution. Tests use a deterministic stub. The original plan file was left unchanged.
+The live model adapter is **LangChain4j 1.22** (`OpenAiChatModel` against OpenRouter). The gateway owns the tool loop and calls `ChatModel.chat(ChatRequest)`. It does not use LangChain4j `AiServices` automatic tool execution. Tests and the default profile use a deterministic stub, so every run produces the same numbers.
+
+This is an experiment, not a product. What it deliberately does not do, and the cost of each simplification, is listed under "Decisions and known limits" and "Out of scope" in [docs/architecture.md](docs/architecture.md). That file also gives the order in which to read the code.
 
 ## Stack
 
@@ -32,7 +34,7 @@ Java 26, Gradle, Spring Boot 4.1.0, PostgreSQL 18, Redis 7, Flyway, OpenTelemetr
 ./scripts/up.sh
 ```
 
-That copies `.env.example` to `.env` when `.env` is missing, then builds and starts Postgres, Redis, the OpenTelemetry collector, and the gateway. The API listens on http://localhost:8080 with the `stub` profile. Inside the compose network the gateway talks to `postgres`, `redis`, and `otel`; the OTLP URL in `.env` is for a host-run process and is not used by the container. In another terminal:
+That copies `.env.example` to `.env` when `.env` is missing, then builds and starts Postgres, Redis, the OpenTelemetry collector (Grafana on http://localhost:3000), and the gateway. The API listens on http://localhost:8080 with the `stub` profile. Only Docker is required; Java 26 is needed only to run the tests. In another terminal:
 
 ```sh
 ./scripts/run-scenario.sh 1   # Alice evaluates C-101 and approves the transition
@@ -40,13 +42,21 @@ That copies `.env.example` to `.env` when `.env` is missing, then builds and sta
 ./scripts/run-scenario.sh 3   # nightly batch; the 6th tool call is not executed
 ```
 
-The script reads the keys from `.env`. `DEMO_GLOBEX_API_KEY` is only for a cross-tenant 404; the three commands above do not need it.
+The script needs `curl` and `python3` and reads the keys from `.env`. `DEMO_GLOBEX_API_KEY` is only for a cross-tenant 404; the three commands above do not need it.
 
-The same three runs are in `postman/ai-execution-gateway.postman_collection.json`. Import that file in Postman and run one folder with the Collection Runner. The collection already has the demo keys. Scenario 1 polls until the run finishes, then approves the pending transition. No Postgres query.
+The same three runs are in `postman/ai-execution-gateway.postman_collection.json`. Import that file in Postman and run the folders in order with the Collection Runner. The collection already has the demo keys. Folder 4 checks the guardrails: no key is `401`, another tenant gets `404`, the ATS service cannot approve (`403`), and a second approval is `409`.
+
+Scenario 1 moves C-101 to INTERVIEW, so a second run is denied. Reset all data with:
+
+```sh
+docker compose down -v && ./scripts/up.sh
+```
+
+To try a real model, set `GATEWAY_PROFILE=live`, `OPENROUTER_API_KEY`, and `OPENROUTER_MODEL` in `.env`, then run `./scripts/up.sh` again. The numbers will no longer match the table below.
 
 `DemoKeyBootstrap` (profiles `stub` and `live`) stores SHA-256 hashes of those keys. A missing variable is skipped with a warning. The `test` profile does not bootstrap keys.
 
-Live OpenRouter (`--spring.profiles.active=live`) requires `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`. Request and response logging is off.
+On the live profile, request and response logging is off.
 
 ## Measured results
 
@@ -71,4 +81,4 @@ jenv shell 26
 ./gradlew check
 ```
 
-`check` runs the full test suite and JaCoCo line coverage with a minimum of 80%. Last run: **36 tests, 0 failures**. JaCoCo LINE coverage **1053 covered, 112 missed (90.39%)**. `jacocoTestCoverageVerification` passed.
+`check` runs the full test suite and JaCoCo line coverage with a minimum of 80%. Last run: **39 tests, 0 failures**. JaCoCo LINE coverage **1076 covered, 103 missed (91.26%)**. `jacocoTestCoverageVerification` passed.

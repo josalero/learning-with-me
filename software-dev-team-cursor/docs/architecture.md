@@ -89,7 +89,7 @@ flowchart TD
   end
   SpecLoop --> ImplLoop
   subgraph ImplLoop [L2 implementation loop]
-    Dev[Developer file tools] --> Gate[Build gate real test cmd]
+    Dev[Developer local Cursor agent or file tools] --> Gate[Build gate real test cmd]
     Gate --> Green{Build green?}
     Green -->|no and attempts left| Dev
   end
@@ -184,6 +184,7 @@ flowchart TB
 - Commands are argv arrays from project YAML. The agent cannot invent a shell string.
 - Nested Gradle gets `--no-daemon` and `workspace/.gradle-home`.
 - Secrets stay in env (`CURSOR_API_KEY`). The CLI binary is `agent` (`SDLC_CURSOR_CLI`).
+- Live L2 defaults to the local Cursor agent on `workspace/` (`SDLC_DEVELOPER_IMPLEMENTER=CURSOR`). Other roles stay `--mode ask`. Offline and `TOOLS` keep path-jailed `DeveloperTools`. The build gate remains the source of truth.
 
 ## Run artifacts
 

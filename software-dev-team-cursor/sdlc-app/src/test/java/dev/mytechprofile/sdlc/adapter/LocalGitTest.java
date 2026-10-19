@@ -88,4 +88,24 @@ class LocalGitTest {
         assertThat(committed).contains("UserController.java");
         assertThat(committed).doesNotContain("index.html");
     }
+
+    @Test
+    void changedSourcePaths_listsEditedAndNewSource_omitsBuildOutput() throws Exception {
+        Path repo = temp.resolve("repo");
+        Files.createDirectories(repo.resolve("src"));
+        LocalGit git = new LocalGit();
+        git.initIfNeeded(repo);
+        Files.writeString(repo.resolve("src/UserController.java"), "class UserController {}\n");
+        git.commitAll(repo, "chore: seed");
+
+        Files.writeString(repo.resolve("src/UserController.java"), "class UserController { int x; }\n");
+        Files.writeString(repo.resolve("src/ProblemDetail.java"), "public record ProblemDetail(String type) {}\n");
+        Path report = repo.resolve("build/reports/tests/test/index.html");
+        Files.createDirectories(report.getParent());
+        Files.writeString(report, "<html>noise</html>\n");
+
+        assertThat(git.changedSourcePaths(repo))
+                .contains("src/UserController.java", "src/ProblemDetail.java")
+                .doesNotContain("build/reports/tests/test/index.html");
+    }
 }

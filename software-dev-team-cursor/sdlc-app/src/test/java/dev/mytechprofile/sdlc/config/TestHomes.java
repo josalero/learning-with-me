@@ -11,7 +11,7 @@ final class TestHomes {
     }
 
     static SdlcProperties properties(Path home, boolean offline) {
-        return new SdlcProperties(
+        return SdlcProperties.of(
                 home, "", "agent", 256, Duration.ofMinutes(3), "fast", "strong", 8_000, Duration.ofMinutes(1), offline);
     }
 

@@ -1,0 +1,61 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'dev.mytechprofile.langgraph4j'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(26)
+    }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:4.1.0'
+        mavenBom "org.bsc.langgraph4j:langgraph4j-bom:${langgraph4jVersion}"
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    implementation 'org.bsc.langgraph4j:langgraph4j-core'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+tasks.named('test') {
+    useJUnitPlatform {
+        excludeTags 'cursor'
+    }
+}
+
+tasks.register('cursorTest', Test) {
+    description = 'Runs tests that call the live Cursor Cloud Agents API (CURSOR_API_KEY).'
+    group = 'verification'
+    useJUnitPlatform {
+        includeTags 'cursor'
+    }
+    shouldRunAfter test
+}
+
+tasks.named('check') {
+    dependsOn test
+}
+
+tasks.named('bootJar') {
+    archiveBaseName = 'langgraph4j-poc'
+    archiveClassifier = ''
+}
+
+bootRun {
+    workingDir = rootProject.projectDir
+}

@@ -1,7 +1,5 @@
 package dev.mytechprofile.aigateway.scenario;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -9,15 +7,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import dev.mytechprofile.aigateway.domain.CandidateStatus;
-import dev.mytechprofile.aigateway.persistence.CandidateRepository;
-import dev.mytechprofile.aigateway.security.ApiKeyAuthenticationFilter;
+import dev.mytechprofile.aigateway.recruiting.candidate.CandidateRepository;
+import dev.mytechprofile.aigateway.recruiting.candidate.CandidateStatus;
+import dev.mytechprofile.aigateway.shared.security.ApiKeyAuthenticationFilter;
 import dev.mytechprofile.aigateway.support.GatewayIntegrationTest;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.data.SpanData;
+import static org.assertj.core.api.Assertions.assertThat;
 import tools.jackson.databind.JsonNode;
 
 @ExtendWith(OutputCaptureExtension.class)

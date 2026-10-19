@@ -25,7 +25,7 @@ class ChatModelFactoryTest {
 
     @Test
     void modelFor_whenLive_buildsCursorCliChatModelWithConfiguredTimeout() {
-        SdlcProperties properties = new SdlcProperties(
+        SdlcProperties properties = SdlcProperties.of(
                 home,
                 "test-key",
                 "agent",

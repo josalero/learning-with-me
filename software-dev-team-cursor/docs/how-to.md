@@ -31,7 +31,8 @@ cp .env.example .env
 | `MODEL_STRONG` | Tech Lead, Developer, PR Reviewer |
 | `SDLC_HOME` | Catalog/workspace/runs root (default `.`) |
 | `SDLC_PORT` | HTTP port (default `8096`) |
-| `SDLC_OFFLINE` | `true` uses a canned `ChatModel` (no API key). Does not implement the demo feature. |
+| `SDLC_OFFLINE` | `true` uses a canned `ChatModel` (no API key). Does not implement the demo feature. Forces `DeveloperTools`. |
+| `SDLC_DEVELOPER_IMPLEMENTER` | Live L2 writer: `CURSOR` (default, local workspace agent) or `TOOLS`. |
 
 Export the file into the shell, or rely on your process manager. Spring reads `CURSOR_*` and `MODEL_*` from the environment.
 
@@ -77,7 +78,7 @@ export SDLC_OFFLINE=true
 
 Dashboard: `http://localhost:8096/` (Feature, Teams, Projects, Results).
 
-For live models, `export $(grep -v '^#' .env | xargs)` instead of `SDLC_OFFLINE`.
+For live models, `export $(grep -v '^#' .env | xargs)` instead of `SDLC_OFFLINE`. The Developer then edits `workspace/` with the local Cursor agent (`SDLC_DEVELOPER_IMPLEMENTER=CURSOR`). Other roles stay ask-mode. Raise `SDLC_LLM_TIMEOUT` to `PT15M` if implement times out.
 
 ## 5b. Docker Compose
 
@@ -240,6 +241,7 @@ Node example: [config/projects/users-service-node.yaml](../config/projects/users
 | File jail | `FileWorkspace` |
 | Build gate | `ProcessCommandRunner` |
 | Pipeline | `SdlcOrchestrator` / `SdlcPipelineFactory` |
+| Local Cursor L2 | `LocalCursorDeveloper` |
 | HTTP | `RunController`, [api.md](api.md) |
 | State keys | [agent-state.md](agent-state.md) |
 

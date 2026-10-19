@@ -11,6 +11,10 @@ spring:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/aigateway
     username: ${POSTGRES_USER:aigateway}
     password: ${POSTGRES_PASSWORD:aigateway}
+    # Each running execution holds one connection for its whole loop.
+    # Keep this above gateway.dispatcher.max-pool-size so API requests still get one.
+    hikari:
+      maximum-pool-size: 10
   data:
     redis:
       host: ${REDIS_HOST:localhost}

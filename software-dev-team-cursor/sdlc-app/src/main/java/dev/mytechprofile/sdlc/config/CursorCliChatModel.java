@@ -23,8 +23,9 @@ import java.util.stream.Collectors;
 /**
  * LangChain4j {@link ChatModel} that shells out to the Cursor {@code agent} CLI.
  *
- * <p><strong>When to use:</strong> live runs instead of OpenRouter. Always uses {@code --mode ask}
- * so the CLI does not write files; Developer and Tech Lead still edit through LangChain4j tools.
+ * <p><strong>When to use:</strong> live ask-mode roles (PO, Tech Lead, Review, QA, Stakeholder).
+ * Always uses {@code --mode ask} and never {@code --force}. L2 file writes go through {@code
+ * LocalCursorDeveloper} on the seeded workspace.
  *
  * <p><strong>Example:</strong> a Developer request with {@code writeFile} in the tool list gets a
  * {@code type=tool_call} JSON reply, which this class turns into {@link ToolExecutionRequest}.

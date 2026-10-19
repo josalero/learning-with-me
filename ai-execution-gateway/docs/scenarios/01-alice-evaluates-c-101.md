@@ -50,7 +50,7 @@ sequenceDiagram
 
 1. Alice sends `POST /api/v1/executions` with `agentId=screening-agent`, `taskType=CANDIDATE_EVALUATION`, `candidateId=C-101`, `requisitionId=R-7`, and header `X-API-Key`.
 2. The filter accepts the key. The agent exists, the grant is active, and C-101 belongs to acme. The row is saved as `QUEUED`. The response is `202` with `{executionId, traceId, status}`.
-3. The worker runs the loop. Each model turn reserves 1 model call, 750 tokens, and 525 micro-USD before the stub answers. Each tool call reserves 1 tool call before authorization.
+3. A worker thread marks the row `RUNNING` and runs the loop. Each model turn reserves 1 model call, 750 tokens, and 525 micro-USD before the stub answers. Each tool call reserves 1 tool call before authorization.
 4. **Turn 1.** The stub calls `get_candidate_summary`. Spring permits it (`candidates:read`) and returns status, requisition, skills, and years of experience. No name and no email.
 5. **Turn 2.** The stub calls `search_evidence` with query `skills`. Spring permits it (`evidence:read`) and returns E-1, E-2, and E-3. Those ids are appended to the execution's retrieved evidence.
 6. **Turn 3.** The stub calls `draft_recommendation` with recommendation `ADVANCE` and citations E-1 and E-2. Spring permits it and stores the draft. The tool result includes `draftId`. The reconstruction stores only the HMAC of that result.
@@ -72,4 +72,4 @@ sequenceDiagram
 | Candidate before approve | `SCREENING` |
 | Candidate after approve | `INTERVIEW` |
 
-Run this scenario once per database. A second run finds C-101 already in `INTERVIEW`, so the transition request is no longer valid.
+Run this scenario once per database. A second run finds C-101 already in `INTERVIEW`, so turn 4 is denied with `INVALID_TRANSITION` and the verdict becomes `POLICY_VIOLATION_ATTEMPTED`. To start again from `SCREENING`, reset the data with `docker compose down -v && ./scripts/up.sh`.

@@ -10,7 +10,7 @@ This is a sibling of [`../software-dev-team`](../software-dev-team). The pipelin
 | App | Spring Boot 4.1 |
 | Agents | LangChain4j 1.18.1 + `langchain4j-agentic` 1.18.1-beta28 |
 | Build | Gradle Groovy |
-| LLM | Cursor CLI (`agent -p --mode ask`), or `SDLC_OFFLINE=true` |
+| LLM | Cursor CLI (ask-mode roles + local agent for L2), or `SDLC_OFFLINE=true` |
 | HTTP | Port **8096** (8095 stays with the OpenRouter lab) |
 
 ## Docs
@@ -51,7 +51,7 @@ export $(grep -v '^#' .env | xargs)
 ./gradlew :sdlc-app:bootRun
 ```
 
-The CLI is invoked as `agent -p --mode ask` so it cannot write the workspace. Developer file edits still go through LangChain4j tools.
+Planning roles use `agent -p --mode ask`. The Developer writes `workspace/` with a local `agent -p --force` run (`SDLC_DEVELOPER_IMPLEMENTER=CURSOR`). Offline still uses LangChain4j `DeveloperTools`. No Cloud Agents.
 
 Docker runs both modes. The runtime image installs the Linux Cursor CLI, so live runs work in Compose as long as `CURSOR_API_KEY` is set and `SDLC_CURSOR_CLI` stays `agent` (a host path breaks the container).
 

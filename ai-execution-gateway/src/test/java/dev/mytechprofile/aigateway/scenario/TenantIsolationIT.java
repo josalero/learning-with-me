@@ -1,15 +1,13 @@
 package dev.mytechprofile.aigateway.scenario;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
-import dev.mytechprofile.aigateway.security.ApiKeyAuthenticationFilter;
+import dev.mytechprofile.aigateway.shared.security.ApiKeyAuthenticationFilter;
 import dev.mytechprofile.aigateway.support.GatewayIntegrationTest;
-
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 

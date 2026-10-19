@@ -81,6 +81,36 @@ public final class LocalGit implements VersionControlPort {
         return !exec(repo, List.of("git", "status", "--porcelain")).stdout().isBlank();
     }
 
+    @Override
+    public List<String> changedSourcePaths(Path repo) {
+        prepareIgnoreRules(repo);
+        String porcelain = exec(repo, withSourcePathspecs("git", "status", "--porcelain"), 0, 1)
+                .stdout();
+        return parsePorcelainPaths(porcelain);
+    }
+
+    static List<String> parsePorcelainPaths(String porcelain) {
+        if (porcelain == null || porcelain.isBlank()) {
+            return List.of();
+        }
+        List<String> paths = new ArrayList<>();
+        for (String line : porcelain.split("\n")) {
+            if (line.length() < 4) {
+                continue;
+            }
+            String rest = line.substring(3).trim();
+            int arrow = rest.indexOf(" -> ");
+            String path = arrow >= 0 ? rest.substring(arrow + 4).trim() : rest;
+            if (path.startsWith("\"") && path.endsWith("\"") && path.length() >= 2) {
+                path = path.substring(1, path.length() - 1);
+            }
+            if (!path.isBlank()) {
+                paths.add(path);
+            }
+        }
+        return List.copyOf(paths);
+    }
+
     private static void prepareIgnoreRules(Path repo) {
         ensureGitignore(repo);
         unstageGenerated(repo);

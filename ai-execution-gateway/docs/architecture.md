@@ -6,44 +6,78 @@ The domain is synthetic recruiting, loaded by Flyway. It does not talk to a real
 
 ## Execution flow
 
+Each box names the package that owns the step. `shared/` is used by every step, `gateway/` holds the steps in this order, and `recruiting/` is the domain the scenarios run against.
+
 ```mermaid
 flowchart TD
-  Req["POST /api/v1/executions"] --> Auth["Authenticate: ApiKeyAuthenticationFilter"]
-  Auth --> Agent["Resolve agent: AgentResolver"]
-  Agent --> Perms["Load grant and tool policy"]
-  Perms --> Queue["Persist QUEUED and return 202"]
-  Queue --> Loop["ExecutionOrchestrator"]
-  Loop --> Budget["Reserve budget: BudgetGuard"]
-  Budget --> Model["Call the model: ModelGateway"]
-  Model --> Decide{"Did it request tools?"}
-  Decide -->|no| Eval["Evaluate and complete"]
-  Decide -->|yes| Authz["Authorize: ToolAuthorizer"]
-  Authz -->|permitted| Exec["Run GovernedTool"]
-  Authz -->|denied| Deny["Return denied to the model"]
-  Exec --> Record["Record the step with HMAC and span"]
+  subgraph shared["shared/"]
+    Req["api: POST /api/v1/executions"] --> Auth["security: authenticate the API key"]
+  end
+  subgraph gateway["gateway/"]
+    Agent["delegation: resolve agent, grant, and tool policy"]
+    Queue["execution: persist QUEUED, return 202, dispatch"]
+    Loop["execution: ExecutionOrchestrator turn"]
+    Budget["budget: reserve before the call"]
+    Model["model: ask the model"]
+    Decide{"Did it request tools?"}
+    Authz["authority: ToolAuthorizer"]
+    Exec["tools: run the GovernedTool"]
+    Deny["authority: return denied to the model"]
+    Record["audit: record the step, HMAC, and span"]
+    Eval["evaluation: verdict"]
+  end
+  subgraph recruiting["recruiting/"]
+    Impl["tools: the five tool classes, reading candidate/ and writing recommendation/ or transition/"]
+    Approve["transition: TransitionApprovalService, a user approves"]
+  end
+  Auth --> Agent --> Queue --> Loop --> Budget --> Model --> Decide
+  Decide -->|no| Eval
+  Decide -->|yes| Authz
+  Authz -->|permitted| Exec
+  Exec --> Impl
+  Authz -->|denied| Deny
+  Exec --> Record
   Deny --> Record
   Record --> Loop
   Eval --> Done["COMPLETED, BUDGET_EXHAUSTED, or FAILED"]
+  Done -.->|a PENDING transition request| Approve
 ```
 
 That loop is the experiment. Budget is checked before every model call and before every tool call, not once at the start. A denial does not abort the turn: the model receives `{"denied":true,"reason":"..."}` and can continue. The hard cap is 10 turns. Hitting it leaves the execution `FAILED` with reason `MAX_TURNS`.
 
 `POST /api/v1/executions` validates on the request thread (agent, active grant, candidate in the same tenant) and returns `202` with `{executionId, traceId, status}` and a `Location` header. The work runs afterward on a bounded pool (core 4, max 8, queue 50). A full queue returns `503`. The client polls `GET /api/v1/executions/{id}` until the status is terminal.
 
+### Execution lifecycle
+
+```text
+QUEUED ──► RUNNING ──► COMPLETED          the model stopped asking for tools
+                   ├─► BUDGET_EXHAUSTED   a model or tool reservation would pass a limit
+                   └─► FAILED             MAX_TURNS, or an unexpected error (UNEXPECTED)
+QUEUED ──► FAILED                         the pool rejected the work (DISPATCH_REJECTED)
+```
+
+`ExecutionOrchestrator.run` uses three short transactions:
+
+1. Mark the row `RUNNING` and commit, so a poller sees it.
+2. Run the loop. Every step and the terminal status commit together.
+3. Only if step 2 threw, mark the row `FAILED` with reason `UNEXPECTED`. The steps from the failed loop roll back with it.
+
+`COMPLETED` means the flow ended. It does not mean the task was good. Read `evaluation.successful` for that.
+
 ## Who decides what
 
-| Step | Class | What it does |
-| --- | --- | --- |
-| Authenticate | `ApiKeyAuthenticationFilter` | Reads `X-API-Key`. The shape is `gw_` plus 43 base64url characters. Only the SHA-256 is stored. A missing, malformed, or unknown key is `401`. |
-| Identity | `GatewayPrincipal` | Id, kind `USER` or `SERVICE`, tenant, and scopes. The tenant comes from the principal row, not the body. |
-| Agent and permissions | `AgentResolver` | The agent exists and there is a current `delegation_grant` from that principal to that agent. |
-| Budget | `BudgetGuard` | Redis counters `budget:{executionId}:{tokens\|modelCalls\|toolCalls\|costMicros}`, TTL 24 h. `INCRBY`; past the limit, `DECRBY` the same amount and throw `BudgetExhaustedException`. |
-| Model | `ModelGateway` | `StubModelGateway` on profiles `stub` and `test`. `LangChain4jModelGateway` only on `live`. |
-| Authorization | `ToolAuthorizer` | Grant, policy, scope, arguments, candidate in the tenant, and a valid transition. |
-| Execution | `GovernedTool` | The five recruiting tools. The registry does not run a denied tool. |
-| Usage | `ExecutionStepRecorder`, `AuditHasher` | One step per call. Arguments and results are stored as HMAC-SHA256 with `GATEWAY_AUDIT_HMAC_KEY`. |
-| Evaluation | `ExecutionEvaluator` | Verdict when the run closes. |
-| Approval | `TransitionApprovalService` | Outside the agent loop. The only place that changes the candidate status. |
+| Step | Package | Class | What it does |
+| --- | --- | --- | --- |
+| Authenticate | `shared/security` | `ApiKeyAuthenticationFilter` | Reads `X-API-Key`. The shape is `gw_` plus 43 base64url characters. Only the SHA-256 is stored. A missing, malformed, or unknown key is `401`. |
+| Identity | `shared/security` | `GatewayPrincipal` | Id, kind `USER` or `SERVICE`, tenant, and scopes. The tenant comes from the principal row, not the body. |
+| Agent and permissions | `gateway/delegation` | `AgentResolver` | The agent exists and there is a current `delegation_grant` from that principal to that agent. |
+| Budget | `gateway/budget` | `BudgetGuard` | Redis counters `budget:{executionId}:{tokens\|modelCalls\|toolCalls\|costMicros}`, TTL 24 h. `INCRBY`; past the limit, `DECRBY` the same amount and throw `BudgetExhaustedException`. |
+| Model | `gateway/model` | `ModelGateway` | `StubModelGateway` on profiles `stub` and `test`. `LangChain4jModelGateway` only on `live`. |
+| Authorization | `gateway/authority` | `ToolAuthorizer` | Grant, policy, scope, arguments, candidate in the tenant, and a valid transition. |
+| Execution | `gateway/tools, recruiting/tools` | `GovernedTool` | The five recruiting tools. The registry does not run a denied tool. |
+| Usage | `gateway/audit` | `ExecutionStepRecorder`, `AuditHasher` | One step per call. Arguments and results are stored as HMAC-SHA256 with `GATEWAY_AUDIT_HMAC_KEY`. |
+| Evaluation | `gateway/evaluation` | `ExecutionEvaluator` | Verdict when the run closes. |
+| Approval | `recruiting/transition` | `TransitionApprovalService` | Outside the agent loop. The only place that changes the candidate status. |
 
 ## The model recommends, Spring executes
 
@@ -114,24 +148,71 @@ Cost per successful task uses scenario 1 only. The other two are recorded and le
 
 ## Where each piece lives
 
+Packages under `dev.mytechprofile.aigateway`. Each one owns its entities and repositories, so one step is read in one folder.
+
 ```text
-security/     key, filter, principal
-authority/    grants, policy, ToolAuthorizer
-budget/       Redis, price
-model/        port, stub, LangChain4j, tool catalog
-execution/    accept, dispatcher, orchestrator, reconstruction
-tools/        GovernedTool and the registry
-recruiting/   state machine, tools, approval
-audit/        HMAC
-evaluation/   verdicts
-api/          controllers and response bodies
-persistence/  JPA and Flyway V1–V4
+shared/                       used by every step
+  api/                        controllers, request and response bodies, error mapping
+  security/                   API key filter, principal, demo key bootstrap
+  config/                     properties, clock, JSON, worker pool, telemetry
+
+gateway/                      the flow, in diagram order
+  delegation/       step 1    agent, delegation grant, tool policy
+  execution/        step 2    accept, dispatcher, orchestrator loop, read side
+  budget/           step 3    Redis counters, model prices
+  model/            step 4    ModelGateway port, stub, LangChain4j, tool catalog
+  authority/        step 5    ToolAuthorizer, scopes, reason codes
+  tools/            step 6    GovernedTool contract and registry
+  audit/            step 7    step rows, HMAC, spans
+  evaluation/       step 8    verdict when the run closes
+
+recruiting/                   the scenario domain
+  candidate/                  candidates, evidence, statuses, state machine
+  recommendation/             drafts written by draft_recommendation
+  transition/                 transition requests and the human approval
+  tools/                      one class per tool, wired as GovernedTool beans
 ```
+
+Tests mirror this layout. `src/test/.../scenario/` has one integration test per scenario, plus approval, lifecycle, and tenant isolation. Schema and seed data are Flyway `V1` to `V4` in `src/main/resources/db/migration`.
 
 PostgreSQL stores identity, executions, steps, prices, and the recruiting domain. Redis stores only the budget counters. Spans `ai.execution`, `ai.model.call`, and `ai.tool.call` leave over OTLP. Their attributes are model, tokens, ids, tool name, decision, and reason. They carry no content.
 
 Execution and candidate queries filter by `tenant_id`. A resource from another tenant is answered as if it did not exist (`404`).
 
+## Read the code in this order
+
+1. `shared/api/ExecutionController`: the four endpoints.
+2. `gateway/execution/ExecutionService.accept`: what is checked before `202`.
+3. `gateway/execution/ExecutionOrchestrator.run`, then `runTurns` and `handleToolCall`: the loop. This is the core of the lab.
+4. `gateway/budget/BudgetGuard`: reserve, roll back, reconcile.
+5. `gateway/model/StubModelGateway`: the scripted behavior behind each scenario.
+6. `gateway/authority/ToolAuthorizer.authorize`: the six checks, in order.
+7. `gateway/evaluation/ExecutionEvaluator`: how the verdict is chosen.
+8. `recruiting/transition/TransitionApprovalService`: the only status change.
+9. `src/test/.../scenario/*IT`: each scenario as an executable assertion.
+
+Schema is in `src/main/resources/db/migration/V1` to `V3`. Every principal, grant, budget, candidate, and evidence row used by the scenarios is in `V4__seed_scenarios.sql`.
+
+## Decisions and known limits
+
+This is an experiment, so some choices are deliberately simple. Each one is listed so a reader does not have to guess.
+
+| Decision | Why | What it costs |
+| --- | --- | --- |
+| The loop runs in one database transaction | Steps and the final status commit atomically; the reconstruction is never half-written | It holds a database connection while the model answers. On the live profile that is up to 10 turns of network time. A failed loop keeps no steps. |
+| Budget is checked again before every call | Shows that a runaway agent is stopped mid-run, not only at the start | Two Redis round trips per call |
+| Redis `INCRBY`, then `DECRBY` on overflow | Simple and good enough because one execution runs its calls one after another | Not atomic across counters. Concurrent calls on one budget are not tested. |
+| Token reservation uses an estimate (characters / 4 plus the output cap) | No tokenizer dependency | On the live model, reconciliation can push the token total a little past the limit. The stub's estimate is exact. |
+| Denied tool calls still spend a tool call | An agent that keeps trying denied tools is also stopped by budget | A denied call counts as usage |
+| The grant is read again before each tool call | Revoking a grant stops the next tool call of a run already in progress | One extra query per tool call |
+| `execute_status_transition` exists but no policy grants it | Gives scenario 2's injected call a real target to deny | A tool class that only throws |
+| The stub picks its script from `candidateId` | Every run produces the same numbers, so the tests can assert exact totals | It does not test model judgment, only the gateway |
+| API keys only, no OAuth | Keeps identity visible in one filter | Not a production authentication design |
+
 ## Out of scope
 
-Recovery if the process dies mid-execution, encryption at rest, concurrency tests on a shared budget, a user interface, a real ATS integration, and streaming. Recovery is the next experiment.
+- Recovery if the process dies mid-execution. A row left in `RUNNING` stays there. This is the next experiment.
+- Encryption at rest, key rotation, and real secret management.
+- A user interface, a real ATS integration, and streaming responses.
+- Concurrency tests on a shared budget.
+- Tuned prices for live models. The `live` prices in `application.yml` are placeholders.

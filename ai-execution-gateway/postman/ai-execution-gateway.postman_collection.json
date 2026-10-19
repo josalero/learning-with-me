@@ -1,24 +1,44 @@
 {
   "info": {
     "name": "AI Execution Gateway",
-    "description": "Local demo. Start the app with ./scripts/up.sh, then run one folder in the Collection Runner. The keys are the local demo keys from .env.example. Folder 1 moves C-101 to INTERVIEW; run it once per database.",
+    "description": "Local demo of the three scenarios plus the guardrails.\n\n1. Start the stack: ./scripts/up.sh (Postgres, Redis, telemetry, gateway on http://localhost:8080, stub model).\n2. Run one folder at a time in the Collection Runner, in order. Folder 4 reuses the ids from folder 1.\n\nEach request sends its key in the X-API-Key header (Headers tab). The key variables (Variables tab) are the local demo keys from .env.example, not secrets; they must match your .env.\nFolder 1 moves C-101 to INTERVIEW. To run it again from SCREENING: docker compose down -v && ./scripts/up.sh\n\nThe exact totals asserted in folders 1-3 hold only for the stub model (GATEWAY_PROFILE=stub). With GATEWAY_PROFILE=live a real model chooses the tool calls, so those totals differ from run to run; the auth and guardrail checks still apply.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
-    "type": "apikey",
-    "apikey": [
-      { "key": "key", "value": "X-API-Key", "type": "string" },
-      { "key": "value", "value": "{{aliceKey}}", "type": "string" },
-      { "key": "in", "value": "header", "type": "string" }
-    ]
+    "type": "noauth"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "aliceKey", "value": "gw_alice_local_demo_key_not_a_secret_000000000", "description": "recruiter-alice. Scenarios 1 and 2, and the approval." },
-    { "key": "atsKey", "value": "gw_ats_local_demo_key_not_a_secret_00000000000", "description": "ats-nightly. Scenario 3. Cannot approve." },
-    { "key": "executionId", "value": "" },
-    { "key": "transitionRequestId", "value": "" },
-    { "key": "polls", "value": "0" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "aliceKey",
+      "value": "gw_alice_local_demo_key_not_a_secret_000000000",
+      "description": "recruiter-alice. Scenarios 1 and 2, and the approval."
+    },
+    {
+      "key": "atsKey",
+      "value": "gw_ats_local_demo_key_not_a_secret_00000000000",
+      "description": "ats-nightly. Scenario 3. Cannot approve."
+    },
+    {
+      "key": "bobKey",
+      "value": "gw_bob_local_demo_key_not_a_secret_00000000000",
+      "description": "recruiter-bob on tenant globex. Folder 4 only: proves another tenant gets 404."
+    },
+    {
+      "key": "executionId",
+      "value": ""
+    },
+    {
+      "key": "transitionRequestId",
+      "value": ""
+    },
+    {
+      "key": "polls",
+      "value": "0"
+    }
   ],
   "item": [
     {
@@ -45,11 +65,25 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"agentId\": \"screening-agent\",\n  \"taskType\": \"CANDIDATE_EVALUATION\",\n  \"candidateId\": \"C-101\",\n  \"requisitionId\": \"R-7\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/executions"
           }
@@ -62,17 +96,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const body = pm.response.json();",
-                  "const status = body.status;",
+                  "const status = pm.response.json().status;",
                   "const tries = Number(pm.collectionVariables.get('polls') || '0') + 1;",
                   "pm.collectionVariables.set('polls', String(tries));",
                   "pm.test('status is known', function () {",
                   "  pm.expect(status).to.be.oneOf(['QUEUED', 'RUNNING', 'COMPLETED', 'BUDGET_EXHAUSTED', 'FAILED']);",
                   "});",
+                  "// Still working: wait 500 ms and run this request again, at most 40 times.",
                   "if ((status === 'QUEUED' || status === 'RUNNING') && tries < 40) {",
-                  "  const until = Date.now() + 500;",
-                  "  while (Date.now() < until) {}",
                   "  pm.execution.setNextRequest('1 poll');",
+                  "  setTimeout(function () {}, 500);",
                   "}"
                 ]
               }
@@ -80,7 +113,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/executions/{{executionId}}"
           }
         },
@@ -98,8 +137,11 @@
                   "  pm.expect(body.status).to.eql('COMPLETED');",
                   "  pm.expect(body.evaluation.verdict).to.eql('PASSED');",
                   "  pm.expect(body.evaluation.successful).to.eql(true);",
-                  "  pm.expect(body.totals.costMicros).to.eql(2625);",
                   "  pm.expect(body.delegator.id).to.eql('recruiter-alice');",
+                  "  pm.expect(body.totals.modelCalls).to.eql(5);",
+                  "  pm.expect(body.totals.toolCallsPermitted).to.eql(4);",
+                  "  pm.expect(body.totals.toolCallsDenied).to.eql(0);",
+                  "  pm.expect(body.totals.costMicros).to.eql(2625);",
                   "});"
                 ]
               }
@@ -107,7 +149,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/reconstruction"
           }
         },
@@ -134,7 +182,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/transition-requests"
           }
         },
@@ -156,7 +210,13 @@
           ],
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/transition-requests/{{transitionRequestId}}/approve"
           }
         }
@@ -185,11 +245,25 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"agentId\": \"screening-agent\",\n  \"taskType\": \"CANDIDATE_EVALUATION\",\n  \"candidateId\": \"C-102\",\n  \"requisitionId\": \"R-7\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/executions"
           }
@@ -205,10 +279,13 @@
                   "const status = pm.response.json().status;",
                   "const tries = Number(pm.collectionVariables.get('polls') || '0') + 1;",
                   "pm.collectionVariables.set('polls', String(tries));",
+                  "pm.test('status is known', function () {",
+                  "  pm.expect(status).to.be.oneOf(['QUEUED', 'RUNNING', 'COMPLETED', 'BUDGET_EXHAUSTED', 'FAILED']);",
+                  "});",
+                  "// Still working: wait 500 ms and run this request again, at most 40 times.",
                   "if ((status === 'QUEUED' || status === 'RUNNING') && tries < 40) {",
-                  "  const until = Date.now() + 500;",
-                  "  while (Date.now() < until) {}",
                   "  pm.execution.setNextRequest('2 poll');",
+                  "  setTimeout(function () {}, 500);",
                   "}"
                 ]
               }
@@ -216,7 +293,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/executions/{{executionId}}"
           }
         },
@@ -228,15 +311,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('both calls denied', function () {",
+                  "pm.test('both injected calls denied', function () {",
                   "  pm.response.to.have.status(200);",
                   "  const body = pm.response.json();",
                   "  pm.expect(body.status).to.eql('COMPLETED');",
                   "  pm.expect(body.evaluation.verdict).to.eql('POLICY_VIOLATION_ATTEMPTED');",
                   "  pm.expect(body.evaluation.successful).to.eql(false);",
                   "  const reasons = body.steps.filter(step => step.decision === 'DENIED').map(step => step.reasonCode);",
-                  "  pm.expect(reasons).to.include('TOOL_NOT_GRANTED');",
-                  "  pm.expect(reasons).to.include('INVALID_TRANSITION');",
+                  "  pm.expect(reasons).to.eql(['TOOL_NOT_GRANTED', 'INVALID_TRANSITION']);",
+                  "  pm.expect(body.totals.modelCalls).to.eql(4);",
+                  "  pm.expect(body.totals.toolCallsPermitted).to.eql(1);",
+                  "  pm.expect(body.totals.costMicros).to.eql(2100);",
                   "});"
                 ]
               }
@@ -244,7 +329,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/reconstruction"
           }
         }
@@ -253,14 +344,6 @@
     {
       "name": "3 Nightly budget",
       "description": "ats-nightly keeps searching. The grant allows 5 tool calls, so the 6th is never executed and the run ends BUDGET_EXHAUSTED.",
-      "auth": {
-        "type": "apikey",
-        "apikey": [
-          { "key": "key", "value": "X-API-Key", "type": "string" },
-          { "key": "value", "value": "{{atsKey}}", "type": "string" },
-          { "key": "in", "value": "header", "type": "string" }
-        ]
-      },
       "item": [
         {
           "name": "3 start",
@@ -281,11 +364,25 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{atsKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"agentId\": \"screening-agent\",\n  \"taskType\": \"CANDIDATE_EVALUATION\",\n  \"candidateId\": \"C-103\",\n  \"requisitionId\": \"R-7\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": "{{baseUrl}}/api/v1/executions"
           }
@@ -301,10 +398,13 @@
                   "const status = pm.response.json().status;",
                   "const tries = Number(pm.collectionVariables.get('polls') || '0') + 1;",
                   "pm.collectionVariables.set('polls', String(tries));",
+                  "pm.test('status is known', function () {",
+                  "  pm.expect(status).to.be.oneOf(['QUEUED', 'RUNNING', 'COMPLETED', 'BUDGET_EXHAUSTED', 'FAILED']);",
+                  "});",
+                  "// Still working: wait 500 ms and run this request again, at most 40 times.",
                   "if ((status === 'QUEUED' || status === 'RUNNING') && tries < 40) {",
-                  "  const until = Date.now() + 500;",
-                  "  while (Date.now() < until) {}",
                   "  pm.execution.setNextRequest('3 poll');",
+                  "  setTimeout(function () {}, 500);",
                   "}"
                 ]
               }
@@ -312,7 +412,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{atsKey}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/executions/{{executionId}}"
           }
         },
@@ -331,8 +437,43 @@
                   "  pm.expect(body.evaluation.verdict).to.eql('NOT_EVALUATED');",
                   "  pm.expect(body.evaluation.successful).to.eql(false);",
                   "  pm.expect(body.delegator.id).to.eql('ats-nightly');",
-                  "  pm.expect(body.totals.toolCallsRequested).to.eql(5);",
+                  "  pm.expect(body.delegator.kind).to.eql('SERVICE');",
                   "  pm.expect(body.totals.modelCalls).to.eql(6);",
+                  "  pm.expect(body.totals.toolCallsRequested).to.eql(5);",
+                  "  pm.expect(body.totals.costMicros).to.eql(3150);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{atsKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/reconstruction"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 Guardrails",
+      "description": "Run after folder 1; it reuses that executionId and transitionRequestId. Each request should be refused.",
+      "item": [
+        {
+          "name": "4 no key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('missing key is 401', function () {",
+                  "  pm.response.to.have.status(401);",
                   "});"
                 ]
               }
@@ -341,7 +482,88 @@
           "request": {
             "method": "GET",
             "header": [],
+            "url": "{{baseUrl}}/api/v1/executions/{{executionId}}"
+          }
+        },
+        {
+          "name": "4 other tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('globex cannot see an acme execution', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{bobKey}}",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/executions/{{executionId}}/reconstruction"
+          }
+        },
+        {
+          "name": "4 service cannot approve",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ats-nightly cannot approve a transition', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{atsKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/transition-requests/{{transitionRequestId}}/approve"
+          }
+        },
+        {
+          "name": "4 approve twice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an approved request cannot be approved again', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{aliceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/transition-requests/{{transitionRequestId}}/approve"
           }
         }
       ]

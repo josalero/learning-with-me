@@ -60,7 +60,7 @@ class SdlcOrchestratorTest {
                 timeoutSeconds: 30
                 """);
 
-        SdlcProperties properties = new SdlcProperties(
+        SdlcProperties properties = SdlcProperties.of(
                 home, "", "agent", 256, Duration.ofMinutes(3), "fast", "strong", 8_000, Duration.ofMinutes(1), true);
         CatalogLoader catalogs = new CatalogLoader(properties);
         InMemoryRunStore runs = new InMemoryRunStore();

@@ -31,7 +31,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: stub
+      SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-stub}
       POSTGRES_HOST: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       REDIS_HOST: redis

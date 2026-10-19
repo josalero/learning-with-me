@@ -8,11 +8,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -21,13 +21,11 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import dev.mytechprofile.aigateway.security.ApiKeyAuthenticationFilter;
-import dev.mytechprofile.aigateway.security.ApiKeyHasher;
-
+import dev.mytechprofile.aigateway.shared.security.ApiKeyAuthenticationFilter;
+import dev.mytechprofile.aigateway.shared.security.ApiKeyHasher;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 

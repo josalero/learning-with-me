@@ -1,16 +1,14 @@
 package dev.mytechprofile.aigateway.scenario;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import dev.mytechprofile.aigateway.persistence.TransitionRequestRepository;
-import dev.mytechprofile.aigateway.security.ApiKeyAuthenticationFilter;
+import dev.mytechprofile.aigateway.recruiting.transition.TransitionRequestRepository;
+import dev.mytechprofile.aigateway.shared.security.ApiKeyAuthenticationFilter;
 import dev.mytechprofile.aigateway.support.GatewayIntegrationTest;
-
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class ApprovalIT extends GatewayIntegrationTest {

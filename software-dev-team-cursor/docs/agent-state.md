@@ -10,7 +10,7 @@ Every role reads and writes a shared `AgenticScope`. Keys are Java constants in 
 | `aiSpec` | `AiSpec` | Tech Lead (or synthetic) | Developer, Reviewer, QA, Stakeholder |
 | `fileTree` | `String` | `RunStateFactory.refresh` | Tech Lead, Developer |
 | `conventions` | `String` | refresh | Tech Lead, Developer, Reviewer |
-| `changeSummary` | `ChangeSummary` | Developer | Stakeholder, persist |
+| `changeSummary` | `ChangeSummary` | Developer (`LocalCursorDeveloper` live, `DeveloperTools` offline) | Stakeholder, persist |
 | `buildResult` | `BuildResult` | deterministic build gate | implementation-loop exit; QA reconcile (executed test names) |
 | `buildFeedback` | `String` | build gate (same text as output) | Developer |
 | `buildOutput` | `String` | build gate, including `Executed tests:` from JUnit XML | QA |

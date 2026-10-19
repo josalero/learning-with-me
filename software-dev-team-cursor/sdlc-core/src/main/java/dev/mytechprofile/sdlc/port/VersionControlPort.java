@@ -1,6 +1,7 @@
 package dev.mytechprofile.sdlc.port;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Local git operations. Implementations must never push.
@@ -28,4 +29,15 @@ public interface VersionControlPort {
     String diffAgainst(Path repo, String baseRef);
 
     boolean hasChanges(Path repo);
+
+    /**
+     * Returns relative source paths that differ from {@code HEAD}, including untracked files.
+     *
+     * <p>Sample: after the Developer edits {@code UserController.java}, this returns that path
+     * and omits {@code build/} reports.
+     *
+     * @param repo repository root
+     * @return changed source paths, empty when clean
+     */
+    List<String> changedSourcePaths(Path repo);
 }

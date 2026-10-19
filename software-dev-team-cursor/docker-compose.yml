@@ -21,6 +21,7 @@ services:
       MODEL_FAST: ${MODEL_FAST:-composer-2.5}
       MODEL_STRONG: ${MODEL_STRONG:-composer-2.5}
       SDLC_OFFLINE: ${SDLC_OFFLINE:-false}
+      SDLC_DEVELOPER_IMPLEMENTER: ${SDLC_DEVELOPER_IMPLEMENTER:-CURSOR}
     volumes:
       - ./config:/data/config
       - ./prompts:/data/prompts

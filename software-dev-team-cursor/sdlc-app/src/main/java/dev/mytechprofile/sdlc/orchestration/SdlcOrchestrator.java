@@ -3,10 +3,12 @@ package dev.mytechprofile.sdlc.orchestration;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.mytechprofile.sdlc.adapter.FileWorkspace;
+import dev.mytechprofile.sdlc.agent.LocalCursorDeveloper;
 import dev.mytechprofile.sdlc.catalog.CatalogException;
 import dev.mytechprofile.sdlc.catalog.ProjectProfile;
 import dev.mytechprofile.sdlc.catalog.TeamBlueprint;
 import dev.mytechprofile.sdlc.config.CatalogLoader;
+import dev.mytechprofile.sdlc.config.DefaultCursorCliExecutor;
 import dev.mytechprofile.sdlc.config.PromptLoader;
 import dev.mytechprofile.sdlc.config.RepoContextAssembler;
 import dev.mytechprofile.sdlc.config.SdlcProperties;
@@ -86,7 +88,16 @@ public final class SdlcOrchestrator {
         this.outcomes = new RunOutcomeAssembler(artifacts, runs);
         AgentFactory agents = new AgentFactory(models, prompts);
         this.pipelineFactory = new SdlcPipelineFactory(
-                agents, state, outcomes, commandRunner, git, artifacts, runs, approvalGate, properties);
+                agents,
+                state,
+                outcomes,
+                commandRunner,
+                git,
+                artifacts,
+                runs,
+                approvalGate,
+                properties,
+                new LocalCursorDeveloper(properties, new DefaultCursorCliExecutor(), git));
     }
 
     /**

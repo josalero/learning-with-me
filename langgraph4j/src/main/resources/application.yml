@@ -1,0 +1,30 @@
+server:
+  port: ${SERVER_PORT:8093}
+
+spring:
+  application:
+    name: langgraph4j-poc
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+cursor:
+  mode: ${CURSOR_MODE:stub}
+  api-key: ${CURSOR_API_KEY:}
+  api-base-url: ${CURSOR_API_BASE_URL:https://api.cursor.com}
+  default-repo-url: ${CURSOR_REPO_URL:}
+  model: ${CURSOR_MODEL:composer-2.5}
+  poll-interval: ${CURSOR_POLL_INTERVAL:5s}
+  poll-timeout: ${CURSOR_POLL_TIMEOUT:15m}
+  auto-create-pr: ${CURSOR_AUTO_CREATE_PR:true}
+  seed-dir: seeds/ping-service-java
+  workspace-dir: workspace
+  cli-command: ${CURSOR_CLI:agent}
+  implement-timeout: ${CURSOR_IMPLEMENT_TIMEOUT:PT10M}

@@ -26,3 +26,4 @@ sdlc:
   file-read-limit-chars: 80000
   human-approval-timeout: PT30M
   offline: ${SDLC_OFFLINE:false}
+  developer-implementer: ${SDLC_DEVELOPER_IMPLEMENTER:CURSOR}

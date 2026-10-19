@@ -3,6 +3,7 @@ package dev.mytechprofile.sdlc.orchestration;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.mytechprofile.sdlc.agent.LocalCursorDeveloper;
 import dev.mytechprofile.sdlc.catalog.RoleSpec;
 import dev.mytechprofile.sdlc.catalog.TeamBlueprint;
 import dev.mytechprofile.sdlc.catalog.TeamPolicy;
@@ -49,6 +50,7 @@ public final class SdlcPipelineFactory {
     private final RunStore runs;
     private final HumanApprovalGate approvalGate;
     private final SdlcProperties properties;
+    private final LocalCursorDeveloper cursorDeveloper;
 
     /**
      * Creates a pipeline factory.
@@ -61,7 +63,8 @@ public final class SdlcPipelineFactory {
      * @param artifacts run files
      * @param runs run index
      * @param approvalGate human stakeholder
-     * @param properties HITL timeout
+     * @param properties HITL timeout and implementer switch
+     * @param cursorDeveloper local Cursor L2 writer
      */
     public SdlcPipelineFactory(
             AgentFactory agents,
@@ -72,7 +75,8 @@ public final class SdlcPipelineFactory {
             ArtifactStore artifacts,
             RunStore runs,
             HumanApprovalGate approvalGate,
-            SdlcProperties properties) {
+            SdlcProperties properties,
+            LocalCursorDeveloper cursorDeveloper) {
         this.agents = agents;
         this.state = state;
         this.outcomes = outcomes;
@@ -82,6 +86,7 @@ public final class SdlcPipelineFactory {
         this.runs = runs;
         this.approvalGate = approvalGate;
         this.properties = properties;
+        this.cursorDeveloper = cursorDeveloper;
     }
 
     /**
@@ -194,7 +199,7 @@ public final class SdlcPipelineFactory {
     private UntypedAgent implementationLoop(RoleSpec role, RunContext context, TeamPolicy policy) {
         return AgenticServices.loopBuilder()
                 .name("implementation-loop")
-                .subAgents(agents.developer(role, context, policy), buildGateAction(context))
+                .subAgents(developerAction(role, context, policy), buildGateAction(context))
                 .beforeCall(scope -> state.refresh(context, scope))
                 .maxIterations(policy.maxImplementationAttempts())
                 .testExitAtLoopEnd(true)
@@ -208,6 +213,13 @@ public final class SdlcPipelineFactory {
                 .build();
     }
 
+    private Object developerAction(RoleSpec role, RunContext context, TeamPolicy policy) {
+        if (properties.useLocalCursorDeveloper()) {
+            return cursorDeveloper.asAction(role, context);
+        }
+        return agents.developer(role, context, policy);
+    }
+
     private Object buildGateAction(RunContext context) {
         return AgenticServices.agentAction(scope -> buildGate.evaluate(context, scope));
     }
@@ -216,7 +228,7 @@ public final class SdlcPipelineFactory {
             RoleSpec reviewerRole, RoleSpec developerRole, RunContext context, TeamPolicy policy) {
         Object rework = AgenticServices.sequenceBuilder()
                 .name("review-rework")
-                .subAgents(agents.developer(developerRole, context, policy), buildGateAction(context))
+                .subAgents(developerAction(developerRole, context, policy), buildGateAction(context))
                 .beforeCall(scope -> {
                     Object verdict = scope.readState(StateKeys.REVIEW_VERDICT);
                     scope.writeState(StateKeys.REVIEW_FEEDBACK, String.valueOf(verdict));
@@ -269,7 +281,7 @@ public final class SdlcPipelineFactory {
     private UntypedAgent qaLoop(RoleSpec qaRole, RoleSpec developerRole, RunContext context, TeamPolicy policy) {
         Object rework = AgenticServices.sequenceBuilder()
                 .name("qa-rework")
-                .subAgents(agents.developer(developerRole, context, policy), buildGateAction(context))
+                .subAgents(developerAction(developerRole, context, policy), buildGateAction(context))
                 .beforeCall(scope -> {
                     Object verdict = scope.readState(StateKeys.QA_VERDICT);
                     scope.writeState(StateKeys.QA_FEEDBACK, String.valueOf(verdict));

@@ -86,7 +86,7 @@ class CursorCliChatModelTest {
 
     @Test
     void argv_whenApiKeyBlank_omitsApiKeyFlag() {
-        SdlcProperties properties = new SdlcProperties(
+        SdlcProperties properties = SdlcProperties.of(
                 home,
                 "",
                 "agent",
@@ -106,7 +106,7 @@ class CursorCliChatModelTest {
     }
 
     private CursorCliChatModel model(CursorCliExecutor executor) {
-        SdlcProperties properties = new SdlcProperties(
+        SdlcProperties properties = SdlcProperties.of(
                 home,
                 "test-key",
                 "agent",

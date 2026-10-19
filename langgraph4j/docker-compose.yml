@@ -1,0 +1,22 @@
+name: langgraph4j-poc
+
+services:
+  graph-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8093:8093"
+    environment:
+      SERVER_PORT: 8093
+      CURSOR_MODE: ${CURSOR_MODE:-stub}
+      CURSOR_API_KEY: ${CURSOR_API_KEY:-}
+      CURSOR_CLI: ${CURSOR_CLI:-agent}
+      CURSOR_MODEL: ${CURSOR_MODEL:-composer-2.5}
+      CURSOR_IMPLEMENT_TIMEOUT: ${CURSOR_IMPLEMENT_TIMEOUT:-PT10M}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8093/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
