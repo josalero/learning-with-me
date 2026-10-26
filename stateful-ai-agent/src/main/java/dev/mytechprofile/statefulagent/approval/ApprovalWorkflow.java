@@ -135,6 +135,23 @@ public class ApprovalWorkflow {
     }
 
     /**
+     * Records a system deny for a tool the requester cannot invoke.
+     *
+     * <p>Alice asking to reject APP-1 returns {@code DENIED} and HTTP 200.
+     * The high-risk approver check is not applied, because the tool never
+     * waits for Bob.
+     *
+     * @param approvalId pending approval created for this turn
+     * @param answer explanation returned to the requester
+     * @return a denied turn
+     */
+    public TurnResult denyUnauthorized(UUID approvalId, String answer) {
+        this.locks.systemDeny(approvalId, answer);
+        ToolApprovalEntity approval = this.locks.require(approvalId);
+        return TurnResult.denied(answer, viewOf(approval));
+    }
+
+    /**
      * Moves a {@code FAILED} approval back to {@code PENDING} and decides it
      * again with the stored allow or deny. A row that is not failed throws
      * {@link dev.mytechprofile.statefulagent.platform.ApprovalConflictException}.
@@ -222,6 +239,10 @@ public class ApprovalWorkflow {
     }
 
     private String continueModel(AgentSessionEntity session, ToolExecutionResult executed) {
+        return SessionAccess.callAsSystem(() -> continueAsOwner(session, executed));
+    }
+
+    private String continueAsOwner(AgentSessionEntity session, ToolExecutionResult executed) {
         List<Message> history = executed.conversationHistory();
         Message last = history.get(history.size() - 1);
         ChatClientResponse response = this.models.client(ModelProvider.valueOf(session.getProvider()))

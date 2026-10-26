@@ -91,6 +91,36 @@ public class ApprovalLockService {
         return new BeginResult(false, allDenied, approval.getStatus(), null, approval.getPausedReplyEventId(), stored);
     }
 
+    /**
+     * Closes a pause the requester is not allowed to invoke.
+     *
+     * <p>Alice asking to reject APP-1 is high risk, but she is not an approver.
+     * The pause is stored as {@code DENIED} without the high-risk decision check,
+     * because nobody is being asked to allow it.
+     *
+     * @param approvalId pending approval created for this turn
+     * @param answer explanation returned to the requester
+     */
+    @Transactional
+    public void systemDeny(UUID approvalId, String answer) {
+        ToolApprovalEntity approval = this.approvals.lockById(approvalId).orElseThrow(SessionNotFoundException::new);
+        if (approval.getStatus() != ApprovalStatus.PENDING) {
+            throw new ApprovalConflictException("This approval was already decided.");
+        }
+        Instant now = this.clock.instant();
+        this.decisions.findByApprovalId(approvalId).forEach(call -> {
+            call.setDecision("DENY");
+            call.setDenyMessage(answer);
+            call.setExecutionStatus(ApprovalStatus.DENIED.name());
+        });
+        approval.setStatus(ApprovalStatus.DENIED);
+        approval.setAnswer(answer);
+        approval.setDecidedBy(approval.getRequestedBy());
+        approval.setDecidedAt(now);
+        approval.setUpdatedAt(now);
+        approval.setIdempotencyKey("auto-" + approvalId);
+    }
+
     @Transactional
     public void finish(UUID approvalId, ApprovalStatus status, String answer, String errorCode) {
         ToolApprovalEntity approval = this.approvals.lockById(approvalId).orElseThrow(SessionNotFoundException::new);

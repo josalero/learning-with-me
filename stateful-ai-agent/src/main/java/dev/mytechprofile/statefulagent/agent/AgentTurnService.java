@@ -180,10 +180,8 @@ public class AgentTurnService {
         this.workflow.audit(session.getSessionId(), AgentEvents.APPROVAL_REQUESTED, "approvalId", approval.getId().toString(), "risk", risk.name());
         if (blocked) {
             log.info("{} is not allowed to {}. Denied without asking anyone to approve.", principal.username(), what);
-            List<SubmittedDecision> denied = calls.stream()
-                    .map(call -> new SubmittedDecision(call.getToolCallKey(), false, "The requester is not allowed to run this tool."))
-                    .toList();
-            return this.workflow.decide(session, principal, approval.getId(), "auto-" + approval.getId(), denied);
+            String answer = "The requester is not allowed to run this tool.";
+            return this.workflow.denyUnauthorized(approval.getId(), answer);
         }
         log.info("{} asked to {}. This is {}. Waiting on approval {}.", principal.username(), what, ScenarioNarration.risk(risk.name()),
                 approval.getId());

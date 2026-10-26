@@ -24,6 +24,11 @@ class SensitiveUpdateRequiresConfirmationTest extends ScenarioSupport {
         assertThat(applications.findById(id).orElseThrow().getStage()).isEqualTo(HiringStage.RECRUITER_SCREEN);
         assertThat(actions.findByTenantIdAndApplicationIdOrderByCreatedAtDesc("tenant-a", id)).isEmpty();
 
+        ResponseEntity<Map<String, Object>> deniedSchedule = decide("alice", "test-alice", sessionId,
+                approvalId(paused.getBody()), toolCallKey(paused.getBody()), "DENY", "deny-the-schedule");
+        assertThat(deniedSchedule.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(applications.findById(id).orElseThrow().getStage()).isEqualTo(HiringStage.RECRUITER_SCREEN);
+
         ResponseEntity<Map<String, Object>> denied = message("alice", "test-alice", sessionId,
                 "reject " + id + " bar not met");
         assertThat(denied.getStatusCode()).isEqualTo(HttpStatus.OK);

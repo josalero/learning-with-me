@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.ParameterizedTypeReference;
@@ -69,12 +68,11 @@ class RestartWhilePendingScenarioTest {
     private static ConfigurableApplicationContext start(int port) {
         return new SpringApplicationBuilder(StatefulAgentApplication.class)
                 .profiles("test")
-                .properties(
-                        "server.port=" + port,
-                        "spring.datasource.url=" + postgres.getJdbcUrl(),
-                        "spring.datasource.username=" + postgres.getUsername(),
-                        "spring.datasource.password=" + postgres.getPassword())
-                .run();
+                .run(
+                        "--server.port=" + port,
+                        "--spring.datasource.url=" + postgres.getJdbcUrl(),
+                        "--spring.datasource.username=" + postgres.getUsername(),
+                        "--spring.datasource.password=" + postgres.getPassword());
     }
 
     private static RestClient client(ConfigurableApplicationContext context) {
@@ -92,6 +90,6 @@ class RestartWhilePendingScenarioTest {
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {
                 });
-        return String.valueOf(created.get("sessionId"));
+        return String.valueOf(created.get("id"));
     }
 }

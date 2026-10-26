@@ -22,4 +22,12 @@ class ReadOnlyOperationScenarioTest extends ScenarioSupport {
         assertThat(String.valueOf(response.getBody().get("answer"))).contains("RECRUITER_SCREEN");
         assertThat(approvals.findBySessionIdOrderByCreatedAtAsc(sessionId)).isEmpty();
     }
+
+    @Test
+    void labPageLoadsWithoutCredentialsAndOffersTheWalkthrough() {
+        String html = labPage();
+        assertThat(html).contains("Run next step");
+        assertThat(html).contains("APP-1");
+        assertThat(html).contains("Senior Backend Engineer");
+    }
 }

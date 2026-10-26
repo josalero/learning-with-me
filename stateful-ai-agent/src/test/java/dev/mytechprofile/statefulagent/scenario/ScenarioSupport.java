@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -17,9 +16,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import dev.mytechprofile.statefulagent.agent.StubChatModel;
@@ -34,12 +33,20 @@ import dev.mytechprofile.statefulagent.tools.FailureGate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@Testcontainers
 abstract class ScenarioSupport {
 
-    @Container
-    @ServiceConnection
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18");
+
+    static {
+        postgres.start();
+    }
+
+    @DynamicPropertySource
+    static void datasource(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
 
     @LocalServerPort
     int port;
@@ -74,6 +81,10 @@ abstract class ScenarioSupport {
         this.http = RestClient.builder().baseUrl("http://127.0.0.1:" + this.port).build();
     }
 
+    protected String labPage() {
+        return this.http.get().uri("/").retrieve().body(String.class);
+    }
+
     protected String application(String tenant, HiringStage stage, long bandMin, long bandMax) {
         String id = "APP-" + UUID.randomUUID().toString().substring(0, 8);
         JobApplicationEntity entity = new JobApplicationEntity();
@@ -100,7 +111,7 @@ abstract class ScenarioSupport {
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {
                 });
-        return String.valueOf(body.get("sessionId"));
+        return String.valueOf(body.get("id"));
     }
 
     protected ResponseEntity<Map<String, Object>> message(String user, String password, String sessionId, String text) {
@@ -131,10 +142,11 @@ abstract class ScenarioSupport {
                 .headers(httpHeaders -> httpHeaders.addAll(headers))
                 .body(body == null ? "" : body)
                 .exchange((request, response) -> {
-                    Map<String, Object> payload = response.getBody() == null || response.getBody().available() == 0
-                            ? Map.of()
-                            : response.bodyTo(new ParameterizedTypeReference<Map<String, Object>>() {
-                            });
+                    Map<String, Object> payload = response.bodyTo(new ParameterizedTypeReference<>() {
+                    });
+                    if (payload == null) {
+                        payload = Map.of();
+                    }
                     return ResponseEntity.status(response.getStatusCode()).body(payload);
                 });
     }

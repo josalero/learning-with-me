@@ -4,6 +4,10 @@ A small hiring assistant that keeps a durable conversation, pauses before it cha
 
 The demo domain is a tech screen and an offer. The model used by the automated tests and by Compose, unless you set a live API key and switch the session, is a deterministic stub. It understands a fixed set of phrases listed in [docs/hiring-process.md](docs/hiring-process.md).
 
+## Lab page
+
+With the stack running, open [http://localhost:8080](http://localhost:8080). The page uses the stub, so it does not need an OpenRouter key. Passwords default to the values in `.env.example`. **Run next step** walks APP-1 from the recruiter screen to hired and shows the stage, the approval, and why a step stopped.
+
 ## Run the scenario
 
 ```bash
