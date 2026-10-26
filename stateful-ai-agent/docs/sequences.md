@@ -1,10 +1,154 @@
 # Sequences
 
-`postman/Stateful-hiring-agent.postman_collection.json` runs the first five diagrams in order on a fresh `APP-1`. The stub phrases in `http/scenarios.http` and `scripts/walkthrough.py` follow the same funnel.
+Three records move together. They are not the same table.
+
+| Record | Table | What a turn does to it |
+| --- | --- | --- |
+| Session | `agent_session` and `AI_SESSION` | One chat. Same id in both tables. The application row stores the provider, because Spring AI session metadata cannot be updated. |
+| Conversation | `AI_SESSION_EVENT` and `tool_approval` | Every message is appended to the event log. A write tool also inserts a `PENDING` approval whose `paused_reply_event_id` is that assistant event. |
+| Application | `job_application`, `hiring_action`, `interview_scorecard`, `job_offer` | Unchanged until someone allows the paused tool. The tool names `APP-1` in its arguments. The application is not a child of the session. |
+
+```mermaid
+flowchart LR
+    subgraph session [Session]
+        agentSession[agent_session]
+        aiSession[AI_SESSION]
+    end
+    subgraph conversation [Conversation]
+        events[AI_SESSION_EVENT]
+        approval[tool_approval]
+    end
+    subgraph application [Application]
+        job[job_application]
+        action[hiring_action]
+    end
+
+    agentSession ---|"same id"| aiSession
+    aiSession --> events
+    approval -->|"paused_reply_event_id"| events
+    approval -->|"session_id"| agentSession
+    action -->|"sessionId:approvalId:toolCallKey"| approval
+    action --> job
+```
+
+The first diagram is one turn from opening the session through an allowed stage change. The diagram after it is `ApplicationController`: the GET that reads the same application without a session and without the model. The later diagrams are the same turn in the cases the Postman collection runs: deny, a salary above the band, a rule failure, and a replayed decision.
+
+## One turn, three records
+
+Alice opens her session, asks for the stage, asks to schedule the tech screen, then allows it. `APP-1` stays at `RECRUITER_SCREEN` until the allow.
+
+```mermaid
+sequenceDiagram
+    actor Alice
+    participant Sessions as SessionController
+    participant Conversation as ConversationController
+    participant AppSession as AgentSessionService
+    participant Transcript as SessionService
+    participant Turn as AgentTurnService
+    participant Model as ChatClient
+    participant Approval as ApprovalWorkflow
+    participant Hiring as HiringService
+
+    Note over Alice, Hiring: Open the session. APP-1 is not touched.
+    Alice->>Sessions: POST /api/v1/sessions provider STUB
+    Sessions->>AppSession: create
+    AppSession->>Transcript: create AI_SESSION
+    Transcript-->>AppSession: session id
+    AppSession->>AppSession: insert agent_session with that id
+    Sessions-->>Alice: 201 id
+
+    Note over Alice, Hiring: Read. The transcript grows. The stage does not.
+    Alice->>Conversation: POST /sessions/{id}/messages status of APP-1
+    Conversation->>AppSession: requireOwned
+    Conversation->>Turn: message
+    Turn->>Model: prompt plus SessionAdvisors.session(id)
+    Model->>Transcript: append the user message
+    Model->>Hiring: getApplication APP-1
+    Hiring-->>Model: stage RECRUITER_SCREEN
+    Model->>Transcript: append the assistant answer
+    Turn-->>Conversation: COMPLETED, no approval
+    Conversation-->>Alice: 200
+
+    Note over Alice, Hiring: Pause. The tool call is stored. HiringService is not called.
+    Alice->>Conversation: POST /messages schedule tech screen for APP-1
+    Conversation->>Turn: message
+    Turn->>Model: prompt plus the session advisor
+    Model->>Transcript: append the user message
+    Model-->>Turn: advanceApplication, confirmation required
+    Note over Transcript: assistant event holds the tool call
+    Turn->>Approval: insert PENDING, paused_reply_event_id
+    Note over Hiring: stage is still RECRUITER_SCREEN
+    Conversation-->>Alice: 202 AWAITING_APPROVAL MEDIUM
+
+    Note over Alice, Hiring: Allow. The stored event is replayed. Then the stage moves.
+    Alice->>Conversation: POST /approvals/{approvalId}/decision ALLOW
+    Conversation->>AppSession: requireVisible
+    Conversation->>Approval: decide
+    Approval->>Transcript: load the assistant event by paused_reply_event_id
+    Approval->>Hiring: advance APP-1 to TECH_SCREEN
+    Hiring->>Hiring: insert hiring_action sessionId:approvalId:toolCallKey
+    Hiring-->>Approval: stage TECH_SCREEN
+    Approval->>Transcript: append the tool result, as the session owner
+    Approval-->>Conversation: COMPLETED
+    Conversation-->>Alice: 200
+```
+
+`POST /messages` is owner-only, so it uses `requireOwned`. A decision uses `requireVisible`: the owner, or a same-tenant approver. Bob can allow Alice's high-risk approval and still gets 404 if he reads her transcript, because `GuardingSessionDecorator` hides `AI_SESSION_EVENT` from anyone who is not the owner. The follow-up model call after an allow runs as the system so that append still lands on Alice's log.
+
+A new message while `tool_approval` is `PENDING` returns 409. The transcript is not given a second turn until that approval is decided.
+
+## The application GET
+
+`ApplicationController` is a second door onto `job_application`. It does not create a session, does not append a message, and does not allow a tool. The lab page and Postman use it to check what the allow actually stored.
+
+There are two reads of the same row:
+
+```mermaid
+flowchart LR
+    chat[POST /sessions/id/messages] --> model[ChatClient tool]
+    model --> hiring[HiringService]
+    browser[GET /applications/APP-1] --> controller[ApplicationController]
+    controller --> hiring
+    hiring --> row[job_application]
+```
+
+The chat read happens inside the turn above (`getApplication`). This one is the check after the turn:
+
+```mermaid
+sequenceDiagram
+    actor Alice
+    participant App as ApplicationController
+    participant Hiring as HiringService
+
+    Note over Alice, Hiring: Before any allow. No session id is involved.
+    Alice->>App: GET /api/v1/applications/APP-1
+    App->>Hiring: requireApplication tenant-a, APP-1
+    Hiring-->>App: RECRUITER_SCREEN
+    App-->>Alice: 200 stage and band
+
+    Note over Alice, Hiring: Schedule is PENDING. The action list is still empty.
+    Alice->>App: GET /applications/APP-1/actions
+    App->>Hiring: list hiring actions
+    Hiring-->>App: none
+    App-->>Alice: 200 []
+
+    Note over Alice, Hiring: After the ALLOW in the turn above.
+    Alice->>App: GET /api/v1/applications/APP-1
+    App->>Hiring: requireApplication tenant-a, APP-1
+    Hiring-->>App: TECH_SCREEN
+    App-->>Alice: 200
+
+    Alice->>App: GET /applications/APP-1/offer
+    App->>Hiring: find offer
+    Hiring-->>App: no row
+    App-->>Alice: 404 until an extend is allowed
+```
+
+Carol calling the same `GET /applications/APP-1` receives 404. The row belongs to tenant-a. The controller never writes the stage. A write still has to come from an allowed tool in the conversation.
 
 ## Read the stage
 
-A status question does not open an approval and does not write a hiring action.
+This is the chat path already drawn in the full turn. A status question does not open an approval and does not write a hiring action. The GET in the section above is how you confirm the same stage without asking the model.
 
 ```mermaid
 sequenceDiagram
