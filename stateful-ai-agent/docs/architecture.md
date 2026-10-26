@@ -1,6 +1,6 @@
 # Architecture
 
-Spring AI 2.1 session memory and tool-call confirmation do the pause and the transcript. This application owns the hiring rules, who may ask, who may allow, and what is stored after a crash. The timed flows are in [sequences.md](sequences.md). The first diagram there is the whole turn: open the session, read the application, pause a write, then allow it so the stage changes. What the release candidates already provide, and what this app still has to enforce, is in [findings.md](findings.md).
+Spring AI 2.1 session memory and tool-call confirmation do the pause and the transcript. This application owns the hiring rules, who may ask, who may allow, and what is stored after a crash. The request and response for one turn, and where to read the log and the trace, are in [turn.md](turn.md). The timed flows are in [sequences.md](sequences.md). The first diagram there is the whole turn: open the session, read the application, pause a write, then allow it so the stage changes. What the release candidates already provide, and what this app still has to enforce, is in [findings.md](findings.md).
 
 ## Release-candidate features under test
 

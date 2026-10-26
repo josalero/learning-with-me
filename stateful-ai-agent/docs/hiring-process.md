@@ -23,7 +23,7 @@ sequenceDiagram
     end
 ```
 
-A read, such as `status of APP-1`, stops at step 2 and answers immediately. A deny, or a hiring rule that fails, stops before step 4. In both cases the stage stays where it was, and the recruiter sends the next message. While an approval is still `PENDING`, that next message is refused. The same four steps with the session log and the application GET are in [sequences.md](sequences.md).
+A read, such as `status of APP-1`, stops at step 2 and answers immediately. A deny, or a hiring rule that fails, stops before step 4. In both cases the stage stays where it was, and the recruiter sends the next message. While an approval is still `PENDING`, that next message is refused. The request, the response, and the log or trace for each of those steps are in [turn.md](turn.md). The same four steps with the session log and the application GET are in [sequences.md](sequences.md).
 
 ## Each stage
 

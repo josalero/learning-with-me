@@ -1,5 +1,7 @@
 # Sequences
 
+The HTTP body, the log line, and the trace for one turn are in [turn.md](turn.md). This page is how the three records stay linked while that turn runs.
+
 Three records move together. They are not the same table.
 
 | Record | Table | What a turn does to it |
