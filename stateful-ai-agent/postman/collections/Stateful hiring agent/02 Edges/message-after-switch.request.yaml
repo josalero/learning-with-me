@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Message after reject switch'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{foreignSessionId}}/messages'
+order: 12000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "note: after switch"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('incompatible provider', function () { pm.response.to.have.status(422); });

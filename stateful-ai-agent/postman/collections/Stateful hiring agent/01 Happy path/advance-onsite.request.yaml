@@ -1,0 +1,32 @@
+$kind: http-request
+name: 'Advance to onsite'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages'
+order: 9000
+auth:
+  type: basic
+  credentials:
+    - key: username
+      value: bob
+    - key: password
+      value: '{{bobPassword}}'
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "advance {{applicationId}} to onsite"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const body = pm.response.json();
+      pm.test('waiting for a person', function () {
+          pm.response.to.have.status(202);
+          pm.expect(body.status).to.eql('AWAITING_APPROVAL');
+      });
+      pm.collectionVariables.set('approvalId', body.approval.id);
+      pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);
+      
+      pm.test('high risk', function () { pm.expect(pm.response.json().approval.risk).to.eql('HIGH'); });

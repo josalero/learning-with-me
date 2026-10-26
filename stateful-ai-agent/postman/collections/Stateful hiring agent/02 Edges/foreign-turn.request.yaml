@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Foreign turn'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{foreignSessionId}}/messages'
+order: 10000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "hello"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('foreign turn stored', function () { pm.response.to.have.status(200); });

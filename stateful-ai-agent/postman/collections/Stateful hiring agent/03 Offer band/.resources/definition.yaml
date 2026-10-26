@@ -1,0 +1,10 @@
+$kind: collection
+name: 03 Offer band
+description: |-
+  Run only while {{applicationId}} is at OFFER and has no offer row yet.
+  The happy path consumes APP-1, so use a second seeded application or stop
+  after Bob allows the offer stage. Above band is HIGH: Alice receives 403
+  and Bob can allow it. Below band is MEDIUM and then fails with OFFER_OUT_OF_BAND.
+  Do not run both salary requests against the same application; the first one
+  that is allowed creates the only offer.
+order: 3000

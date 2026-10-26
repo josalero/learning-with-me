@@ -1,0 +1,19 @@
+$kind: http-request
+name: 'Alice cannot allow above band'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision'
+order: 2000
+headers:
+  - key: Idempotency-Key
+    value: 'alice-above-band'
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"decisions": [{"toolCallKey": "{{toolCallKey}}", "decision": "ALLOW"}]}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('owner lacks approver role', function () { pm.response.to.have.status(403); });

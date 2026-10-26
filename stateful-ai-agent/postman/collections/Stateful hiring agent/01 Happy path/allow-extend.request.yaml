@@ -1,0 +1,23 @@
+$kind: http-request
+name: 'Allow extend offer'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision'
+order: 16000
+headers:
+  - key: Idempotency-Key
+    value: '{{$guid}}'
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"decisions": [{"toolCallKey": "{{toolCallKey}}", "decision": "ALLOW"}]}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const body = pm.response.json();
+      pm.test('tool completed', function () {
+          pm.response.to.have.status(200);
+          pm.expect(body.status).to.eql('COMPLETED');
+      });

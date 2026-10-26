@@ -1,0 +1,1764 @@
+{
+  "info": {
+    "name": "Stateful hiring agent",
+    "description": "One ordered run for a fresh database.\n\n1. docker compose down -v && docker compose up --build\n2. .env has SPRING_PROFILES_ACTIVE=openrouter, OPENROUTER_API_KEY, and OPENROUTER_CHAT_MODEL=openai/gpt-4o-mini\n3. Import this file and Local.postman_environment.json\n4. Select the Local environment\n5. Set the four password collection variables to the AGENT_*_PASSWORD values in .env\n6. Collection Runner: open this collection and run it from top to bottom. Do not reorder the requests.\n\nAPP-1 ends HIRED. Run it once per fresh volume.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "alice",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{alicePassword}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "applicationId",
+      "value": "APP-1"
+    },
+    {
+      "key": "provider",
+      "value": "OPENROUTER"
+    },
+    {
+      "key": "alicePassword",
+      "value": "change-me-alice",
+      "description": "AGENT_ALICE_PASSWORD"
+    },
+    {
+      "key": "bobPassword",
+      "value": "change-me-bob",
+      "description": "AGENT_BOB_PASSWORD"
+    },
+    {
+      "key": "carolPassword",
+      "value": "change-me-carol",
+      "description": "AGENT_CAROL_PASSWORD"
+    },
+    {
+      "key": "davePassword",
+      "value": "change-me-dave",
+      "description": "AGENT_DAVE_PASSWORD"
+    },
+    {
+      "key": "aliceSessionId",
+      "value": ""
+    },
+    {
+      "key": "bobSessionId",
+      "value": ""
+    },
+    {
+      "key": "approvalId",
+      "value": ""
+    },
+    {
+      "key": "toolCallKey",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/actuator/health",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('up', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Create Alice session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"provider\": \"{{provider}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('Alice session', function () {",
+              "    pm.response.to.have.status(201);",
+              "    pm.expect(body.provider).to.eql('OPENROUTER');",
+              "});",
+              "pm.collectionVariables.set('aliceSessionId', body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Read APP-1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"What is the current stage of application APP-1? Call getApplication and include the stage name in your answer.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('read completes', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "    pm.expect(body.approval == null).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Confirm recruiter screen",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stage is RECRUITER_SCREEN', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().stage).to.eql('RECRUITER_SCREEN');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Schedule tech screen",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Move application APP-1 to stage TECH_SCREEN. Call advanceApplication. Do not invent a stage.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for advanceApplication', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('MEDIUM');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('advanceApplication');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Deny schedule",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"DENY\",\n      \"reason\": \"Not now\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('denied', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('DENIED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Confirm stage unchanged",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stage is RECRUITER_SCREEN', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().stage).to.eql('RECRUITER_SCREEN');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Schedule tech screen again",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Move application APP-1 to stage TECH_SCREEN. Call advanceApplication.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for advanceApplication', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('MEDIUM');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('advanceApplication');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Allow schedule",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('schedule applied', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Confirm tech screen",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stage is TECH_SCREEN', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().stage).to.eql('TECH_SCREEN');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Record tech screen YES",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Record a TECH_SCREEN scorecard for APP-1 with recommendation YES. Call recordScorecard. Do not invent the recommendation.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for recordScorecard', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('MEDIUM');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('recordScorecard');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Allow tech screen",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('scorecard stored', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Confirm tech scorecard",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}/scorecards"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const cards = pm.response.json();",
+              "pm.test('YES tech screen', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(cards.some(card => card.round === 'TECH_SCREEN' && card.recommendation === 'YES')).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Alice tries to reject",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Reject application APP-1 for reason BAR_NOT_MET. Call rejectApplication.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('rejected request is not paused', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().status).to.eql('DENIED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 Confirm reject did nothing",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stage is TECH_SCREEN', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().stage).to.eql('TECH_SCREEN');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Bob cannot read Alice session",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('hidden', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Carol cannot read Alice session",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "carol",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{carolPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('hidden', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Dave cannot read Alice session",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}",
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "dave",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{davePassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('hidden', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Malformed session id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/sessions/not-a-uuid"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('bad id', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 Create Bob session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"provider\": \"{{provider}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('Bob session', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('bobSessionId', body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Advance to onsite",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Advance application APP-1 to ONSITE. Call advanceApplication.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for advanceApplication', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('HIGH');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('advanceApplication');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Bob allows onsite",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('onsite applied', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23 Confirm onsite",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stage is ONSITE', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().stage).to.eql('ONSITE');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24 Record onsite NO",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Record an ONSITE scorecard for APP-1 with recommendation NO. Call recordScorecard.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for recordScorecard', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('MEDIUM');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('recordScorecard');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25 Bob allows NO",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('NO stored', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 Advance to offer while NO",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Advance application APP-1 to OFFER. Call advanceApplication.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for advanceApplication', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('HIGH');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('advanceApplication');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 Bob allows blocked offer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('scorecard blocks the offer', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('FAILED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "28 Confirm still onsite",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stage is ONSITE', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().stage).to.eql('ONSITE');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "29 Record onsite STRONG_YES",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Record an ONSITE scorecard for APP-1 with recommendation STRONG_YES. Call recordScorecard.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for recordScorecard', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('MEDIUM');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('recordScorecard');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 Bob allows STRONG_YES",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('passing debrief stored', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "31 Advance to offer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Advance application APP-1 to OFFER. Call advanceApplication.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for advanceApplication', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('HIGH');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('advanceApplication');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32 Bob allows offer stage",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('offer stage applied', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "33 Confirm offer stage",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stage is OFFER', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().stage).to.eql('OFFER');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "34 Confirm no offer yet",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}/offer"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('no offer row', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "35 Extend salary 90000",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Extend an offer for APP-1 at level L4 with base salary 90000. Call extendOffer.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for extendOffer', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('MEDIUM');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('extendOffer');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "36 Alice allows below band",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('salary below the band', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('FAILED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "37 Confirm offer still missing",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}/offer"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('still no offer', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "38 Extend salary 190000",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Extend an offer for APP-1 at level L4 with base salary 190000. Call extendOffer.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for extendOffer', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('HIGH');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('extendOffer');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "39 Alice cannot allow above band",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('approver required', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "40 Bob allows above band",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "bob",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{bobPassword}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('above-band offer stored', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "41 Confirm offer extended",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}/offer"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('extended', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().status).to.eql('EXTENDED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "42 Candidate accepts",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"The candidate accepted the offer for APP-1. Call recordOfferResponse with ACCEPTED.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('paused for recordOfferResponse', function () {",
+              "    pm.response.to.have.status(202);",
+              "    pm.expect(body.status).to.eql('AWAITING_APPROVAL');",
+              "    pm.expect(body.approval.risk).to.eql('MEDIUM');",
+              "    pm.expect(body.approval.calls[0].toolName).to.eql('recordOfferResponse');",
+              "});",
+              "pm.collectionVariables.set('approvalId', body.approval.id);",
+              "pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "43 Alice allows acceptance",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decisions\": [\n    {\n      \"toolCallKey\": \"{{toolCallKey}}\",\n      \"decision\": \"ALLOW\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('acceptance applied', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(body.status).to.eql('COMPLETED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "44 Confirm hired",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stage is HIRED', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().stage).to.eql('HIRED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "45 Confirm offer accepted",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/applications/{{applicationId}}/offer"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('accepted', function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().status).to.eql('ACCEPTED');",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

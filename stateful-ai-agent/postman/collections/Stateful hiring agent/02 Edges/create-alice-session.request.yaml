@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Create Alice session'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions'
+order: 1000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"provider": "{{provider}}"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.collectionVariables.set('aliceSessionId', pm.response.json().id);

@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: stateful-ai-agent
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:stateful_agent}
+    username: ${POSTGRES_USER:stateful}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+  ai:
+    model:
+      chat: none
+    session:
+      time-to-live: 7d
+      allow-system-messages: false
+      repository:
+        jdbc:
+          initialize-schema: always
+          continue-on-error: false
+          indexed-attributes: tenant
+    openai:
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+      api-key: ${OPENROUTER_API_KEY:}
+      chat:
+        options:
+          model: ${OPENROUTER_CHAT_MODEL:openai/gpt-4o-mini}
+    deepseek:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        options:
+          model: ${DEEPSEEK_CHAT_MODEL:deepseek-chat}
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  opentelemetry:
+    otlp:
+      # Base URL only. The exporter appends /v1/traces and /v1/metrics.
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}
+
+agent:
+  security:
+    users:
+      - username: alice
+        password: ${AGENT_ALICE_PASSWORD}
+        tenant: tenant-a
+        roles: [USER]
+      - username: bob
+        password: ${AGENT_BOB_PASSWORD}
+        tenant: tenant-a
+        roles: [APPROVER]
+      - username: carol
+        password: ${AGENT_CAROL_PASSWORD}
+        tenant: tenant-b
+        roles: [USER]
+      - username: dave
+        password: ${AGENT_DAVE_PASSWORD}
+        tenant: tenant-a
+        roles: [USER]
+  risk:
+    high-stages: [ONSITE, OFFER]
+  session:
+    compaction:
+      max-turns: 20
+      max-tokens: 8000
+      preserve-turns: 8
+  approval:
+    on-new-input: REJECT
+    execution-lease: 30s
+    recovery-delay-ms: 15000
+
+logging:
+  level:
+    dev.mytechprofile.statefulagent: INFO

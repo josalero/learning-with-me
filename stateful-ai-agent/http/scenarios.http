@@ -1,0 +1,171 @@
+# Stateful hiring agent — scenario collection
+#
+# Start the stack first (see docs/onboarding.md):
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Then run the happy path without editing this file:
+#   python3 scripts/walkthrough.py
+#
+# The requests below are the same conversation, plus the edge cases the
+# automated tests cover. APP-1 is seeded at RECRUITER_SCREEN for tenant-a
+# with band 120000-160000. Use a fresh database; the happy path hires APP-1.
+#
+# @baseUrl = http://localhost:8080
+# @alice = alice
+# @alicePassword = change-me-alice
+# @bob = bob
+# @bobPassword = change-me-bob
+# @carol = carol
+# @carolPassword = change-me-carol
+
+### Health
+GET {{baseUrl}}/actuator/health
+
+### Alice opens a stub session
+POST {{baseUrl}}/api/v1/sessions
+Authorization: Basic {{alice}} {{alicePassword}}
+Content-Type: application/json
+
+{
+  "provider": "STUB"
+}
+
+### Read APP-1. Expect 200 COMPLETED and stage RECRUITER_SCREEN. No approval.
+POST {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages
+Authorization: Basic {{alice}} {{alicePassword}}
+Content-Type: application/json
+
+{
+  "text": "status of APP-1"
+}
+
+### Schedule the tech screen. Expect 202 AWAITING_APPROVAL, risk MEDIUM.
+# APP-1 stays RECRUITER_SCREEN until the decision below.
+POST {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages
+Authorization: Basic {{alice}} {{alicePassword}}
+Content-Type: application/json
+
+{
+  "text": "schedule tech screen for APP-1"
+}
+
+### Alice allows the schedule. Expect 200 COMPLETED and stage TECH_SCREEN.
+POST {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/approvals/{{approvalId}}/decision
+Authorization: Basic {{alice}} {{alicePassword}}
+Content-Type: application/json
+Idempotency-Key: {{$uuid}}
+
+{
+  "decisions": [
+    { "toolCallKey": "{{toolCallKey}}", "decision": "ALLOW" }
+  ]
+}
+
+### Record a passing tech screen. Expect 202, then allow it.
+POST {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages
+Authorization: Basic {{alice}} {{alicePassword}}
+Content-Type: application/json
+
+{
+  "text": "tech screen for APP-1 was yes"
+}
+
+### Bob opens his own session. He cannot read Alice's session (404).
+POST {{baseUrl}}/api/v1/sessions
+Authorization: Basic {{bob}} {{bobPassword}}
+Content-Type: application/json
+
+{
+  "provider": "STUB"
+}
+
+GET {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}
+Authorization: Basic {{bob}} {{bobPassword}}
+
+### Bob moves APP-1 to onsite. Expect 202 HIGH. He allows it himself.
+POST {{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages
+Authorization: Basic {{bob}} {{bobPassword}}
+Content-Type: application/json
+
+{
+  "text": "advance APP-1 to onsite"
+}
+
+### Onsite debrief STRONG_YES, then Bob advances to OFFER.
+POST {{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages
+Authorization: Basic {{bob}} {{bobPassword}}
+Content-Type: application/json
+
+{
+  "text": "onsite for APP-1 was strong yes"
+}
+
+POST {{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages
+Authorization: Basic {{bob}} {{bobPassword}}
+Content-Type: application/json
+
+{
+  "text": "advance APP-1 to offer"
+}
+
+### Alice extends an in-band offer. Expect 202 MEDIUM. She can allow it.
+POST {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages
+Authorization: Basic {{alice}} {{alicePassword}}
+Content-Type: application/json
+
+{
+  "text": "extend offer for APP-1 L4 150000"
+}
+
+### Candidate accepts. Expect stage HIRED and offer status ACCEPTED.
+POST {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages
+Authorization: Basic {{alice}} {{alicePassword}}
+Content-Type: application/json
+
+{
+  "text": "candidate accepted offer for APP-1"
+}
+
+GET {{baseUrl}}/api/v1/applications/APP-1
+Authorization: Basic {{alice}} {{alicePassword}}
+
+GET {{baseUrl}}/api/v1/applications/APP-1/offer
+Authorization: Basic {{alice}} {{alicePassword}}
+
+GET {{baseUrl}}/api/v1/applications/APP-1/scorecards
+Authorization: Basic {{alice}} {{alicePassword}}
+
+GET {{baseUrl}}/api/v1/applications/APP-1/actions
+Authorization: Basic {{alice}} {{alicePassword}}
+
+### Edge: deny a schedule. Send the schedule message, then DENY.
+# Stage stays put. Repeat the same Idempotency-Key to replay the stored answer.
+# A different key on the same approval returns 409.
+
+### Edge: Alice asks to reject APP-1. Expect 200 DENIED, no hiring action.
+# She is not an approver, so the tool is never paused for confirmation.
+
+### Edge: salary 190000 on an application whose band max is 160000.
+# Expect 202 HIGH. Alice's decision is 403. Bob's decision is 200.
+# Salary 90000 is MEDIUM and, once allowed, FAILED with OFFER_OUT_OF_BAND.
+
+### Edge: Carol or Dave reading Alice's session returns 404.
+# GET /api/v1/sessions/not-a-uuid returns 400.
+
+### Edge: create the session with provider STUB_FOREIGN, send a message,
+# PATCH provider to STUB with compatibilityMode REJECT, send another message.
+# Expect 422. Repeat with STRIP_PROVIDER_PAYLOAD and the next turn succeeds.
+
+### Edge: four "note: ..." turns. GET events?view=all includes a compaction
+# event. GET events?view=active is shorter and still starts from a user turn.
+GET {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/events?view=all
+Authorization: Basic {{alice}} {{alicePassword}}
+
+GET {{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/events?view=active
+Authorization: Basic {{alice}} {{alicePassword}}
+
+### Traces
+# Grafana is published at http://localhost:3000. Look for agent.turn and
+# agent.approval.decide. The decision span links to the trace stored on the
+# approval row when the turn paused.

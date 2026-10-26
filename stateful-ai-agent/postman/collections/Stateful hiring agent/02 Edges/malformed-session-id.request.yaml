@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Malformed session id'
+method: GET
+url: '{{baseUrl}}/api/v1/sessions/not-a-uuid'
+order: 8000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('bad id', function () { pm.response.to.have.status(400); });

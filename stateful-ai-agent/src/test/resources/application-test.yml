@@ -1,0 +1,42 @@
+spring:
+  datasource:
+    password: test
+  ai:
+    session:
+      repository:
+        jdbc:
+          initialize-schema: always
+
+agent:
+  security:
+    users:
+      - username: alice
+        password: test-alice
+        tenant: tenant-a
+        roles: [USER]
+      - username: bob
+        password: test-bob
+        tenant: tenant-a
+        roles: [APPROVER]
+      - username: carol
+        password: test-carol
+        tenant: tenant-b
+        roles: [USER]
+      - username: dave
+        password: test-dave
+        tenant: tenant-a
+        roles: [USER]
+  session:
+    compaction:
+      max-turns: 3
+      preserve-turns: 2
+  approval:
+    execution-lease: 1h
+    recovery-delay-ms: 3600000
+
+management:
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: http://127.0.0.1:9/v1/traces

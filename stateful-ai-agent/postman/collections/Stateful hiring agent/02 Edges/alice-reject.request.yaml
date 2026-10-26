@@ -1,0 +1,20 @@
+$kind: http-request
+name: 'Alice reject is denied immediately'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages'
+order: 4000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "reject {{applicationId}} bar not met"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('not paused', function () {
+          pm.response.to.have.status(200);
+          pm.expect(pm.response.json().status).to.eql('DENIED');
+      });

@@ -1,0 +1,25 @@
+$kind: http-request
+name: 'Extend above band'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages'
+order: 1000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "extend offer for {{applicationId}} L4 190000"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const body = pm.response.json();
+      pm.test('waiting for a person', function () {
+          pm.response.to.have.status(202);
+          pm.expect(body.status).to.eql('AWAITING_APPROVAL');
+      });
+      pm.collectionVariables.set('approvalId', body.approval.id);
+      pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);
+      
+      pm.test('above band is high', function () { pm.expect(pm.response.json().approval.risk).to.eql('HIGH'); });

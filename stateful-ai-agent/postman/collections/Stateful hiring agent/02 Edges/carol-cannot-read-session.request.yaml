@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Carol cannot read Alice session'
+method: GET
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}'
+order: 6000
+auth:
+  type: basic
+  credentials:
+    - key: username
+      value: carol
+    - key: password
+      value: '{{carolPassword}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('hidden from other tenant', function () { pm.response.to.have.status(404); });

@@ -1,0 +1,22 @@
+$kind: http-request
+name: 'Status of APP-1'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages'
+order: 3000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "status of {{applicationId}}"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const body = pm.response.json();
+      pm.test('read completes without an approval', function () {
+          pm.response.to.have.status(200);
+          pm.expect(body.status).to.eql('COMPLETED');
+          pm.expect(body.answer).to.include('RECRUITER_SCREEN');
+      });

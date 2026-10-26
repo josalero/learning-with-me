@@ -1,0 +1,23 @@
+$kind: http-request
+name: 'Schedule tech screen'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages'
+order: 2000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "schedule tech screen for {{applicationId}}"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const body = pm.response.json();
+      pm.test('waiting for a person', function () {
+          pm.response.to.have.status(202);
+          pm.expect(body.status).to.eql('AWAITING_APPROVAL');
+      });
+      pm.collectionVariables.set('approvalId', body.approval.id);
+      pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);

@@ -1,0 +1,30 @@
+$kind: http-request
+name: 'Allow onsite'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/approvals/{{approvalId}}/decision'
+order: 10000
+auth:
+  type: basic
+  credentials:
+    - key: username
+      value: bob
+    - key: password
+      value: '{{bobPassword}}'
+headers:
+  - key: Idempotency-Key
+    value: '{{$guid}}'
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"decisions": [{"toolCallKey": "{{toolCallKey}}", "decision": "ALLOW"}]}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const body = pm.response.json();
+      pm.test('tool completed', function () {
+          pm.response.to.have.status(200);
+          pm.expect(body.status).to.eql('COMPLETED');
+      });

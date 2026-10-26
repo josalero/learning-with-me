@@ -1,0 +1,27 @@
+name: Local
+values:
+  - key: baseUrl
+    value: 'http://localhost:8080'
+    enabled: true
+    type: default
+    description: Agent base URL. Compose publishes the API on port 8080.
+  - key: alicePassword
+    value: ''
+    enabled: true
+    type: secret
+    description: AGENT_ALICE_PASSWORD from your local .env. Not stored in this file.
+  - key: bobPassword
+    value: ''
+    enabled: true
+    type: secret
+    description: AGENT_BOB_PASSWORD from your local .env. Not stored in this file.
+  - key: carolPassword
+    value: ''
+    enabled: true
+    type: secret
+    description: AGENT_CAROL_PASSWORD from your local .env. Not stored in this file.
+  - key: davePassword
+    value: ''
+    enabled: true
+    type: secret
+    description: AGENT_DAVE_PASSWORD from your local .env. Not stored in this file.

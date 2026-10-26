@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Get actions'
+method: GET
+url: '{{baseUrl}}/api/v1/applications/{{applicationId}}/actions'
+order: 22000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('actions exist', function () { pm.expect(pm.response.json().length).to.be.above(0); });

@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Get scorecards'
+method: GET
+url: '{{baseUrl}}/api/v1/applications/{{applicationId}}/scorecards'
+order: 21000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('two scorecards', function () { pm.expect(pm.response.json().length).to.eql(2); });

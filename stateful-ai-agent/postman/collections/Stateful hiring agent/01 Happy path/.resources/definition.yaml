@@ -1,0 +1,7 @@
+$kind: collection
+name: 01 Happy path
+description: |-
+  Fresh database only. Alice schedules and scores the tech screen.
+  Bob moves the application to onsite and offer. Alice extends an in-band
+  offer and records acceptance. APP-1 ends as HIRED.
+order: 1000

@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Switch provider to stub'
+method: PATCH
+url: '{{baseUrl}}/api/v1/sessions/{{foreignSessionId}}'
+order: 11000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"provider": "STUB", "compatibilityMode": "REJECT"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('provider updated', function () { pm.response.to.have.status(200); });

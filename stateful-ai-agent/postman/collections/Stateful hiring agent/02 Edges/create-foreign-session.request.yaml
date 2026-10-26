@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Create foreign stub session'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions'
+order: 9000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"provider": "STUB_FOREIGN", "compatibilityMode": "REJECT"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.collectionVariables.set('foreignSessionId', pm.response.json().id);

@@ -1,0 +1,16 @@
+$kind: http-request
+name: 'Compaction in full log'
+method: GET
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/events'
+order: 18000
+queryParams:
+  - key: view
+    value: 'all'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('compaction event kept', function () {
+          const types = pm.response.json().map(event => event.type).join(',');
+          pm.expect(types).to.include('COMPACT');
+      });

@@ -1,0 +1,13 @@
+$kind: http-request
+name: 'Events full log'
+method: GET
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/events'
+order: 23000
+queryParams:
+  - key: view
+    value: 'all'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('full log', function () { pm.expect(pm.response.json().length).to.be.above(0); });

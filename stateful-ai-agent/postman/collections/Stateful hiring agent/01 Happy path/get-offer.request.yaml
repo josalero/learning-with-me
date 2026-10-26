@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Get offer'
+method: GET
+url: '{{baseUrl}}/api/v1/applications/{{applicationId}}/offer'
+order: 20000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('accepted offer', function () { pm.expect(pm.response.json().status).to.eql('ACCEPTED'); });

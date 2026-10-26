@@ -1,0 +1,13 @@
+$kind: http-request
+name: 'Events active window'
+method: GET
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/events'
+order: 24000
+queryParams:
+  - key: view
+    value: 'active'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('active window', function () { pm.response.to.have.status(200); });

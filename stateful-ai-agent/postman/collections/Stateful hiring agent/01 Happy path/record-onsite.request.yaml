@@ -1,0 +1,30 @@
+$kind: http-request
+name: 'Onsite was strong yes'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{bobSessionId}}/messages'
+order: 11000
+auth:
+  type: basic
+  credentials:
+    - key: username
+      value: bob
+    - key: password
+      value: '{{bobPassword}}'
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "onsite for {{applicationId}} was strong yes"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const body = pm.response.json();
+      pm.test('waiting for a person', function () {
+          pm.response.to.have.status(202);
+          pm.expect(body.status).to.eql('AWAITING_APPROVAL');
+      });
+      pm.collectionVariables.set('approvalId', body.approval.id);
+      pm.collectionVariables.set('toolCallKey', body.approval.calls[0].toolCallKey);

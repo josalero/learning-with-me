@@ -1,0 +1,110 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.2.0-RC1'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
+}
+
+group = 'dev.mytechprofile.statefulagent'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+jacoco {
+    toolVersion = '0.8.14'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.ai:spring-ai-bom:2.1.0-RC1'
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    implementation 'org.springframework.ai:spring-ai-starter-model-deepseek'
+    implementation 'org.springframework.ai:spring-ai-starter-model-session-jdbc'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
+    testImplementation 'org.awaitility:awaitility'
+    testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+    testImplementation 'org.springframework.ai:spring-ai-test'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add('-parameters')
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform {
+        excludeTags 'live'
+    }
+}
+
+tasks.register('liveTest', Test) {
+    description = 'Runs provider smoke tests that call OpenRouter or DeepSeek.'
+    group = 'verification'
+    useJUnitPlatform {
+        includeTags 'live'
+    }
+    shouldRunAfter tasks.named('test')
+}
+
+def jacocoExcluded = {
+    classDirectories.setFrom(files(classDirectories.files.collect {
+        fileTree(dir: it, exclude: [
+                '**/StatefulAgentApplication*',
+                '**/live/**'
+        ])
+    }))
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    configure(jacocoExcluded)
+}
+
+tasks.named('jacocoTestCoverageVerification') {
+    dependsOn tasks.named('jacocoTestReport')
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                minimum = 0.80
+            }
+        }
+    }
+    configure(jacocoExcluded)
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('jacocoTestCoverageVerification')
+}
+
+tasks.named('bootJar') {
+    archiveBaseName = 'stateful-ai-agent'
+}

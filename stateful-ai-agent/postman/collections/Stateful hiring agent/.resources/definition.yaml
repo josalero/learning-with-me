@@ -1,0 +1,43 @@
+$kind: collection
+name: Stateful hiring agent
+description: |-
+  Runnable scenarios for the tech-screen and offer POC.
+  Import this folder into Postman, or run one folder with the CLI.
+  Point the Local environment at http://localhost:8080 and set the passwords
+  to the values in your .env file. The committed defaults match .env.example.
+  APP-1 is hired by the happy path, so run that folder on a fresh database.
+  Run 02 Edges on a fresh database as well; it denies a schedule on APP-1
+  and does not finish the hire. Run 03 Offer band only while an application
+  is still at OFFER.
+variables:
+  - key: baseUrl
+    value: 'http://localhost:8080'
+  - key: applicationId
+    value: APP-1
+  - key: provider
+    value: OPENROUTER
+  - key: alicePassword
+    value: change-me-alice
+  - key: bobPassword
+    value: change-me-bob
+  - key: carolPassword
+    value: change-me-carol
+  - key: davePassword
+    value: change-me-dave
+  - key: aliceSessionId
+    value: ''
+  - key: bobSessionId
+    value: ''
+  - key: foreignSessionId
+    value: ''
+  - key: approvalId
+    value: ''
+  - key: toolCallKey
+    value: ''
+auth:
+  type: basic
+  credentials:
+    - key: username
+      value: alice
+    - key: password
+      value: '{{alicePassword}}'

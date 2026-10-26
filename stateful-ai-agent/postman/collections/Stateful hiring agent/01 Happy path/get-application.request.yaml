@@ -1,0 +1,10 @@
+$kind: http-request
+name: 'Get application'
+method: GET
+url: '{{baseUrl}}/api/v1/applications/{{applicationId}}'
+order: 19000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('hired', function () { pm.expect(pm.response.json().stage).to.eql('HIRED'); });

@@ -1,0 +1,25 @@
+$kind: http-request
+name: 'Create Bob session'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions'
+order: 8000
+auth:
+  type: basic
+  credentials:
+    - key: username
+      value: bob
+    - key: password
+      value: '{{bobPassword}}'
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"provider": "{{provider}}"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('session created', function () { pm.response.to.have.status(201); });
+      pm.collectionVariables.set('bobSessionId', pm.response.json().id);

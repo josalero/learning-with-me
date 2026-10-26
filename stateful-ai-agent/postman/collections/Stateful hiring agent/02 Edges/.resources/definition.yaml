@@ -1,0 +1,7 @@
+$kind: collection
+name: 02 Edges
+description: |-
+  Fresh database, run instead of the happy path. Denies a schedule on APP-1,
+  shows an immediate deny when Alice asks to reject, then checks 404, 400,
+  and a provider switch to 422. Compaction uses four note turns on Alice's session.
+order: 2000

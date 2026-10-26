@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Note 4'
+method: POST
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}/messages'
+order: 17000
+headers:
+  - key: Content-Type
+    value: 'application/json'
+body:
+  type: json
+  content: |-
+    {"text": "note: turn 4"}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('note stored', function () { pm.response.to.have.status(200); });

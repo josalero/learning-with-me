@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'Bob cannot read Alice session'
+method: GET
+url: '{{baseUrl}}/api/v1/sessions/{{aliceSessionId}}'
+order: 5000
+auth:
+  type: basic
+  credentials:
+    - key: username
+      value: bob
+    - key: password
+      value: '{{bobPassword}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('hidden from approver', function () { pm.response.to.have.status(404); });
