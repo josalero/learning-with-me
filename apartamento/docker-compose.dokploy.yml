@@ -4,6 +4,8 @@
 services:
   db:
     image: postgres:18-bookworm
+    networks:
+      - internal
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -36,8 +38,13 @@ services:
       OPENROUTER_MODEL_ECONOMY: ${OPENROUTER_MODEL_ECONOMY:-}
       OPENROUTER_MODEL_BALANCED: ${OPENROUTER_MODEL_BALANCED:-}
       OPENROUTER_MODEL_FRONTIER: ${OPENROUTER_MODEL_FRONTIER:-}
+    networks:
+      - internal
+      - dokploy-network
     expose:
       - '8080'
+    labels:
+      - traefik.docker.network=dokploy-network
     healthcheck:
       test:
         [
@@ -53,6 +60,11 @@ services:
     depends_on:
       - db
     restart: unless-stopped
+
+networks:
+  internal:
+  dokploy-network:
+    external: true
 
 volumes:
   natarundi_pg_data:

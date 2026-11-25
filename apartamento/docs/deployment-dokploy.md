@@ -9,7 +9,8 @@ Flujo: **push a `main`** en `learning-with-me` (cambios bajo `apartamento/**`) �
 3. **Root directory / working directory:** `apartamento` (donde vive el compose).
 4. Copia variables de [`env.dokploy.example`](../env.dokploy.example) al panel **Environment** (secretos reales, nunca en Git).
 5. Obligatorio en Environment: **`APP_IMAGE=ghcr.io/josalero/learning-with-me/apartamento:latest`** (o `…:sha-<commit>` para fijar versión).
-6. Dominio HTTPS → servicio **`app`**, puerto contenedor **`8080`**.
+6. Dominio HTTPS → servicio **`app`**, puerto contenedor **`8080`**. Tras crear o editar el dominio, pulsa **Deploy** otra vez (Traefik actualiza labels).
+7. El compose enlaza **`app`** a la red externa **`dokploy-network`** (requerido para que Traefik vea el contenedor). **`db`** solo usa red interna.
 
 ## 2. GHCR
 
@@ -65,11 +66,12 @@ Ese mensaje en **texto plano** (`content-type: text/plain`) lo devuelve **Traefi
 
 Checklist:
 
-1. **Dominio en el compose correcto:** Proyecto → tu stack Compose → **Domains** → `cotiza.my-tech-profile.dev` (o el tuyo) asociado al servicio **`app`**, puerto contenedor **8080**, HTTPS activo. Sin esto, Traefik no enruta al contenedor.
-2. **Contenedor `app` en ejecución:** Logs del servicio `app`. Si falla migrate/seed por `DATABASE_URL`, `SESSION_SECRET` o credenciales PG, el contenedor reinicia y no hay backend.
-3. **Registry GHCR:** Si el pull de `APP_IMAGE` falla (paquete privado sin login), el servicio `app` no arranca.
-4. **Rama y ruta Git en Dokploy:** Rama `feat/apartamento-dokploy-ci`, compose `apartamento/docker-compose.dokploy.yml`, directorio raíz `apartamento`.
-5. **Comprobación externa** (cuando el routing esté bien):
+1. **Dominio en el compose correcto:** Proyecto → tu stack Compose → **Domains** → `cotiza.my-tech-profile.dev` (o el tuyo) asociado al servicio **`app`**, puerto contenedor **8080**, HTTPS activo. Sin esto, Traefik no enruta al contenedor. **Redeploy** después de tocar dominios.
+2. **Red `dokploy-network`:** El servicio `app` debe estar en esa red (ya va en `docker-compose.dokploy.yml`). Si el 404 sigue, en el servidor: `docker network connect dokploy-network <nombre-contenedor-app>` y redeploy limpio.
+3. **Contenedor `app` en ejecución:** Logs del servicio `app`. Si falla migrate/seed por `DATABASE_URL`, `SESSION_SECRET` o credenciales PG, el contenedor reinicia y no hay backend.
+4. **Registry GHCR:** Si el pull de `APP_IMAGE` falla (paquete privado sin login), el servicio `app` no arranca.
+5. **Rama y ruta Git en Dokploy:** Rama `feat/apartamento-dokploy-ci`, compose `apartamento/docker-compose.dokploy.yml`, directorio raíz `apartamento`.
+6. **Comprobación externa** (cuando el routing esté bien):
 
 ```bash
 curl -fsS https://cotiza.my-tech-profile.dev/api/health
