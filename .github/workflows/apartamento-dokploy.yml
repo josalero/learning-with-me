@@ -1,7 +1,7 @@
 # Natarundi (apartamento) — tests, GHCR image, Dokploy compose deploy.
 #
 # Secret (recomendado): DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL
-#   → Dokploy Compose → Deployments → webhook, p. ej. …/api/deploy/compose/<token>
+#   → GET …/api/deploy/compose/<token> (Dokploy Compose → deployments)
 # Opcional (API): DOKPLOY_URL + DOKPLOY_API_KEY + variable DOKPLOY_COMPOSE_ID
 #
 # Dokploy Environment must set APP_IMAGE=ghcr.io/josalero/learning-with-me/apartamento:latest
@@ -102,30 +102,11 @@ jobs:
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}
-          GITHUB_REF: ${{ github.ref }}
           GITHUB_SHA: ${{ github.sha }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           if [ -n "$WEBHOOK_URL" ]; then
-            payload=$(jq -n \
-              --arg ref "$GITHUB_REF" \
-              --arg sha "$GITHUB_SHA" \
-              --arg message "${COMMIT_MESSAGE:-Deploy from GitHub Actions}" \
-              --arg repo "$GITHUB_REPOSITORY" \
-              --arg actor "$GITHUB_ACTOR" \
-              '{
-                ref: $ref,
-                head_commit: { id: $sha, message: $message },
-                repository: { full_name: $repo },
-                pusher: { name: $actor }
-              }')
-            curl --fail-with-body -sS -X POST "$WEBHOOK_URL" \
-              -H "Content-Type: application/json" \
-              -H "X-GitHub-Event: push" \
-              -d "$payload"
-            echo "Dokploy webhook deploy triggered @ ${GITHUB_SHA}"
+            curl --fail-with-body -sS -X GET "$WEBHOOK_URL"
+            echo "Dokploy compose deploy (GET) triggered @ ${GITHUB_SHA}"
             exit 0
           fi
 
