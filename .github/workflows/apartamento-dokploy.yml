@@ -1,7 +1,8 @@
 # Natarundi (apartamento) — tests, GHCR image, Dokploy compose deploy.
 #
-# Secrets: DOKPLOY_URL, DOKPLOY_API_KEY
-# Variables: DOKPLOY_COMPOSE_ID (optional until the Dokploy stack exists)
+# Secret (recomendado): DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL
+#   → Dokploy Compose → Deployments → webhook, p. ej. …/api/deploy/compose/<token>
+# Opcional (API): DOKPLOY_URL + DOKPLOY_API_KEY + variable DOKPLOY_COMPOSE_ID
 #
 # Dokploy Environment must set APP_IMAGE=ghcr.io/josalero/learning-with-me/apartamento:latest
 # (or a sha-* tag for pin/rollback). See apartamento/docs/deployment-dokploy.md.
@@ -93,25 +94,51 @@ jobs:
 
   deploy-dokploy:
     needs: publish-image
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Dokploy compose deploy
         env:
+          WEBHOOK_URL: ${{ secrets.DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL }}
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
+          if [ -n "$WEBHOOK_URL" ]; then
+            payload=$(jq -n \
+              --arg ref "$GITHUB_REF" \
+              --arg sha "$GITHUB_SHA" \
+              --arg message "${COMMIT_MESSAGE:-Deploy from GitHub Actions}" \
+              --arg repo "$GITHUB_REPOSITORY" \
+              --arg actor "$GITHUB_ACTOR" \
+              '{
+                ref: $ref,
+                head_commit: { id: $sha, message: $message },
+                repository: { full_name: $repo },
+                pusher: { name: $actor }
+              }')
+            curl --fail-with-body -sS -X POST "$WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -H "X-GitHub-Event: push" \
+              -d "$payload"
+            echo "Dokploy webhook deploy triggered @ ${GITHUB_SHA}"
+            exit 0
+          fi
+
           if [ -z "$COMPOSE_ID" ]; then
-            echo "::notice::DOKPLOY_COMPOSE_ID is not set — image was pushed to GHCR; trigger deploy from Dokploy UI or set the repository variable."
+            echo "::notice::Set secret DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL (Compose deploy webhook) or variable DOKPLOY_COMPOSE_ID + API secrets."
             exit 0
           fi
           if [ -z "$DOKPLOY_URL" ] || [ -z "$DOKPLOY_API_KEY" ]; then
-            echo "::error::DOKPLOY_URL and DOKPLOY_API_KEY secrets are required when DOKPLOY_COMPOSE_ID is set."
+            echo "::error::DOKPLOY_URL and DOKPLOY_API_KEY required for compose.deploy fallback."
             exit 1
           fi
           curl --fail-with-body -sS -X POST "${DOKPLOY_URL%/}/api/compose.deploy" \
             -H "Content-Type: application/json" \
             -H "x-api-key: $DOKPLOY_API_KEY" \
             -d "{\"composeId\": \"$COMPOSE_ID\"}"
-          echo "Dokploy compose deploy triggered for apartamento @ ${GITHUB_SHA}"
+          echo "Dokploy compose.deploy triggered @ ${GITHUB_SHA}"

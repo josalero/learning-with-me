@@ -25,9 +25,12 @@ Repo → **Settings → Actions → General → Workflow permissions:** **Read a
 
 | Nombre | Tipo | Uso |
 | --- | --- | --- |
-| `DOKPLOY_URL` | Secret | Origen del panel, p. ej. `https://dokploy.tudominio.com` (sin barra final) |
-| `DOKPLOY_API_KEY` | Secret | Dokploy → Profile → API/CLI |
-| `DOKPLOY_COMPOSE_ID` | Variable | ID del compose en Dokploy (no es secreto) |
+| **`DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL`** | **Secret** | URL del webhook en Dokploy (Compose → despliegues / logs). Formato: `http(s)://HOST:PORT/api/deploy/compose/<token>`. El workflow hace `POST` con cuerpo estilo GitHub (`ref` = rama del push). |
+| `DOKPLOY_URL` | Secret | (Opcional) Origen del panel para `POST /api/compose.deploy` |
+| `DOKPLOY_API_KEY` | Secret | (Opcional) Dokploy → Profile → API/CLI |
+| `DOKPLOY_COMPOSE_ID` | Variable | (Opcional) `composeId` si no usas webhook |
+
+En el compose de Dokploy: **Auto Deploy** activado y la **rama** debe coincidir con la del push (p. ej. `feat/apartamento-dokploy-ci`), si no el webhook responde *Branch Not Match*.
 
 Obtener `composeId` (sustituye URL y API key):
 
