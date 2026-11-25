@@ -36,7 +36,8 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: apartamento/package-lock.json
-      - run: npm ci
+      - name: Install dependencies (public npm registry)
+        run: npm ci --registry=https://registry.npmjs.org/
       - run: npm test
       - run: npm run build
 
