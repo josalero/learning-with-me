@@ -4,7 +4,7 @@ Flujo: **push a `main`** en `learning-with-me` (cambios bajo `apartamento/**`) �
 
 ## 1. Crear el stack en Dokploy
 
-1. **Compose** conectado al repo `josalero/learning-with-me`, rama `main`.
+1. **Compose** conectado al repo `josalero/learning-with-me`, rama `feat/apartamento-dokploy-ci` (hasta merge) o `main`.
 2. **Compose path:** `apartamento/docker-compose.dokploy.yml`
 3. **Root directory / working directory:** `apartamento` (donde vive el compose).
 4. Copia variables de [`env.dokploy.example`](../env.dokploy.example) al panel **Environment** (secretos reales, nunca en Git).
@@ -58,3 +58,21 @@ curl -fsS https://TU_DOMINIO/api/health
 
 1. En Dokploy Environment, cambia `APP_IMAGE` a `ghcr.io/josalero/learning-with-me/apartamento:sha-<commit-anterior>`.
 2. Vuelve a desplegar el compose (UI o API).
+
+## 6. Troubleshooting — `404 page not found` (texto plano)
+
+Ese mensaje en **texto plano** (`content-type: text/plain`) lo devuelve **Traefik** del host Dokploy, no la app Natarundi. Fastify respondería JSON en `/api/*` o el HTML del dashboard en `/`.
+
+Checklist:
+
+1. **Dominio en el compose correcto:** Proyecto → tu stack Compose → **Domains** → `cotiza.my-tech-profile.dev` (o el tuyo) asociado al servicio **`app`**, puerto contenedor **8080**, HTTPS activo. Sin esto, Traefik no enruta al contenedor.
+2. **Contenedor `app` en ejecución:** Logs del servicio `app`. Si falla migrate/seed por `DATABASE_URL`, `SESSION_SECRET` o credenciales PG, el contenedor reinicia y no hay backend.
+3. **Registry GHCR:** Si el pull de `APP_IMAGE` falla (paquete privado sin login), el servicio `app` no arranca.
+4. **Rama y ruta Git en Dokploy:** Rama `feat/apartamento-dokploy-ci`, compose `apartamento/docker-compose.dokploy.yml`, directorio raíz `apartamento`.
+5. **Comprobación externa** (cuando el routing esté bien):
+
+```bash
+curl -fsS https://cotiza.my-tech-profile.dev/api/health
+```
+
+Debe devolver JSON con `ok: true`, no `404 page not found`.

@@ -1,4 +1,6 @@
-# Variables: ver env.dokploy.example (panel Environment en Dokploy).
+# Dokploy: rama feat/apartamento-dokploy-ci, path apartamento/docker-compose.dokploy.yml, root apartamento/.
+# Dominio (p. ej. cotiza.my-tech-profile.dev) → servicio app, puerto contenedor 8080 (HTTPS en el panel).
+# Variables: env.dokploy.example
 services:
   db:
     image: postgres:18-bookworm
@@ -14,6 +16,8 @@ services:
     image: ${APP_IMAGE:-ghcr.io/josalero/learning-with-me/apartamento:feat-apartamento-dokploy-ci}
     pull_policy: always
     environment:
+      HOST: 0.0.0.0
+      PORT: 8080
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
@@ -32,8 +36,20 @@ services:
       OPENROUTER_MODEL_ECONOMY: ${OPENROUTER_MODEL_ECONOMY:-}
       OPENROUTER_MODEL_BALANCED: ${OPENROUTER_MODEL_BALANCED:-}
       OPENROUTER_MODEL_FRONTIER: ${OPENROUTER_MODEL_FRONTIER:-}
-    ports:
-      - '8080:8080'
+    expose:
+      - '8080'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8080/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
     depends_on:
       - db
     restart: unless-stopped
