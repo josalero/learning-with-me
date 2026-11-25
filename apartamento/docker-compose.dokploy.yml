@@ -11,7 +11,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: ${APP_IMAGE:?set APP_IMAGE to the published GHCR image (see env.dokploy.example)}
+    image: ${APP_IMAGE:-ghcr.io/josalero/learning-with-me/apartamento:feat-apartamento-dokploy-ci}
     pull_policy: always
     environment:
       NODE_ENV: production
