@@ -11,10 +11,13 @@ name: apartamento · Dokploy
 on:
   workflow_dispatch:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
+      - feat/apartamento-dokploy-ci
     paths:
       - 'apartamento/**'
-      - '.github/workflows/apartamento-dokploy.yml'
+      - '.github/workflows/apartamento-*.yml'
 
 permissions:
   contents: read
@@ -54,11 +57,18 @@ jobs:
         shell: bash
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}/apartamento"
+          branch="${GITHUB_REF_NAME}"
           echo "IMAGE=$image" >> "$GITHUB_ENV"
           {
             echo 'TAGS<<EOF'
             echo "$image:sha-${GITHUB_SHA}"
-            echo "$image:latest"
+            if [ "$branch" = main ] || [ "$branch" = master ]; then
+              echo "$image:latest"
+            else
+              # Feature branches: branch tag (no overwrite of :latest)
+              safe_branch=$(printf '%s' "$branch" | tr '/_' '-' | tr '[:upper:]' '[:lower:]')
+              echo "$image:${safe_branch}"
+            fi
             echo EOF
           } >> "$GITHUB_ENV"
       - uses: docker/setup-buildx-action@v3
@@ -83,6 +93,7 @@ jobs:
 
   deploy-dokploy:
     needs: publish-image
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Dokploy compose deploy

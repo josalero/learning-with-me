@@ -14,7 +14,8 @@ Flujo: **push a `main`** en `learning-with-me` (cambios bajo `apartamento/**`) �
 ## 2. GHCR
 
 - Imagen: `ghcr.io/josalero/learning-with-me/apartamento`
-- Tags: `latest` y `sha-<full-git-sha>` en cada deploy desde `main`.
+- Tags en **`main`/`master`:** `latest` y `sha-<full-git-sha>`.
+- Tags en **`feat/apartamento-dokploy-ci`:** `sha-<sha>` y `feat-apartamento-dokploy-ci` (no pisa `:latest`).
 - Si el paquete es **privado**, en Dokploy añade credenciales de registry (`ghcr.io`, usuario GitHub, PAT con `read:packages`) o haz el paquete público en GitHub → Packages.
 
 Repo → **Settings → Actions → General → Workflow permissions:** **Read and write** (para que `GITHUB_TOKEN` pueda publicar en GHCR).

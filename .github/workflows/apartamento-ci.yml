@@ -8,7 +8,7 @@ on:
       - 'apartamento/**'
       - '.github/workflows/apartamento-*.yml'
   push:
-    branches-ignore: [main, master]
+    branches-ignore: [main, master, feat/apartamento-dokploy-ci]
     paths:
       - 'apartamento/**'
       - '.github/workflows/apartamento-*.yml'
