@@ -1,6 +1,6 @@
 # Natarundi — deploy en Dokploy (GHCR + GitHub Actions)
 
-Flujo: **push a `main`** en `learning-with-me` (cambios bajo `apartamento/**`) → CI (`npm test` + build) → imagen a **GHCR** → `POST /api/compose.deploy` en Dokploy (si está configurado).
+Flujo: push en `learning-with-me` (cambios bajo `apartamento/**`) → `npm test` + build → imagen **GHCR** → **`GET`** a la URL de deploy del compose en Dokploy.
 
 ## 1. Crear el stack en Dokploy
 
@@ -26,19 +26,10 @@ Repo → **Settings → Actions → General → Workflow permissions:** **Read a
 | Nombre | Tipo | Uso |
 | --- | --- | --- |
 | **`DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL`** | **Secret** | URL de deploy en Dokploy (Compose → deployments). Formato: `http(s)://HOST:PORT/api/deploy/compose/<token>`. El workflow hace **`GET`** a esa URL tras publicar en GHCR. |
-| `DOKPLOY_URL` | Secret | (Opcional) Origen del panel para `POST /api/compose.deploy` |
-| `DOKPLOY_API_KEY` | Secret | (Opcional) Dokploy → Profile → API/CLI |
-| `DOKPLOY_COMPOSE_ID` | Variable | (Opcional) `composeId` si no usas webhook |
 
 En Dokploy, el compose debe apuntar a la rama correcta del repo (p. ej. `feat/apartamento-dokploy-ci`) para que el deploy traiga el compose/imagen esperados.
 
-Obtener `composeId` (sustituye URL y API key):
-
-```bash
-curl -sS -H "x-api-key: YOUR_API_KEY" "https://YOUR_DOKPLOY/api/project.all" | jq .
-```
-
-Si **`DOKPLOY_COMPOSE_ID`** no está definido, el workflow **solo publica la imagen** y muestra un aviso; puedes pulsar **Deploy** en Dokploy a mano.
+La URL suele verse en Dokploy → tu compose → pestaña de despliegues (copiar y pegar en el secret).
 
 ## 4. Validación local del compose
 

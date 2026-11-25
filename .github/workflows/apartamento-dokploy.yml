@@ -1,8 +1,6 @@
 # Natarundi (apartamento) — tests, GHCR image, Dokploy compose deploy.
 #
-# Secret (recomendado): DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL
-#   → GET …/api/deploy/compose/<token> (Dokploy Compose → deployments)
-# Opcional (API): DOKPLOY_URL + DOKPLOY_API_KEY + variable DOKPLOY_COMPOSE_ID
+# Secret: DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL — GET …/api/deploy/compose/<token>
 #
 # Dokploy Environment must set APP_IMAGE=ghcr.io/josalero/learning-with-me/apartamento:latest
 # (or a sha-* tag for pin/rollback). See apartamento/docs/deployment-dokploy.md.
@@ -96,30 +94,14 @@ jobs:
     needs: publish-image
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Dokploy compose deploy
+      - name: Trigger Dokploy compose deploy (GET)
         env:
           WEBHOOK_URL: ${{ secrets.DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL }}
-          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
-          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
-          COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}
           GITHUB_SHA: ${{ github.sha }}
         run: |
-          if [ -n "$WEBHOOK_URL" ]; then
-            curl --fail-with-body -sS -X GET "$WEBHOOK_URL"
-            echo "Dokploy compose deploy (GET) triggered @ ${GITHUB_SHA}"
-            exit 0
-          fi
-
-          if [ -z "$COMPOSE_ID" ]; then
-            echo "::notice::Set secret DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL (Compose deploy webhook) or variable DOKPLOY_COMPOSE_ID + API secrets."
-            exit 0
-          fi
-          if [ -z "$DOKPLOY_URL" ] || [ -z "$DOKPLOY_API_KEY" ]; then
-            echo "::error::DOKPLOY_URL and DOKPLOY_API_KEY required for compose.deploy fallback."
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "::error::Set repository secret DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL (Dokploy compose deploy URL)."
             exit 1
           fi
-          curl --fail-with-body -sS -X POST "${DOKPLOY_URL%/}/api/compose.deploy" \
-            -H "Content-Type: application/json" \
-            -H "x-api-key: $DOKPLOY_API_KEY" \
-            -d "{\"composeId\": \"$COMPOSE_ID\"}"
-          echo "Dokploy compose.deploy triggered @ ${GITHUB_SHA}"
+          curl --fail-with-body -sS -X GET "$WEBHOOK_URL"
+          echo "Dokploy compose deploy triggered @ ${GITHUB_SHA}"
