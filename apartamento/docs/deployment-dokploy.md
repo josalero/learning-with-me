@@ -1,6 +1,6 @@
 # Natarundi — deploy en Dokploy (GHCR + GitHub Actions)
 
-Flujo: push en `learning-with-me` (cambios bajo `apartamento/**`) → `npm test` + build → imagen **GHCR** → **`GET`** a la URL de deploy del compose en Dokploy.
+Flujo: push → tests → imagen **GHCR** → **POST** al webhook de deploy del compose (misma URL que en el panel; con `ref` de la rama).
 
 ## 1. Crear el stack en Dokploy
 
@@ -25,9 +25,9 @@ Repo → **Settings → Actions → General → Workflow permissions:** **Read a
 
 | Nombre | Tipo | Uso |
 | --- | --- | --- |
-| **`DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL`** | **Secret** | URL de deploy en Dokploy (Compose → deployments). Formato: `http(s)://HOST:PORT/api/deploy/compose/<token>`. El workflow hace **`GET`** a esa URL tras publicar en GHCR. |
+| **`DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL`** | **Secret** | URL en Dokploy (Compose → deployments). El workflow hace **`POST`** con cuerpo estilo GitHub (`ref: refs/heads/<rama>`). |
 
-En Dokploy, el compose debe apuntar a la rama correcta del repo (p. ej. `feat/apartamento-dokploy-ci`) para que el deploy traiga el compose/imagen esperados.
+**Branch Not Match:** la rama en Dokploy (compose → Provider → Branch) debe ser **exactamente** la del push, p. ej. `feat/apartamento-dokploy-ci` (no `main` si el workflow corre en la feature branch). Activa **Auto Deploy** en el compose.
 
 La URL suele verse en Dokploy → tu compose → pestaña de despliegues (copiar y pegar en el secret).
 

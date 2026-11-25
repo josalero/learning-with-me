@@ -1,6 +1,7 @@
 # Natarundi (apartamento) — tests, GHCR image, Dokploy compose deploy.
 #
-# Secret: DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL — GET …/api/deploy/compose/<token>
+# Secret: DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL — …/api/deploy/compose/<token>
+# CI: POST + payload GitHub (ref = rama del push). Debe coincidir con la rama del compose en Dokploy.
 #
 # Dokploy Environment must set APP_IMAGE=ghcr.io/josalero/learning-with-me/apartamento:latest
 # (or a sha-* tag for pin/rollback). See apartamento/docs/deployment-dokploy.md.
@@ -94,14 +95,37 @@ jobs:
     needs: publish-image
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Dokploy compose deploy (GET)
+      - name: Trigger Dokploy compose deploy
         env:
           WEBHOOK_URL: ${{ secrets.DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL }}
+          GITHUB_REF: ${{ github.ref }}
           GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
+          set -euo pipefail
           if [ -z "$WEBHOOK_URL" ]; then
             echo "::error::Set repository secret DOKPLOY_COMPOSE_DEPLOY_WEBHOOK_URL (Dokploy compose deploy URL)."
             exit 1
           fi
-          curl --fail-with-body -sS -X GET "$WEBHOOK_URL"
-          echo "Dokploy compose deploy triggered @ ${GITHUB_SHA}"
+          # Dokploy valida ref vs rama del compose; GET desde CI → "Branch Not Match".
+          payload=$(jq -n \
+            --arg ref "$GITHUB_REF" \
+            --arg sha "$GITHUB_SHA" \
+            --arg repo "$GITHUB_REPOSITORY" \
+            '{ ref: $ref, head_commit: { id: $sha }, repository: { full_name: $repo } }')
+          status=$(curl -sS --max-time 120 -o /tmp/dokploy-deploy.out -w "%{http_code}" \
+            -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d "$payload" || true)
+          echo "HTTP ${status}"
+          cat /tmp/dokploy-deploy.out 2>/dev/null || true
+          echo
+          if grep -q 'Branch Not Match' /tmp/dokploy-deploy.out 2>/dev/null; then
+            echo "::error::Branch Not Match — en Dokploy (compose → Provider) la rama debe ser exactamente: ${GITHUB_REF#refs/heads/}"
+            exit 1
+          fi
+          case "${status}" in
+            2??) echo "Dokploy compose deploy triggered @ ${GITHUB_SHA}" ;;
+            *) echo "::error::Dokploy deploy failed (HTTP ${status}). Enable Auto Deploy on the compose."; exit 1 ;;
+          esac
