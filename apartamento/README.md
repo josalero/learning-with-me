@@ -2,4 +2,4 @@
 
 Budget estimator for Condominio Natarundi, Portegolpe. Budget only — no purchases.
 
-See CLAUDE.md and env.example for setup.
+See CLAUDE.md and env.example for setup. Technical docs: [docs/README.md](./docs/README.md).
