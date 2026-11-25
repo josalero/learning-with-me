@@ -3,6 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { buildNatarundiProject } from '../../domain/natarundi-catalog.js';
 import { NATARUNDI_REFERENCES } from '../../domain/natarundi-references.js';
 import { applyDemoQuotes } from '../../domain/demo-quotes.js';
+import { itemizeCatalogBundles } from '../../domain/itemize-bundle.js';
 import { hashPassword } from '../services/auth.js';
 import { fetchUsdCrcRate } from '../services/fxRate.js';
 import { SEED_STORES } from '../scrapers/stores-seed.js';
@@ -30,7 +31,7 @@ async function main(): Promise<void> {
     const [existingWs] = await tx.select().from(workspaces).where(eq(workspaces.name, wsName)).limit(1);
     const workspaceId = existingUser?.workspaceId ?? existingWs?.id ?? randomUUID();
     const fx = await fetchUsdCrcRate();
-    const project = applyDemoQuotes(buildNatarundiProject(workspaceId, randomUUID(), fx.rate));
+    const project = itemizeCatalogBundles(applyDemoQuotes(buildNatarundiProject(workspaceId, randomUUID(), fx.rate)));
     if (!existingWs && !existingUser) {
       await tx.insert(workspaces).values({ id: workspaceId, name: wsName });
     }

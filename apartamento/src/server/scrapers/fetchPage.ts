@@ -3,7 +3,7 @@ import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { BlockList, type LookupFunction } from 'node:net';
 import { assertPublicHttpUrl, matchesStoreWebsite } from './ssrf-guard.js';
-import { parseJsonLdOffers } from './jsonld-offer.js';
+import { parseJsonLdOffers, parseProductReviews } from './jsonld-offer.js';
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const nonPublic = new BlockList();
@@ -71,14 +71,24 @@ async function readPage(url: URL, signal: AbortSignal): Promise<{ redirect: stri
   });
 }
 
-export async function fetchJsonLdOffers(pageUrl: string, website?: URL) {
+async function fetchProductPage(pageUrl: string, website?: URL) {
   const signal = AbortSignal.timeout(15_000);
   let url = assertPublicHttpUrl(pageUrl);
   for (let redirects = 0; redirects <= 3; redirects++) {
     if (website && !matchesStoreWebsite(url, website)) throw new Error('Product page is outside the store website');
     const response = await readPage(url, signal);
-    if ('html' in response) return parseJsonLdOffers(response.html, url.toString());
+    if ('html' in response) return { html: response.html, url: url.href };
     url = assertPublicHttpUrl(new URL(response.redirect, url).toString());
   }
   throw new Error('Too many redirects');
+}
+
+export async function fetchJsonLdOffers(pageUrl: string, website?: URL) {
+  const { html, url } = await fetchProductPage(pageUrl, website);
+  return parseJsonLdOffers(html, url);
+}
+
+export async function fetchProductReviews(pageUrl: string) {
+  const { html, url } = await fetchProductPage(pageUrl);
+  return parseProductReviews(html, url);
 }

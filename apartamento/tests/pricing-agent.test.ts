@@ -1,10 +1,12 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { buildNatarundiProject } from '../src/domain/natarundi-catalog.js';
-import { fetchJsonLdOffers } from '../src/server/scrapers/fetchPage.js';
-import { quoteItemOnDemand, quoteUnquotedItems } from '../src/server/services/quoteOnDemand.js';
+import { fetchJsonLdOffers, fetchProductReviews } from '../src/server/scrapers/fetchPage.js';
+import { quoteItemOnDemand, quoteProjectItems } from '../src/server/services/quoteOnDemand.js';
+import { applyDemoQuotes } from '../src/domain/demo-quotes.js';
+import { quotesForTier } from '../src/shared/budgetProfiles.js';
 import { QUOTE_CONCURRENCY, type QuoteActivity } from '../src/shared/types.js';
 
-vi.mock('../src/server/scrapers/fetchPage.js', () => ({ fetchJsonLdOffers: vi.fn() }));
+vi.mock('../src/server/scrapers/fetchPage.js', () => ({ fetchJsonLdOffers: vi.fn(), fetchProductReviews: vi.fn() }));
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.resetAllMocks(); });
 
 it('quotes pending items in a bounded parallel pool and uses prices published by the store', async () => {
@@ -24,9 +26,10 @@ it('quotes pending items in a bounded parallel pool and uses prices published by
   vi.stubGlobal('fetch', fetchAgent);
   vi.mocked(fetchJsonLdOffers).mockResolvedValue([{
     title: 'Producto de prueba', priceCrc: 12345, currency: 'CRC', productUrl: 'https://tienda.example.cr/producto',
+    review: { rating: 4.7, count: 31, sourceUrl: 'https://tienda.example.cr/producto' },
   }]);
   const activity: QuoteActivity[] = [];
-  const result = await quoteUnquotedItems(project, (event) => activity.push(event));
+  const result = await quoteProjectItems(project, (event) => activity.push(event));
 
   expect(maximum).toBe(QUOTE_CONCURRENCY);
   expect(result.quoted).toEqual(project.items.map(({ id }) => id));
@@ -65,6 +68,7 @@ it('checks every registered website and compares only verified products on those
     return [{
       productUrl, title: 'Producto de prueba', priceCrc: host === 'a.example.cr' ? 42_000 : 38_000,
       availability: host === 'd.example.cr' ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+      review: { rating: 4.6, count: 70, sourceUrl: productUrl },
     }];
   });
   const activity: QuoteActivity[] = [];
@@ -77,9 +81,54 @@ it('checks every registered website and compares only verified products on those
   ]);
   expect(result.quote).toMatchObject({ storeName: 'Tienda B', priceCrc: 38_000, basis: 'published' });
   expect(result.alternatives).toEqual([expect.objectContaining({ storeName: 'Tienda A', priceCrc: 42_000 })]);
-  expect(activity.at(-1)?.detail).toContain('4/4 tiendas revisadas');
+  expect(activity.some(({ detail }) => detail.includes('4/4 tiendas revisadas'))).toBe(true);
 
   vi.mocked(fetchJsonLdOffers).mockResolvedValue([]);
   await expect(quoteItemOnDemand({ ...item, quotes: [result.quote] }, { stores }))
     .rejects.toThrow('Se conservó la cotización anterior');
+});
+
+it('refreshes each selected tier using reviews for the exact model and leaves weakly reviewed options as alternatives', async () => {
+  vi.stubEnv('AI_OFFLINE_STUB', '0');
+  vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+  const project = applyDemoQuotes(buildNatarundiProject('workspace', 'project'));
+  const item = project.items[0]!;
+  project.items = [item];
+  project.budgetTiers = ['balanced', 'premium'];
+  const labels: string[] = [];
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, options: RequestInit) => {
+    const request = JSON.parse(String(options.body));
+    const query = JSON.parse(request.messages[1].content);
+    if (Array.isArray(query)) {
+      return Response.json({ choices: [{ message: { content: '0 https://reviews.example.cr/nevera' } }] });
+    }
+    labels.push(query.nivel.label);
+    return Response.json({ choices: [{ message: { content: [
+      'https://tienda.example.cr/alto',
+      'https://tienda.example.cr/alternativa',
+      'https://tienda.example.cr/barato',
+    ].join('\n') } }] });
+  }));
+  vi.mocked(fetchJsonLdOffers).mockImplementation(async (productUrl) => {
+    const common = { productUrl, title: 'Nevera HG12345', availability: 'https://schema.org/InStock' };
+    if (productUrl.endsWith('/alto')) return [{ ...common, priceCrc: 410_000, modelIds: ['HG12345'] }];
+    if (productUrl.endsWith('/alternativa')) return [{ ...common, priceCrc: 510_000, review: { rating: 4.8, count: 90, sourceUrl: productUrl } }];
+    return [{ ...common, priceCrc: 220_000, review: { rating: 5, count: 1, sourceUrl: productUrl } }];
+  });
+  vi.mocked(fetchProductReviews).mockResolvedValue([
+    { title: 'Modelo incorrecto HH5555', modelIds: ['HH5555'], productUrl: 'https://reviews.example.cr/nevera', review: {
+      rating: 5, count: 500, sourceUrl: 'https://reviews.example.cr/incorrecto',
+    } },
+    { title: 'Nevera HG12345', productUrl: 'https://reviews.example.cr/nevera', review: {
+      rating: 4.75, count: 90, sourceUrl: 'https://reviews.example.cr/nevera',
+    } },
+  ]);
+
+  const result = await quoteProjectItems(project, undefined, undefined, 'all');
+  expect(labels.sort()).toEqual(['Alta gama sin lujo', 'Gama media']);
+  expect(result.saved).toEqual([{ itemId: item.id, tier: 'balanced' }, { itemId: item.id, tier: 'premium' }]);
+  expect(result.project.items[0]?.quotes).toHaveLength(6);
+  expect(quotesForTier(result.project.items[0]!, 'premium')[0]).toMatchObject({
+    priceCrc: 410_000, productUrl: 'https://tienda.example.cr/alto', review: { count: 90, sourceUrl: 'https://reviews.example.cr/nevera' },
+  });
 });

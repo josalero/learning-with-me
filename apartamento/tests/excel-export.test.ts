@@ -23,17 +23,36 @@ describe('Excel budget export', () => {
     const summary = workbook.getWorksheet('Resumen')!;
     const detail = workbook.getWorksheet('Ítems')!;
     const pending = workbook.getWorksheet('Sin cotizar')!;
+    const itemRow = detail.getRows(6, detail.rowCount)!.find((row) => row.getCell(2).value === first.name)!.number;
     expect(summary.getCell('A8').result).toBe(stats.totalCrc);
     expect(summary.getCell('E8').result).toBe(stats.quotedCount);
     expect(summary.getCell('G8').result).toBe(stats.itemCount - stats.quotedCount);
-    expect(detail.getCell('D6').value).toBe('Cotizado');
-    expect(detail.getCell('D7').value).toBe('Alternativa');
-    expect(detail.getCell('E6').value).toBe('Catálogo de referencia');
-    expect(detail.getCell('G6').result).toBe(first.quotes[0]!.priceCrc * first.qty);
-    expect(detail.getCell('G7').value).toBeNull();
-    expect(detail.getCell('I6').hyperlink).toBe(first.quotes[0]?.productUrl);
-    expect(detail.getCell('I6').text).toBe('Ver opciones');
+    expect(detail.getCell(`D${itemRow}`).value).toBe('Cotizado');
+    expect(detail.getCell(`D${itemRow + 1}`).value).toBe('Alternativa');
+    expect(detail.getCell(`E${itemRow}`).value).toBe('Catálogo de referencia');
+    expect(detail.getCell(`G${itemRow}`).result).toBe(first.quotes[0]!.priceCrc * first.qty);
+    expect(detail.getCell(`G${itemRow + 1}`).value).toBeNull();
+    expect(detail.getCell(`I${itemRow}`).text).toBe('Sin producto elegido');
     expect(pending.rowCount).toBe(5 + stats.itemCount - stats.quotedCount);
+  });
+
+  it('keeps totals and direct links separate for each budget tier and groups bedrooms together', async () => {
+    const project = applyDemoQuotes(buildNatarundiProject('workspace', 'project'));
+    project.budgetTiers = ['balanced', 'premium'];
+    const item = project.items.find(({ id }) => id === 'i-master-bed')!;
+    const direct = 'https://tienda.example.cr/cama-queen-500';
+    item.quotes.push({ ...item.quotes[0]!, id: 'premium', basis: 'published', priceCrc: 505_000, tier: 'premium', productUrl: direct,
+      review: { rating: 4.8, count: 90, sourceUrl: 'https://resenas.example.cr/cama-500' } });
+    const workbook = await openBudget(project);
+    const comparison = workbook.getWorksheet('Comparación')!;
+    const detail = workbook.getWorksheet('Ítems')!;
+    const row = detail.getRows(6, detail.rowCount)!.find((entry) => entry.getCell(9).hyperlink === direct)!;
+    expect(comparison.getCell('B6').result).toBe(projectStats(project.items).totalCrc);
+    expect(comparison.getCell('B7').result).toBe(505_000);
+    expect(comparison.getCell('C7').result).toBe(1);
+    expect(row.getCell(1).text).toContain('Cuartos · Dormitorio principal');
+    expect(row.getCell(16).text).toBe('Alta gama sin lujo');
+    expect(row.getCell(18).hyperlink).toBe('https://resenas.example.cr/cama-500');
   });
 
   it('reports missing exchange rates without a divide-by-zero formula in an empty workbook', async () => {

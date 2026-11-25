@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, Building2, FolderOpen, MapPin, Search } from 'lucide-react';
 import { normalizeSearch } from '@shared/search';
+import { budgetProfiles } from '@shared/budgetProfiles';
 import type { ProjectSummary } from '@shared/types';
 import { Link, projectPath } from './navigation';
 import { api, ApiError, money, Notice, referenceImage, Spinner } from './ui';
@@ -68,7 +69,7 @@ export default function ProjectsPage({ onSessionExpired, ...account }: Account &
                         <h2>{project.name}</h2>
                         {project.address && <p className="project-address"><MapPin size={15} aria-hidden="true" />{project.address}</p>}
                         <dl className="project-card-metrics">
-                          <div><dt>Presupuestado</dt><dd>{money.format(project.totalCrc)}</dd></div>
+                          <div><dt>{budgetProfiles[project.budgetTier].label}</dt><dd>{project.quotedCount ? money.format(project.totalCrc) : 'Sin cotizar'}</dd></div>
                           <div><dt>Por cotizar</dt><dd>{pending} {pending === 1 ? 'artículo' : 'artículos'}</dd></div>
                         </dl>
                         <span className="project-open">Abrir proyecto <ArrowUpRight size={16} aria-hidden="true" /></span>

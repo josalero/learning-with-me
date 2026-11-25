@@ -29,4 +29,17 @@ describe('parseJsonLdOffers', () => {
       </script>`;
     expect(parseJsonLdOffers(html, 'https://cr.epaenlinea.com/es-cr/products/abanico')[0]?.priceCrc).toBe(68_950);
   });
+
+  it('uses the exact product page and reads that product’s aggregate reviews and dimensions', () => {
+    const html = `<script type="application/ld+json">
+      {"@type":"Product","url":"https://example.com/model-a","name":"Modelo A",
+       "aggregateRating":{"ratingValue":4.6,"reviewCount":30},
+       "depth":{"@type":"QuantitativeValue","value":70.9,"unitCode":"CMT"},
+       "offers":{"@type":"Offer","price":280000,"priceCurrency":"CRC"}}
+      </script>`;
+    expect(parseJsonLdOffers(html, 'https://example.com/refrigeradoras')).toEqual([]);
+    const [product] = parseJsonLdOffers(html, 'https://example.com/model-a');
+    expect(product?.review).toEqual({ rating: 4.6, count: 30, sourceUrl: 'https://example.com/model-a' });
+    expect(product?.dimensions?.d).toBeCloseTo(.709);
+  });
 });

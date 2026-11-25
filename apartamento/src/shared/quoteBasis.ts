@@ -8,12 +8,11 @@ export function quoteBasisLabel(quote: LineItemQuote) {
 }
 
 export function quoteLink(quote: LineItemQuote) {
+  if (quote.basis !== 'published') return;
   try {
     const url = new URL(quote.productUrl);
     if ((url.protocol === 'https:' || url.protocol === 'http:') && !url.username && !url.password) {
-      const label = quote.basis === 'catalog' || quote.basis === 'estimate' || quote.source === 'agent_estimate'
-        ? 'Ver opciones' : 'Ver producto';
-      return { url: url.href, label };
+      return { url: url.href, label: 'Ver producto' };
     }
   } catch {
     // Historical notes and estimates can have no web address.

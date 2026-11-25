@@ -1,7 +1,10 @@
 import ExcelJS from 'exceljs';
+import { budgetProfiles, quotesForTier, selectedBudgetTiers } from '../../shared/budgetProfiles.js';
+import { projectAreas } from '../../shared/projectAreas.js';
 import { projectStats } from '../../shared/projectStats.js';
+import { isPurchaseSet } from '../../shared/purchaseUnit.js';
 import { quoteBasisLabel, quoteLink } from '../../shared/quoteBasis.js';
-import type { CatalogItem, FurnishingProject, LineItemQuote } from '../../shared/types.js';
+import type { BudgetTier, CatalogItem, FurnishingProject, LineItemQuote } from '../../shared/types.js';
 
 const colors = {
   ink: 'FF202139', muted: 'FF545A72', purple: 'FF463296', purpleSoft: 'FFEFEBFB',
@@ -16,7 +19,7 @@ const detailHeaderRow = 5;
 const detailFirstRow = detailHeaderRow + 1;
 const conversionCell = 'G11';
 const exportDate = new Intl.DateTimeFormat('es-CR', { dateStyle: 'medium', timeZone: 'America/Costa_Rica' });
-const localDate = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'America/Costa_Rica' });
+const localDate = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Costa_Rica' });
 
 const regionNames: Record<FurnishingProject['region'], string> = { guanacaste: 'Guanacaste', limon: 'Limón', 'san-jose': 'San José', alajuela: 'Alajuela' };
 const sources: Record<LineItemQuote['source'], string> = {
@@ -26,7 +29,7 @@ const availability: Record<LineItemQuote['availability'], string> = { in_stock: 
 const categoryNames: Record<string, string> = { electrodomesticos: 'Electrodomésticos', climatizacion: 'Climatización', electronica: 'Electrónica', logistica: 'Logística' };
 
 type CellSpan = [string, string?];
-type ZoneGroup = { label: string; items: CatalogItem[]; firstRow?: number; lastRow?: number };
+type AreaGroup = { label: string; items: CatalogItem[]; zoneLabels: Map<string, string>; firstRow?: number; lastRow?: number };
 
 function fill(color: string): ExcelJS.Fill {
   return { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
@@ -102,60 +105,81 @@ function fittedHeight(...fields: [string, number][]) {
   return Math.min(200, Math.max(23, lines * 13 + 8));
 }
 
-function zoneGroups(project: FurnishingProject): ZoneGroup[] {
-  const groups = new Map(project.zones.map((zone) => [zone.id, { label: zone.labelEs, items: [] } as ZoneGroup]));
+function areaGroups(project: FurnishingProject): AreaGroup[] {
+  const areas = projectAreas(project.zones);
+  const groups = areas.map(({ label, zones }): AreaGroup => ({
+    label, items: [], zoneLabels: new Map(zones.map(({ id, labelEs }) => [id, labelEs])),
+  }));
+  const byZone = new Map(groups.flatMap((group) => [...group.zoneLabels.keys()].map((id) => [id, group] as const)));
+  const unassigned: AreaGroup = { label: 'Sin zona asignada', items: [], zoneLabels: new Map() };
   for (const item of project.items) {
-    const key = groups.has(item.zoneId) ? item.zoneId : '';
-    let group = groups.get(key);
-    if (!group) {
-      group = { label: 'Sin zona asignada', items: [] };
-      groups.set(key, group);
-    }
+    const group = byZone.get(item.zoneId) ?? unassigned;
     group.items.push(item);
   }
-  return [...groups.values()];
+  if (unassigned.items.length) groups.push(unassigned);
+  return groups;
+}
+
+function locationLabel(group: AreaGroup, item: CatalogItem) {
+  return group.zoneLabels.size > 1 ? `${group.label} · ${group.zoneLabels.get(item.zoneId)}` : group.label;
+}
+
+function reviewLink(quote?: LineItemQuote): ExcelJS.CellValue {
+  const review = quote?.review;
+  if (!review) return quote?.basis === 'published' ? 'Sin valoraciones verificadas' : null;
+  const rating = review.rating.toLocaleString('es-CR', { maximumFractionDigits: 2 });
+  const count = review.count.toLocaleString('es-CR');
+  return { text: `${rating}/5 · ${count} ${review.count === 1 ? 'valoración' : 'valoraciones'}`, hyperlink: review.sourceUrl };
 }
 
 function storeLink(quote: LineItemQuote): ExcelJS.CellValue {
   const link = quoteLink(quote);
-  return link ? { text: link.label, hyperlink: link.url, tooltip: link.url } : quote.productUrl || null;
+  return link ? { text: link.label, hyperlink: link.url, tooltip: link.url } : 'Sin producto elegido';
 }
 
 function priceDate(capturedAt: string) {
   const date = new Date(capturedAt);
   if (!Number.isFinite(date.getTime())) return null;
   const parts = Object.fromEntries(localDate.formatToParts(date).map(({ type, value }) => [type, value]));
-  return new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00.000Z`);
+  return new Date(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00.000Z`);
 }
 
-function addDetailRows(sheet: ExcelJS.Worksheet, groups: ZoneGroup[], exchangeRate: number | null) {
+function addDetailRows(sheet: ExcelJS.Worksheet, groups: AreaGroup[], tier: BudgetTier, exchangeRate: number | null) {
   for (const group of groups) {
     if (!group.items.length) continue;
     group.firstRow = sheet.rowCount + 1;
     for (const item of group.items) {
       const label = categoryNames[item.category] ?? item.category;
-      const rows = item.quotes.length ? item.quotes : [undefined];
+      const quotes = quotesForTier(item, tier);
+      const rows = quotes.length ? quotes : [undefined];
       for (const [index, quote] of rows.entries()) {
         const isBudgetQuote = quote && index === 0;
         const state = !quote ? 'Pendiente' : isBudgetQuote ? 'Cotizado' : 'Alternativa';
         const basis = quote ? quoteBasisLabel(quote) ?? 'Sin clasificación' : null;
         const notes = [item.notes, !quote ? item.unquotedReason ?? 'Por buscar' : undefined].filter(Boolean).join('\n');
         const date = quote ? priceDate(quote.capturedAt) : null;
+        const location = locationLabel(group, item);
         const row = sheet.addRow([
-          group.label, item.name, item.qty, state, basis, quote?.priceCrc ?? null, null,
+          location, item.name, item.qty, state, basis, quote?.priceCrc ?? null, null,
           quote?.storeName ?? null, quote ? storeLink(quote) : null, null,
           quote ? availability[quote.availability] : null, label, quote ? sources[quote.source] : null, date, notes || null,
+          budgetProfiles[tier].label, quote?.title ?? null, reviewLink(quote),
+          isPurchaseSet(item) ? 'Juego' : 'Unidad',
         ]);
-        row.height = fittedHeight([group.label, 21], [item.name, 36], [basis ?? '', 19], [quote?.storeName ?? '', 19], [notes, 45]);
-        styleRow(row, 15, row.number % 2 === 0);
+        row.height = fittedHeight([location, 21], [item.name, 36], [basis ?? '', 19], [quote?.storeName ?? '', 19], [notes, 45], [quote?.title ?? '', 37]);
+        styleRow(row, 19, row.number % 2 === 0);
         styleStatus(row.getCell(4), !quote ? 'pending' : isBudgetQuote ? 'success' : 'info');
         if (quote?.basis === 'catalog' || quote?.basis === 'estimate' || quote?.source === 'agent_estimate') styleStatus(row.getCell(5), 'info');
         for (const index of [3, 6, 7, 10, 14]) row.getCell(index).alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
         for (const index of [6, 7]) row.getCell(index).numFmt = crc;
         row.getCell(10).numFmt = usd;
-        row.getCell(14).numFmt = 'dd/mm/yyyy';
+        row.getCell(14).numFmt = 'dd/mm/yyyy hh:mm';
         if (!quote) continue;
-        row.getCell(9).font = { name: fontName, size: 10, color: { argb: colors.blue }, underline: true };
+        for (const index of [9, 18]) {
+          if (row.getCell(index).type === ExcelJS.ValueType.Hyperlink) row.getCell(index).font = {
+            name: fontName, size: 10, color: { argb: colors.blue }, underline: true,
+          };
+        }
         if (isBudgetQuote) {
           row.getCell(7).value = { formula: `C${row.number}*F${row.number}`, result: item.qty * quote.priceCrc };
           row.getCell(7).font = { name: fontName, size: 10, bold: true, color: { argb: colors.ink } };
@@ -170,11 +194,11 @@ function addDetailRows(sheet: ExcelJS.Worksheet, groups: ZoneGroup[], exchangeRa
   }
 }
 
-function addSummary(sheet: ExcelJS.Worksheet, project: FurnishingProject, groups: ZoneGroup[], exchangeRate: number | null) {
-  const { itemCount, quotedCount, totalCrc } = projectStats(project.items);
+function addSummary(sheet: ExcelJS.Worksheet, project: FurnishingProject, groups: AreaGroup[], tier: BudgetTier, exchangeRate: number | null) {
+  const { itemCount, quotedCount, totalCrc } = projectStats(project.items, tier);
   const zoneStart = 16;
   const totalRow = zoneStart + Math.max(1, groups.length);
-  heading(sheet, 'Presupuesto de equipamiento', project.name, 'H');
+  heading(sheet, 'Presupuesto de equipamiento · ' + budgetProfiles[tier].label, project.name, 'H');
   const region = regionNames[project.region];
   const address = region && !project.address.toLocaleLowerCase('es-CR').includes(region.toLocaleLowerCase('es-CR'))
     ? [project.address, region].filter(Boolean).join(', ') : project.address;
@@ -199,14 +223,14 @@ function addSummary(sheet: ExcelJS.Worksheet, project: FurnishingProject, groups
   cell(sheet, ['E11', 'F11'], 'Tipo de cambio CRC por USD', { font: { bold: true }, alignment: { horizontal: 'left', indent: 1 } });
   cell(sheet, ['G11', 'H11'], exchangeRate, { background: colors.purpleSoft, numFmt: '#,##0.00', font: { color: { argb: colors.blue } }, alignment: { horizontal: 'right', indent: 1 } });
   sheet.getRow(11).height = 24;
-  cell(sheet, ['A12', 'H12'], 'El total usa la primera cotización de cada artículo. Las alternativas y el origen de cada precio se pueden consultar en Ítems.', {
+  cell(sheet, ['A12', 'H12'], 'El total incluye la oferta principal de cada artículo de este nivel. En Ítems puedes consultar las alternativas y sus fuentes.', {
     font: { italic: true, color: { argb: colors.muted } }, alignment: { wrapText: true },
   });
   sheet.getRow(12).height = 25;
-  cell(sheet, ['A14', 'H14'], 'Presupuesto por zona', { font: { size: 13, bold: true, color: { argb: colors.purple } } });
+  cell(sheet, ['A14', 'H14'], 'Presupuesto por ambiente', { font: { size: 13, bold: true, color: { argb: colors.purple } } });
   sheet.getRow(14).height = 24;
   for (const [span, label] of [
-    [['A15', 'B15'], 'Zona'], [['C15'], 'Artículos'], [['D15'], 'Cotizados'], [['E15'], 'Pendientes'],
+    [['A15', 'B15'], 'Ambiente'], [['C15'], 'Artículos'], [['D15'], 'Cotizados'], [['E15'], 'Pendientes'],
     [['F15', 'G15'], 'Subtotal CRC'], [['H15'], '% del total'],
   ] as [CellSpan, string][]) {
     cell(sheet, span, label, { background: colors.purple, font: { bold: true, color: { argb: colors.white } }, alignment: { horizontal: 'center' } });
@@ -214,7 +238,7 @@ function addSummary(sheet: ExcelJS.Worksheet, project: FurnishingProject, groups
   sheet.getRow(15).height = 24;
   for (const [index, group] of groups.entries()) {
     const number = zoneStart + index;
-    const stats = projectStats(group.items);
+    const stats = projectStats(group.items, tier);
     const pending = stats.itemCount - stats.quotedCount;
     const { firstRow, lastRow } = group;
     const row = sheet.getRow(number);
@@ -254,39 +278,71 @@ function addSummary(sheet: ExcelJS.Worksheet, project: FurnishingProject, groups
   sheet.pageSetup.printArea = `A1:H${totalRow}`;
 }
 
+function addComparison(sheet: ExcelJS.Worksheet, project: FurnishingProject, summaries: { tier: BudgetTier; sheet: ExcelJS.Worksheet }[]) {
+  heading(sheet, 'Comparación de presupuestos', project.name, 'E');
+  tableHeader(sheet, detailHeaderRow, ['Nivel', 'Total en CRC', 'Cotizados', 'Pendientes', 'Cobertura']);
+  for (const { tier, sheet: summary } of summaries) {
+    const { totalCrc, quotedCount, itemCount } = projectStats(project.items, tier);
+    const ref = `'${summary.name}'!`;
+    const row = sheet.addRow([
+      budgetProfiles[tier].label,
+      { formula: ref + 'A8', result: totalCrc },
+      { formula: ref + 'E8', result: quotedCount },
+      { formula: ref + 'G8', result: itemCount - quotedCount },
+      { formula: ref + 'C11', result: itemCount ? quotedCount / itemCount : 0 },
+    ]);
+    row.height = 28;
+    styleRow(row, 5, row.number % 2 === 0);
+    row.getCell(2).numFmt = crc;
+    row.getCell(5).numFmt = percent;
+  }
+  cell(sheet, [`A${sheet.rowCount + 2}`, `E${sheet.rowCount + 2}`], 'Compara también la cobertura. Un nivel con pendientes muestra un total parcial.', {
+    font: { italic: true, color: { argb: colors.muted } },
+  });
+}
+
 export async function buildBudgetWorkbook(project: FurnishingProject): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Natarundi';
   workbook.calcProperties.fullCalcOnLoad = true;
-  const groups = zoneGroups(project);
+  const tiers = selectedBudgetTiers(project);
   const exchangeRate = Number.isFinite(project.usdCrcRate) && project.usdCrcRate > 0 ? project.usdCrcRate : null;
-  const summary = addSheet(workbook, 'Resumen', [19, 17, 15, 14, 15, 17, 14, 14], { tab: colors.purple });
-  const detail = addSheet(workbook, 'Ítems', [23, 38, 11, 15, 23, 16, 17, 21, 17, 18, 18, 20, 20, 16, 46], {
+  const comparison = tiers.length > 1 ? addSheet(workbook, 'Comparación', [29, 20, 16, 16, 16], { tab: colors.purple }) : undefined;
+  const summaries = tiers.map((tier, index) => ({
+    tier,
+    sheet: addSheet(workbook, index === 0 ? 'Resumen' : `Resumen ${budgetProfiles[tier].label}`,
+      [19, 17, 15, 14, 15, 17, 14, 14], { tab: colors.purple }),
+  }));
+  const detail = addSheet(workbook, 'Ítems', [25, 38, 11, 15, 23, 16, 17, 21, 17, 18, 18, 20, 20, 21, 46, 24, 38, 28, 13], {
     frozen: { xSplit: 2, ySplit: detailHeaderRow },
   });
-  const pending = addSheet(workbook, 'Sin cotizar', [34, 25, 11, 57], { frozen: { xSplit: 0, ySplit: detailHeaderRow }, tab: colors.amber });
+  const pending = addSheet(workbook, 'Sin cotizar', [34, 25, 11, 57, 24], { frozen: { xSplit: 0, ySplit: detailHeaderRow }, tab: colors.amber });
 
-  heading(detail, 'Detalle del presupuesto', project.name, 'O');
-  tableHeader(detail, detailHeaderRow, ['Zona', 'Artículo', 'Cantidad', 'Estado', 'Origen del precio', 'Unitario CRC', 'Subtotal CRC', 'Tienda', 'Producto', 'Unitario USD', 'Disponibilidad', 'Categoría', 'Fuente', 'Fecha del precio', 'Notas y motivo']);
-  addDetailRows(detail, groups, exchangeRate);
-  if (detail.rowCount >= detailFirstRow) detail.autoFilter = `A${detailHeaderRow}:O${detail.rowCount}`;
-  else cell(detail, ['A6', 'O6'], 'El proyecto aún no tiene artículos.');
-  detail.pageSetup.printTitlesRow = `${detailHeaderRow}:${detailHeaderRow}`;
-  addSummary(summary, project, groups, exchangeRate);
-
-  heading(pending, 'Artículos pendientes de cotizar', project.name, 'D');
-  tableHeader(pending, detailHeaderRow, ['Artículo', 'Zona', 'Cantidad', 'Motivo o notas']);
-  for (const group of groups) {
-    for (const item of group.items.filter(({ quotes }) => !quotes.length)) {
-      const reason = [item.unquotedReason ?? 'Por buscar', item.notes].filter(Boolean).join('\n');
-      const row = pending.addRow([item.name, group.label, item.qty, reason]);
-      row.height = fittedHeight([item.name, 31], [group.label, 22], [reason, 54]);
-      styleRow(row, 4, row.number % 2 === 0);
-      row.getCell(3).alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
+  heading(detail, 'Detalle del presupuesto', project.name, 'S');
+  tableHeader(detail, detailHeaderRow, ['Ambiente', 'Artículo', 'Cantidad', 'Estado', 'Origen del precio', 'Unitario CRC', 'Subtotal CRC', 'Tienda', 'Producto', 'Unitario USD', 'Disponibilidad', 'Categoría', 'Fuente', 'Fecha del precio', 'Notas y motivo', 'Nivel', 'Modelo publicado', 'Valoraciones', 'Unidad de compra']);
+  heading(pending, 'Artículos pendientes de cotizar', project.name, 'E');
+  tableHeader(pending, detailHeaderRow, ['Artículo', 'Ambiente', 'Cantidad', 'Motivo o notas', 'Nivel']);
+  for (const { tier, sheet } of summaries) {
+    const groups = areaGroups(project);
+    addDetailRows(detail, groups, tier, exchangeRate);
+    addSummary(sheet, project, groups, tier, exchangeRate);
+    for (const group of groups) {
+      for (const item of group.items.filter((entry) => !quotesForTier(entry, tier).length)) {
+        const reason = [item.unquotedReason ?? 'Sin cotizar para este nivel', item.notes].filter(Boolean).join('\n');
+        const location = locationLabel(group, item);
+        const row = pending.addRow([item.name, location, item.qty, reason, budgetProfiles[tier].label]);
+        row.height = fittedHeight([item.name, 31], [location, 22], [reason, 54]);
+        styleRow(row, 5, row.number % 2 === 0);
+        row.getCell(3).alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
+      }
     }
   }
-  if (pending.rowCount >= detailFirstRow) pending.autoFilter = `A${detailHeaderRow}:D${pending.rowCount}`;
-  else cell(pending, ['A6', 'D6'], project.items.length ? 'Todos los artículos tienen una cotización.' : 'El proyecto aún no tiene artículos.');
+  if (comparison) addComparison(comparison, project, summaries);
+  if (detail.rowCount >= detailFirstRow) detail.autoFilter = `A${detailHeaderRow}:S${detail.rowCount}`;
+  else cell(detail, ['A6', 'S6'], 'El proyecto aún no tiene artículos.');
+  detail.pageSetup.printTitlesRow = `${detailHeaderRow}:${detailHeaderRow}`;
+  if (pending.rowCount >= detailFirstRow) pending.autoFilter = `A${detailHeaderRow}:E${pending.rowCount}`;
+  else cell(pending, ['A6', 'E6'], project.items.length ? 'Todos los artículos tienen una cotización.' : 'El proyecto aún no tiene artículos.');
   pending.pageSetup.printTitlesRow = `${detailHeaderRow}:${detailHeaderRow}`;
   return Buffer.from(await workbook.xlsx.writeBuffer() as ArrayBuffer);
 }

@@ -1,4 +1,6 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
+import { budgetProfiles, budgetQuoteJobs, quotesForTier, selectedBudgetTiers } from '../../shared/budgetProfiles.js';
+import { projectStats } from '../../shared/projectStats.js';
 import type { FurnishingProject, HitlGate, ReviewActivity, ReviewResult, ReviewStep } from '../../shared/types.js';
 
 export const GraphState = Annotation.Root({
@@ -35,27 +37,31 @@ function visualSpace(state: GraphStateType): StepResult {
 }
 
 function reviewSources(state: GraphStateType): StepResult {
-  const sources = new Set(state.project.items.flatMap(({ quotes }) => quotes[0] ? [quotes[0].storeName] : []));
+  const sources = new Set(selectedBudgetTiers(state.project).flatMap((tier) => state.project.items
+    .flatMap((item) => quotesForTier(item, tier).slice(0, 1).map(({ storeName }) => storeName))));
   const summary = !sources.size ? 'Aún no hay fuentes de precios en el inventario.'
     : `${sources.size} ${sources.size === 1 ? 'fuente registrada' : 'fuentes registradas'}. ${[...sources].slice(0, 3).join(', ')}${sources.size > 3 ? ' y otras.' : '.'}`;
   return { stage: 'market_scrape', notes: [...state.notes, summary] };
 }
 
 function qualityCritic(state: GraphStateType): StepResult {
-  const pending = state.project.items.filter((item) => !item.quotes.length).length;
-  const summary = !pending ? 'Todos los artículos tienen un precio registrado.'
-    : `${pending} ${pending === 1 ? 'artículo sigue' : 'artículos siguen'} pendiente${pending === 1 ? '' : 's'} de cotizar.`;
+  const pending = budgetQuoteJobs(state.project).length;
+  const summary = !pending ? 'Todos los niveles seleccionados tienen precios registrados.'
+    : pending === 1 ? 'Hay una cotización pendiente.' : `Hay ${pending} cotizaciones pendientes.`;
   return { stage: 'quality_critic', notes: [...state.notes, summary] };
 }
 
 function budgetQuoter(state: GraphStateType): StepResult {
   const approved = state.approvedGates.includes('final_budget');
-  const total = state.project.items.reduce((sum, item) => sum + (item.quotes[0]?.priceCrc ?? 0) * item.qty, 0);
-  const conversion = state.project.usdCrcRate > 0 ? ` · ${usd.format(total / state.project.usdCrcRate)}` : '';
+  const totals = selectedBudgetTiers(state.project).map((tier) => {
+    const { totalCrc, quotedCount, itemCount } = projectStats(state.project.items, tier);
+    const conversion = state.project.usdCrcRate > 0 ? ` / ${usd.format(totalCrc / state.project.usdCrcRate)}` : '';
+    return `${budgetProfiles[tier].label} (${crc.format(totalCrc)}${conversion}, ${quotedCount} de ${itemCount} cotizados)`;
+  });
   return {
     stage: approved ? 'completed' : 'budget_quoter',
     gate: approved ? undefined : 'final_budget',
-    notes: [...state.notes, `${approved ? 'Presupuesto aprobado' : 'Total con precios registrados'} (${crc.format(total)}${conversion}).`],
+    notes: [...state.notes, `${approved ? 'Presupuesto aprobado' : 'Precios registrados'} · ${totals.join(' · ')}.`],
   };
 }
 

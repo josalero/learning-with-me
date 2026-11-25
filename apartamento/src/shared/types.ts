@@ -23,6 +23,8 @@ export type StoreRef = {
   probeKind: string;
 };
 
+export type ProductReview = { rating: number; count: number; sourceUrl: string };
+
 export type LineItemQuote = {
   id: string;
   storeName: string;
@@ -34,6 +36,8 @@ export type LineItemQuote = {
   availability: 'in_stock' | 'out_of_stock' | 'unknown';
   source: QuoteSource;
   basis?: 'published' | 'catalog' | 'estimate';
+  tier?: BudgetTier;
+  review?: ProductReview;
   capturedAt: string;
 };
 
@@ -43,10 +47,12 @@ export type CatalogItem = {
   name: string;
   category: string;
   qty: number;
+  purchaseUnit?: 'unit' | 'set';
   notes?: string;
   dimsM?: { w?: number; h?: number; d?: number };
   quotes: LineItemQuote[];
   unquotedReason?: string;
+  parentItemId?: string;
 };
 
 export type ProjectZone = {
@@ -66,6 +72,8 @@ export type FurnishingProject = {
   zones: ProjectZone[];
   items: CatalogItem[];
   usdCrcRate: number;
+  budgetTiers?: BudgetTier[];
+  itemizedBundles?: CatalogItem[];
 };
 
 export type ProjectSummary = Pick<FurnishingProject, 'id' | 'name' | 'address' | 'region' | 'usdCrcRate'> & {
@@ -74,6 +82,7 @@ export type ProjectSummary = Pick<FurnishingProject, 'id' | 'name' | 'address' |
   itemCount: number;
   quotedCount: number;
   totalCrc: number;
+  budgetTier: BudgetTier;
 };
 
 export const REFERENCE_MAX_BYTES = 5 * 1024 * 1024;
@@ -144,8 +153,9 @@ export type ReviewHistoryPage = { runs: ReviewSnapshot[]; nextCursor?: string };
 
 export const QUOTE_CONCURRENCY = 3;
 
-export type QuoteActivity = {
-  itemId: string;
+export type BudgetQuote = { itemId: string; tier: BudgetTier };
+
+export type QuoteActivity = BudgetQuote & {
   itemName: string;
   stage: 'queued' | 'searching' | 'verifying' | 'catalog' | 'saving' | 'completed' | 'failed';
   detail: string;
