@@ -1,0 +1,42 @@
+# Variables: ver env.dokploy.example (panel Environment en Dokploy).
+services:
+  db:
+    image: postgres:18-bookworm
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-natarundi}
+    volumes:
+      - natarundi_pg_data:/var/lib/postgresql
+    restart: unless-stopped
+
+  app:
+    image: ${APP_IMAGE:?set APP_IMAGE to the published GHCR image (see env.dokploy.example)}
+    pull_policy: always
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      APP_SEED_DEMO: ${APP_SEED_DEMO:-0}
+      APP_DEMO_EMAIL: ${APP_DEMO_EMAIL:-}
+      APP_DEMO_PASSWORD: ${APP_DEMO_PASSWORD:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      AI_OFFLINE_STUB: ${AI_OFFLINE_STUB:-0}
+      DEFAULT_USD_CRC_RATE: ${DEFAULT_USD_CRC_RATE:-520}
+      FX_PROVIDER: ${FX_PROVIDER:-bccr-proxy}
+      FX_USE_FIELD: ${FX_USE_FIELD:-venta}
+      FX_CACHE_TTL_MINUTES: ${FX_CACHE_TTL_MINUTES:-360}
+      # BCCR_API_TOKEN solo si FX_PROVIDER=bccr-sdde (opcional; por defecto no hace falta)
+      BCCR_API_TOKEN: ${BCCR_API_TOKEN:-}
+      AI_ROUTING_MODE: ${AI_ROUTING_MODE:-BALANCED}
+      OPENROUTER_MODEL_ECONOMY: ${OPENROUTER_MODEL_ECONOMY:-}
+      OPENROUTER_MODEL_BALANCED: ${OPENROUTER_MODEL_BALANCED:-}
+      OPENROUTER_MODEL_FRONTIER: ${OPENROUTER_MODEL_FRONTIER:-}
+    ports:
+      - '8080:8080'
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  natarundi_pg_data:

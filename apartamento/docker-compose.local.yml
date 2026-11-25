@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:18-bookworm
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: natarundi
+    ports:
+      - '${PG_HOST_PORT:-5434}:5432'
+    volumes:
+      - natarundi_pg:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U app -d natarundi']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - '${LOCAL_APP_PORT:-8095}:8080'
+    environment:
+      # Overrides for in-network Docker (the rest comes from ./env)
+      HOST: 0.0.0.0
+      PORT: '8080'
+      DATABASE_URL: postgresql://app:app@db:5432/natarundi
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  natarundi_pg:

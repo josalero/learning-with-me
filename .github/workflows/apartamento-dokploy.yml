@@ -1,0 +1,105 @@
+# Natarundi (apartamento) — tests, GHCR image, Dokploy compose deploy.
+#
+# Secrets: DOKPLOY_URL, DOKPLOY_API_KEY
+# Variables: DOKPLOY_COMPOSE_ID (optional until the Dokploy stack exists)
+#
+# Dokploy Environment must set APP_IMAGE=ghcr.io/josalero/learning-with-me/apartamento:latest
+# (or a sha-* tag for pin/rollback). See apartamento/docs/deployment-dokploy.md.
+
+name: apartamento · Dokploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apartamento/**'
+      - '.github/workflows/apartamento-dokploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apartamento-dokploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apartamento
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apartamento/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  publish-image:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set GHCR image coordinates
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}/apartamento"
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
+          {
+            echo 'TAGS<<EOF'
+            echo "$image:sha-${GITHUB_SHA}"
+            echo "$image:latest"
+            echo EOF
+          } >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: image
+        uses: docker/build-push-action@v6
+        with:
+          context: apartamento
+          file: apartamento/Dockerfile
+          push: true
+          tags: ${{ env.TAGS }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=natarundi-apartamento
+          cache-from: type=gha,scope=apartamento
+          cache-to: type=gha,mode=max,scope=apartamento
+
+  deploy-dokploy:
+    needs: publish-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dokploy compose deploy
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}
+        run: |
+          if [ -z "$COMPOSE_ID" ]; then
+            echo "::notice::DOKPLOY_COMPOSE_ID is not set — image was pushed to GHCR; trigger deploy from Dokploy UI or set the repository variable."
+            exit 0
+          fi
+          if [ -z "$DOKPLOY_URL" ] || [ -z "$DOKPLOY_API_KEY" ]; then
+            echo "::error::DOKPLOY_URL and DOKPLOY_API_KEY secrets are required when DOKPLOY_COMPOSE_ID is set."
+            exit 1
+          fi
+          curl --fail-with-body -sS -X POST "${DOKPLOY_URL%/}/api/compose.deploy" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $DOKPLOY_API_KEY" \
+            -d "{\"composeId\": \"$COMPOSE_ID\"}"
+          echo "Dokploy compose deploy triggered for apartamento @ ${GITHUB_SHA}"

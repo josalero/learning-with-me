@@ -1,0 +1,34 @@
+# Natarundi (apartamento) — PR and non-main branch checks (no image publish).
+
+name: apartamento · CI
+
+on:
+  pull_request:
+    paths:
+      - 'apartamento/**'
+      - '.github/workflows/apartamento-*.yml'
+  push:
+    branches-ignore: [main, master]
+    paths:
+      - 'apartamento/**'
+      - '.github/workflows/apartamento-*.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apartamento
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apartamento/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
