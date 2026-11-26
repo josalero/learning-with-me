@@ -22,6 +22,7 @@ import {
   verifyPassword,
 } from '../services/auth.js';
 import { users } from '../db/schema.js';
+import { loadAirbnbAssessment } from '../services/airbnbAssessment.js';
 import { buildBudgetWorkbook } from '../services/excelExport.js';
 import { fetchUsdCrcRate, getCachedFxSnapshot } from '../services/fxRate.js';
 import { syncAllProjectsFxRate } from '../services/fxProjectSync.js';
@@ -32,6 +33,8 @@ import { normalizeSearch } from '../../shared/search.js';
 import {
   attachQuoteToProject,
   quoteActivity,
+  recordSearch,
+  UnselectedQuote,
   quoteItemOnDemand,
   quoteProjectItems,
   replaceTierQuotes,
@@ -80,6 +83,7 @@ function readReview(row: typeof workflowRuns.$inferSelect): ReviewSnapshot {
 }
 
 async function runReview(
+  db: Parameters<typeof loadAirbnbAssessment>[0],
   state: GraphStateType,
   threadId: string,
   activity: ReviewActivity[],
@@ -91,7 +95,7 @@ async function runReview(
     steps.set(event.step, event);
     events.push({ ...event, type: 'step', at: new Date().toISOString() });
     publish(event);
-  });
+  }, (project) => loadAirbnbAssessment(db, project));
   const result = await graph.invoke(state, { configurable: { thread_id: threadId } });
   return { threadId, stage: result.stage, pendingGate: result.gate, notes: result.notes, activity: [...steps.values()] };
 }
@@ -300,7 +304,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       const events: ReviewHistoryEvent[] = [];
       let result: ReviewResult;
       try {
-        result = await runReview(initialGraphState(project), threadId, [], events, publish);
+        result = await runReview(db, initialGraphState(project), threadId, [], events, publish);
       } catch (error) {
         request.log.error({ err: error }, 'Review start failed');
         const activity = [...new Map(events.flatMap((event) => event.type === 'step' ? [[event.step, event] as const] : [])).values()];
@@ -343,7 +347,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
         const state = { project, stage: previous.stage, notes: previous.notes, gate, approvedGates };
         let review: ReviewResult;
         try {
-          review = await runReview(state, threadId, previous.activity, events, publish);
+          review = await runReview(tx, state, threadId, previous.activity, events, publish);
         } catch (error) {
           request.log.error({ err: error }, 'Review approval failed');
           await tx.update(workflowRuns).set({
@@ -436,7 +440,6 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       try {
         result = await quoteItemOnDemand(item, {
           productUrl: parsed.data.productUrl,
-          allowEstimate: parsed.data.allowEstimate ?? true,
           region: project.region,
           usdCrcRate: project.usdCrcRate,
           tier,
@@ -445,14 +448,28 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
         });
       } catch (error) {
         const detail = error instanceof Error ? error.message : 'No se pudo cotizar el artículo.';
-        publish(quoteActivity(item, 'failed', detail, tier));
+        if (error instanceof UnselectedQuote) {
+          const search = error.search;
+          await db.transaction(async (tx) => {
+            const latest = await loadOwnedProject(tx, user.workspaceId, project.id, true);
+            const current = latest?.items.find((i) => i.id === itemId);
+            if (!latest || !current || quotesForTier(current, tier)[0]?.id !== quotesForTier(item, tier)[0]?.id
+              || (current.lastSearch?.[tier]?.checkedAt ?? '') > search.checkedAt) {
+              throw new ProgressError(409, 'Otra ejecución actualizó este artículo. Recarga el inventario para ver el resultado.');
+            }
+            await saveProjectPayload(tx, { ...latest, items: latest.items.map((i) => i.id === itemId ? recordSearch(i, tier, search) : i) });
+          });
+          publish({ ...quoteActivity(item, 'failed', detail, tier), search });
+        } else publish(quoteActivity(item, 'failed', detail, tier));
         throw new ProgressError(422, detail);
       }
       const { quote, alternatives, mode } = result;
       publish(quoteActivity(item, 'saving', 'Guardando la cotización en este proyecto.', tier));
       const updated = await db.transaction(async (tx) => {
         const latest = await loadOwnedProject(tx, user.workspaceId, projectId, true);
-        if (!latest || !latest.items.some(({ id }) => id === itemId)) return null;
+        const current = latest?.items.find(({ id }) => id === itemId);
+        if (!latest || !current) return null;
+        if (quotesForTier(current, tier)[0]?.id !== quotesForTier(item, tier)[0]?.id) throw new ProgressError(409, 'Otra ejecución ya actualizó el precio de este artículo.');
         const next = attachQuoteToProject(latest, itemId, quote, alternatives);
         await saveProjectPayload(tx, next);
         return next;
@@ -490,12 +507,14 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
           items.set(itemId, replaceTierQuotes(item, tier, quotesForTier(priced.get(itemId)!, tier)));
           saved.push({ itemId, tier });
         }
-        const next = { ...latest, items: [...items.values()] };
-        if (saved.length) await saveProjectPayload(tx, next);
-        const failed = result.failed.filter(({ itemId, tier }) => {
+        const failed = result.failed.filter(({ itemId, tier, search }) => {
           const item = items.get(itemId);
-          return item && !changedDuringQuote(item, tier);
+          if (!item || changedDuringQuote(item, tier) || (search && (item.lastSearch?.[tier]?.checkedAt ?? '') > search.checkedAt)) return false;
+          if (search) items.set(itemId, recordSearch(item, tier, search));
+          return true;
         });
+        const next = { ...latest, items: [...items.values()] };
+        if (saved.length || failed.some((entry) => entry.search)) await saveProjectPayload(tx, next);
         return { project: next, quoted: [...new Set(saved.map(({ itemId }) => itemId))], saved, failed };
       });
       if (!updated) throw new ProgressError(404, 'No se encontró el proyecto.');

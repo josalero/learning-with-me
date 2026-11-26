@@ -43,3 +43,13 @@ describe('parseJsonLdOffers', () => {
     expect(product?.dimensions?.d).toBeCloseTo(.709);
   });
 });
+
+it('keeps variant links and the price published for the exact shower door width', () => {
+  const base = 'https://glassmarcr.com/products/ducha';
+  const offers = ['11', '22'].map((variant, index) => ({
+    '@type':'Offer', url:base+'?variant='+variant, price:155000+index*13300, priceCurrency:'CRC',
+  }));
+  const html = '<script type="application/ld+json">'+JSON.stringify({'@type':'Product',name:'Puerta Atlantis',offers})+'</script>';
+  expect(parseJsonLdOffers(html,base+'?variant=22')).toMatchObject([{productUrl:base+'?variant=22',priceCrc:168300}]);
+  expect(parseJsonLdOffers(html,base+'?variant=33')).toEqual([]);
+});

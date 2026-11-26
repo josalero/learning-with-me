@@ -13,7 +13,7 @@ it('quotes pending items in a bounded parallel pool and uses prices published by
   vi.stubEnv('AI_OFFLINE_STUB', '0');
   vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
   const project = buildNatarundiProject('workspace', 'project');
-  project.items = project.items.slice(0, 5);
+  project.items = project.items.slice(0, 5).map((item, index) => ({ ...item, id: `pool-${index}`, name: 'Producto de prueba' }));
   let active = 0;
   let maximum = 0;
   const fetchAgent = vi.fn(async () => {
@@ -25,7 +25,7 @@ it('quotes pending items in a bounded parallel pool and uses prices published by
   });
   vi.stubGlobal('fetch', fetchAgent);
   vi.mocked(fetchJsonLdOffers).mockResolvedValue([{
-    title: 'Producto de prueba', priceCrc: 12345, currency: 'CRC', productUrl: 'https://tienda.example.cr/producto',
+    dimensions: { w: .6, h: 1.7, d: .65 }, title: 'Producto de prueba', priceCrc: 12345, currency: 'CRC', productUrl: 'https://tienda.example.cr/producto',
     review: { rating: 4.7, count: 31, sourceUrl: 'https://tienda.example.cr/producto' },
   }]);
   const activity: QuoteActivity[] = [];
@@ -66,7 +66,7 @@ it('checks every registered website and compares only verified products on those
   vi.mocked(fetchJsonLdOffers).mockImplementation(async (productUrl) => {
     const host = new URL(productUrl).hostname;
     return [{
-      productUrl, title: 'Producto de prueba', priceCrc: host === 'a.example.cr' ? 42_000 : 38_000,
+      productUrl, dimensions: { w: .6, h: 1.7, d: .65 }, title: 'Refrigeradora de prueba', priceCrc: host === 'a.example.cr' ? 42_000 : 38_000,
       availability: host === 'd.example.cr' ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
       review: { rating: 4.6, count: 70, sourceUrl: productUrl },
     }];
@@ -110,7 +110,7 @@ it('refreshes each selected tier using reviews for the exact model and leaves we
     ].join('\n') } }] });
   }));
   vi.mocked(fetchJsonLdOffers).mockImplementation(async (productUrl) => {
-    const common = { productUrl, title: 'Nevera HG12345', availability: 'https://schema.org/InStock' };
+    const common = { productUrl, dimensions: { w: .6, h: 1.7, d: .65 }, title: 'Nevera HG12345', availability: 'https://schema.org/InStock' };
     if (productUrl.endsWith('/alto')) return [{ ...common, priceCrc: 410_000, modelIds: ['HG12345'] }];
     if (productUrl.endsWith('/alternativa')) return [{ ...common, priceCrc: 510_000, review: { rating: 4.8, count: 90, sourceUrl: productUrl } }];
     return [{ ...common, priceCrc: 220_000, review: { rating: 5, count: 1, sourceUrl: productUrl } }];
@@ -131,4 +131,16 @@ it('refreshes each selected tier using reviews for the exact model and leaves we
   expect(quotesForTier(result.project.items[0]!, 'premium')[0]).toMatchObject({
     priceCrc: 410_000, productUrl: 'https://tienda.example.cr/alto', review: { count: 90, sourceUrl: 'https://reviews.example.cr/nevera' },
   });
+});
+
+it('saves an available matching price and direct product URL even when the model has no customer reviews', async () => {
+  vi.stubEnv('AI_OFFLINE_STUB', '1');
+  const url = 'https://tienda.example.cr/microondas-20l';
+  const item = buildNatarundiProject('workspace', 'project').items.find(product => product.id === 'i-micro')!;
+  const previous = { ...applyDemoQuotes(buildNatarundiProject('workspace', 'project')).items[0]!.quotes[0]!,
+    productUrl: url, basis:'published' as const, priceCrc:55000 };
+  vi.mocked(fetchJsonLdOffers).mockResolvedValue([{ title: 'Microondas 20 L', productUrl: url, priceCrc:49950, availability:'InStock' }]);
+  const result = await quoteItemOnDemand({ ...item, quotes:[previous] });
+  expect(result.quote).toMatchObject({ productUrl:url, priceCrc:49950, basis:'published' });
+  expect(result.quote.review).toBeUndefined();
 });

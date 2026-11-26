@@ -1,5 +1,4 @@
 import { and, eq } from 'drizzle-orm';
-import { repairLegacyQuoteLinks } from '../../domain/demo-quotes.js';
 import type { FurnishingProject } from '../../shared/types.js';
 import { getDb } from '../db/client.js';
 import { projects } from '../db/schema.js';
@@ -11,7 +10,6 @@ export function projectFromRow(row: typeof projects.$inferSelect): FurnishingPro
   const project = row.payload as FurnishingProject;
   return {
     ...project,
-    items: repairLegacyQuoteLinks(project.items),
     id: row.id,
     workspaceId: row.workspaceId,
     name: row.name,

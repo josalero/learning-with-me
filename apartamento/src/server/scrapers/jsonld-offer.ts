@@ -3,6 +3,8 @@ import type { CatalogItem, ProductReview } from '../../shared/types.js';
 
 export type ParsedOffer = {
   title: string;
+  brand?: string;
+  description?: string;
   priceCrc?: number;
   priceUsd?: number;
   currency?: string;
@@ -13,7 +15,7 @@ export type ParsedOffer = {
   dimensions?: CatalogItem['dimsM'];
 };
 
-type ProductDetails = Pick<ParsedOffer, 'title' | 'productUrl' | 'review' | 'modelIds' | 'dimensions'>;
+type ProductDetails = Pick<ParsedOffer, 'title' | 'brand' | 'description' | 'productUrl' | 'review' | 'modelIds' | 'dimensions'>;
 const lengthUnits: Record<string, number> = { mtr: 1, m: 1, cmt: .01, cm: .01, mmt: .001, mm: .001, inh: .0254, in: .0254 };
 
 function metres(measure: unknown) {
@@ -33,12 +35,25 @@ function readOffers(node: unknown, acc: ParsedOffer[], product: ProductDetails):
   if (!node || typeof node !== 'object') return;
   const rec = node as Record<string, unknown>;
   if (rec['@type'] === 'AggregateOffer' || rec['@type'] === 'Offer') {
+    const aggregate = rec['@type'] === 'AggregateOffer';
+    if (aggregate && (rec.offers || (rec.highPrice !== undefined && Number(rec.highPrice) !== Number(rec.lowPrice)))) {
+      readOffers(rec.offers, acc, product);
+      return;
+    }
+    let productUrl = product.productUrl;
+    if (typeof rec.url === 'string') {
+      const offered = new URL(rec.url, productUrl);
+      const current = new URL(productUrl);
+      if (offered.origin !== current.origin || offered.pathname.replace(/\/$/, '') !== current.pathname.replace(/\/$/, '')) return;
+      if (current.searchParams.has('variant') && offered.searchParams.get('variant') !== current.searchParams.get('variant')) return;
+      if (offered.searchParams.has('variant')) productUrl = offered.href;
+    }
     const low = rec.lowPrice ?? rec.price;
-    const currency = typeof rec.priceCurrency === 'string' ? rec.priceCurrency.toUpperCase() : 'CRC';
+    const currency = typeof rec.priceCurrency === 'string' ? rec.priceCurrency.toUpperCase() : undefined;
     const num = typeof low === 'string' ? Number(low) : typeof low === 'number' ? low : undefined;
     if (num && Number.isFinite(num)) {
       acc.push({
-        ...product,
+        ...product, productUrl,
         priceCrc: currency === 'CRC' ? num : undefined,
         priceUsd: currency === 'USD' ? num : undefined,
         currency,
@@ -46,7 +61,6 @@ function readOffers(node: unknown, acc: ParsedOffer[], product: ProductDetails):
       });
     }
   }
-  if (rec['@type'] === 'AggregateOffer') readOffers(rec.offers, acc, product);
 }
 
 function productNodes(node: unknown): Record<string, unknown>[] {
@@ -64,7 +78,7 @@ function productDetails(product: Record<string, unknown>, pageUrl: string, pageT
   const rating = Number(aggregate?.ratingValue);
   const best = Number(aggregate?.bestRating ?? 5);
   const worst = Number(aggregate?.worstRating ?? 1);
-  const count = Number(aggregate?.reviewCount || aggregate?.ratingCount);
+  const count = Math.max(Number(aggregate?.reviewCount) || 0, Number(aggregate?.ratingCount) || 0);
   const validRating = best > worst && rating >= worst && rating <= best && Number.isSafeInteger(count) && count > 0;
   const scaled = best === 5 && worst === 1 ? rating : 1 + 4 * (rating - worst) / (best - worst);
   const modelIds = new Set<string>();
@@ -76,6 +90,8 @@ function productDetails(product: Record<string, unknown>, pageUrl: string, pageT
   }
   return {
     title: typeof product.name === 'string' ? cheerio.load(product.name.replaceAll('<', '&lt;'), {}, false).text() : pageTitle,
+    description: typeof product.description === 'string' ? cheerio.load(product.description, {}, false).text().slice(0,4000) : undefined,
+    brand: typeof product.brand === 'string' ? product.brand : product.brand !== null && typeof product.brand === 'object' && typeof (product.brand as { name?: unknown }).name === 'string' ? (product.brand as { name: string }).name : undefined,
     productUrl: pageUrl,
     modelIds: [...modelIds],
     dimensions: { w: metres(product.width), h: metres(product.height), d: metres(product.depth) },

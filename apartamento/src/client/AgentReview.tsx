@@ -10,7 +10,7 @@ const stages = [
   { id: 'orchestrator', title: 'Preparación', description: 'Carga el inventario.', icon: Workflow },
   { id: 'visual_space', title: 'Distribución', description: 'Revisa las zonas del apartamento.', icon: Map },
   { id: 'market_scrape', title: 'Fuentes de precios', description: 'Identifica el origen de los precios guardados.', icon: Store },
-  { id: 'quality_critic', title: 'Control de calidad', description: 'Detecta artículos sin precio.', icon: ClipboardCheck },
+  { id: 'quality_critic', title: 'Control de calidad', description: 'Contrasta el plano con los criterios de Airbnb y detecta cotizaciones pendientes.', icon: ClipboardCheck },
   { id: 'budget_quoter', title: 'Presupuesto', description: 'Consolida los importes.', icon: Calculator },
 ] satisfies { id: ReviewStep; title: string; description: string; icon: typeof Workflow }[];
 

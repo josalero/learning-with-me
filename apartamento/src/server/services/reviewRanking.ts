@@ -13,9 +13,15 @@ function relativePrice(a: LineItemQuote, b: LineItemQuote) {
   return a.priceCrc - b.priceCrc || a.storeName.localeCompare(b.storeName, 'es') || a.productUrl.localeCompare(b.productUrl);
 }
 
-export async function rankReviewedProducts(products: PricedProduct[], onReview: () => void): Promise<LineItemQuote[]> {
-  const unique = [...new Map(products.map((product) => [product.quote.productUrl, product])).values()];
-  if (!unique.length) return [];
+export async function rankReviewedProducts(products: PricedProduct[], onReview: () => void, discoverReviews = true) {
+  const byUrl = new Map<string, PricedProduct>();
+  for (const product of products) {
+    const previous = byUrl.get(product.quote.productUrl);
+    const review = (previous?.quote.review?.count ?? 0) > (product.quote.review?.count ?? 0) ? previous?.quote.review : product.quote.review;
+    byUrl.set(product.quote.productUrl, { quote: { ...product.quote, review }, modelIds: [...new Set([...(previous?.modelIds ?? []), ...product.modelIds])] });
+  }
+  const unique = [...byUrl.values()];
+  if (!unique.length) return { recommendation: undefined, alternatives: [] };
   onReview();
   const byModel = new Map<string, ProductReview>();
   function remember(modelIds: string[], review: ProductReview) {
@@ -37,7 +43,7 @@ export async function rankReviewedProducts(products: PricedProduct[], onReview: 
     for (const id of product.modelIds) seen.add(id);
     return [{ index, title: product.quote.title, modelIds: product.modelIds }];
   }).slice(0, 8);
-  if (missing.length) {
+  if (discoverReviews && missing.length) {
     const pages = await findReviewPages(missing).catch(() => new Map<number, string>());
     await Promise.all(missing.map(async ({ index, modelIds }) => {
       const source = pages.get(index);
@@ -58,7 +64,7 @@ export async function rankReviewedProducts(products: PricedProduct[], onReview: 
 
   const quotes = unique.map((product) => ({ ...product.quote, review: evidence(product) }));
   const qualified = quotes.filter(({ review }) => review && review.count >= 3 && review.rating >= 4);
-  if (!qualified.length) return [];
+  if (!qualified.length) return { recommendation: undefined, alternatives: quotes.sort(relativePrice) };
   const inStock = qualified.filter(({ availability }) => availability === 'in_stock');
   const available = inStock.length ? inStock : qualified;
   const bestScore = Math.max(...available.map(({ review }) => reviewScore(review!)));
@@ -67,5 +73,5 @@ export async function rankReviewedProducts(products: PricedProduct[], onReview: 
     const rating = (quote: LineItemQuote) => quote.review ? reviewScore(quote.review) : 0;
     return rating(b) - rating(a) || relativePrice(a, b);
   });
-  return [best, ...alternatives];
+  return { recommendation: best, alternatives };
 }

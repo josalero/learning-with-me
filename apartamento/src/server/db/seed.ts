@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import { buildNatarundiProject } from '../../domain/natarundi-catalog.js';
 import { NATARUNDI_REFERENCES } from '../../domain/natarundi-references.js';
-import { applyDemoQuotes } from '../../domain/demo-quotes.js';
+import { applyNatarundiOpeningPrices } from '../../domain/natarundi-opening.js';
 import { itemizeCatalogBundles } from '../../domain/itemize-bundle.js';
 import { hashPassword } from '../services/auth.js';
 import { fetchUsdCrcRate } from '../services/fxRate.js';
@@ -31,7 +31,7 @@ async function main(): Promise<void> {
     const [existingWs] = await tx.select().from(workspaces).where(eq(workspaces.name, wsName)).limit(1);
     const workspaceId = existingUser?.workspaceId ?? existingWs?.id ?? randomUUID();
     const fx = await fetchUsdCrcRate();
-    const project = itemizeCatalogBundles(applyDemoQuotes(buildNatarundiProject(workspaceId, randomUUID(), fx.rate)));
+    const project = applyNatarundiOpeningPrices(itemizeCatalogBundles(buildNatarundiProject(workspaceId, randomUUID(), fx.rate)));
     if (!existingWs && !existingUser) {
       await tx.insert(workspaces).values({ id: workspaceId, name: wsName });
     }
@@ -49,7 +49,6 @@ async function main(): Promise<void> {
     await tx.insert(projectReferences).values(NATARUNDI_REFERENCES.map((reference, index) => ({
       ...reference, projectId: project.id, createdAt: new Date(createdAt + index),
     })));
-    console.log(`Demo quotes applied: ${project.items.filter((item) => item.quotes.length > 0).length}/${project.items.length} items`);
     return { workspaceId };
   });
   if (!seeded) {

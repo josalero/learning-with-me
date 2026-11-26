@@ -5,9 +5,9 @@ export function resolveModelIds(mode: RoutingMode = 'BALANCED'): {
   vision: string;
   critic: string;
 } {
-  const economy = process.env.OPENROUTER_MODEL_ECONOMY ?? 'anthropic/claude-haiku-4.5';
-  const balanced = process.env.OPENROUTER_MODEL_BALANCED ?? 'google/gemini-2.5-flash';
-  const frontier = process.env.OPENROUTER_MODEL_FRONTIER ?? 'anthropic/claude-sonnet-4';
+  const economy = process.env.OPENROUTER_MODEL_ECONOMY || 'anthropic/claude-haiku-4.5';
+  const balanced = process.env.OPENROUTER_MODEL_BALANCED || 'google/gemini-2.5-flash';
+  const frontier = process.env.OPENROUTER_MODEL_FRONTIER || 'anthropic/claude-sonnet-4';
 
   if (mode === 'ECONOMY') {
     return { primary: economy, vision: economy, critic: economy };
@@ -23,6 +23,11 @@ export function configuredModels() {
   return resolveModelIds(mode === 'ECONOMY' || mode === 'FRONTIER' ? mode : 'BALANCED');
 }
 
+export function offlineReason() {
+  if (process.env.AI_OFFLINE_STUB === '1') return 'El servidor tiene activado el modo sin IA.';
+  if (!process.env.OPENROUTER_API_KEY?.trim()) return 'El servidor no tiene configurada la clave de búsqueda de OpenRouter.';
+}
+
 export function isAiOffline(): boolean {
-  return process.env.AI_OFFLINE_STUB === '1' || !process.env.OPENROUTER_API_KEY;
+  return Boolean(offlineReason());
 }

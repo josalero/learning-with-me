@@ -1,5 +1,7 @@
 import ExcelJS from 'exceljs';
 import { budgetProfiles, quotesForTier, selectedBudgetTiers } from '../../shared/budgetProfiles.js';
+import { purchaseName, isFlexibleEnclosure, enclosureAdvice } from '../../shared/showerEnclosure.js';
+import { brandLabel, productClass } from '../../shared/brands.js';
 import { projectAreas } from '../../shared/projectAreas.js';
 import { projectStats } from '../../shared/projectStats.js';
 import { isPurchaseSet } from '../../shared/purchaseUnit.js';
@@ -156,18 +158,18 @@ function addDetailRows(sheet: ExcelJS.Worksheet, groups: AreaGroup[], tier: Budg
         const isBudgetQuote = quote && index === 0;
         const state = !quote ? 'Pendiente' : isBudgetQuote ? 'Cotizado' : 'Alternativa';
         const basis = quote ? quoteBasisLabel(quote) ?? 'Sin clasificación' : null;
-        const notes = [item.notes, !quote ? item.unquotedReason ?? 'Por buscar' : undefined].filter(Boolean).join('\n');
+        const notes = [item.notes, isFlexibleEnclosure(item) ? enclosureAdvice(tier) : undefined, !quote ? item.unquotedReason ?? 'Por buscar' : undefined].filter(Boolean).join('\n');
         const date = quote ? priceDate(quote.capturedAt) : null;
         const location = locationLabel(group, item);
         const row = sheet.addRow([
-          location, item.name, item.qty, state, basis, quote?.priceCrc ?? null, null,
+          location, purchaseName(item, tier), item.qty, state, basis, quote?.priceCrc ?? null, null,
           quote?.storeName ?? null, quote ? storeLink(quote) : null, null,
           quote ? availability[quote.availability] : null, label, quote ? sources[quote.source] : null, date, notes || null,
           budgetProfiles[tier].label, quote?.title ?? null, reviewLink(quote),
-          isPurchaseSet(item) ? 'Juego' : 'Unidad',
+          isPurchaseSet(item) ? 'Juego' : 'Unidad', brandLabel(quote), productClass(quote),
         ]);
         row.height = fittedHeight([location, 21], [item.name, 36], [basis ?? '', 19], [quote?.storeName ?? '', 19], [notes, 45], [quote?.title ?? '', 37]);
-        styleRow(row, 19, row.number % 2 === 0);
+        styleRow(row, 21, row.number % 2 === 0);
         styleStatus(row.getCell(4), !quote ? 'pending' : isBudgetQuote ? 'success' : 'info');
         if (quote?.basis === 'catalog' || quote?.basis === 'estimate' || quote?.source === 'agent_estimate') styleStatus(row.getCell(5), 'info');
         for (const index of [3, 6, 7, 10, 14]) row.getCell(index).alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
@@ -313,13 +315,13 @@ export async function buildBudgetWorkbook(project: FurnishingProject): Promise<B
     sheet: addSheet(workbook, index === 0 ? 'Resumen' : `Resumen ${budgetProfiles[tier].label}`,
       [19, 17, 15, 14, 15, 17, 14, 14], { tab: colors.purple }),
   }));
-  const detail = addSheet(workbook, 'Ítems', [25, 38, 11, 15, 23, 16, 17, 21, 17, 18, 18, 20, 20, 21, 46, 24, 38, 28, 13], {
+  const detail = addSheet(workbook, 'Ítems', [25, 38, 11, 15, 23, 16, 17, 21, 17, 18, 18, 20, 20, 21, 46, 24, 38, 28, 13, 20, 30], {
     frozen: { xSplit: 2, ySplit: detailHeaderRow },
   });
   const pending = addSheet(workbook, 'Sin cotizar', [34, 25, 11, 57, 24], { frozen: { xSplit: 0, ySplit: detailHeaderRow }, tab: colors.amber });
 
-  heading(detail, 'Detalle del presupuesto', project.name, 'S');
-  tableHeader(detail, detailHeaderRow, ['Ambiente', 'Artículo', 'Cantidad', 'Estado', 'Origen del precio', 'Unitario CRC', 'Subtotal CRC', 'Tienda', 'Producto', 'Unitario USD', 'Disponibilidad', 'Categoría', 'Fuente', 'Fecha del precio', 'Notas y motivo', 'Nivel', 'Modelo publicado', 'Valoraciones', 'Unidad de compra']);
+  heading(detail, 'Detalle del presupuesto', project.name, 'U');
+  tableHeader(detail, detailHeaderRow, ['Ambiente', 'Artículo', 'Cantidad', 'Estado', 'Origen del precio', 'Unitario CRC', 'Subtotal CRC', 'Tienda', 'Producto', 'Unitario USD', 'Disponibilidad', 'Categoría', 'Fuente', 'Fecha del precio', 'Notas y motivo', 'Nivel', 'Modelo publicado', 'Valoraciones', 'Unidad de compra', 'Marca', 'Gama y origen']);
   heading(pending, 'Artículos pendientes de cotizar', project.name, 'E');
   tableHeader(pending, detailHeaderRow, ['Artículo', 'Ambiente', 'Cantidad', 'Motivo o notas', 'Nivel']);
   for (const { tier, sheet } of summaries) {
@@ -330,7 +332,7 @@ export async function buildBudgetWorkbook(project: FurnishingProject): Promise<B
       for (const item of group.items.filter((entry) => !quotesForTier(entry, tier).length)) {
         const reason = [item.unquotedReason ?? 'Sin cotizar para este nivel', item.notes].filter(Boolean).join('\n');
         const location = locationLabel(group, item);
-        const row = pending.addRow([item.name, location, item.qty, reason, budgetProfiles[tier].label]);
+        const row = pending.addRow([purchaseName(item, tier), location, item.qty, reason, budgetProfiles[tier].label]);
         row.height = fittedHeight([item.name, 31], [location, 22], [reason, 54]);
         styleRow(row, 5, row.number % 2 === 0);
         row.getCell(3).alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
@@ -338,8 +340,8 @@ export async function buildBudgetWorkbook(project: FurnishingProject): Promise<B
     }
   }
   if (comparison) addComparison(comparison, project, summaries);
-  if (detail.rowCount >= detailFirstRow) detail.autoFilter = `A${detailHeaderRow}:S${detail.rowCount}`;
-  else cell(detail, ['A6', 'S6'], 'El proyecto aún no tiene artículos.');
+  if (detail.rowCount >= detailFirstRow) detail.autoFilter = `A${detailHeaderRow}:U${detail.rowCount}`;
+  else cell(detail, ['A6', 'U6'], 'El proyecto aún no tiene artículos.');
   detail.pageSetup.printTitlesRow = `${detailHeaderRow}:${detailHeaderRow}`;
   if (pending.rowCount >= detailFirstRow) pending.autoFilter = `A${detailHeaderRow}:E${pending.rowCount}`;
   else cell(pending, ['A6', 'E6'], project.items.length ? 'Todos los artículos tienen una cotización.' : 'El proyecto aún no tiene artículos.');

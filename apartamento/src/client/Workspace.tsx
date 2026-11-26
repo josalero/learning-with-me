@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { Boxes, ChevronRight, Download, FolderOpen, Images, LayoutGrid, ListChecks, LogOut } from 'lucide-react';
+import { Boxes, ChevronRight, Download, FolderOpen, Images, LayoutGrid, ListChecks, LogOut, ClipboardCheck } from 'lucide-react';
 import type { FurnishingProject } from '@shared/types';
 import { Link, projectPath, projectsPath, usePathname, type ProjectView } from './navigation';
 import { Brand, Notice, Spinner } from './ui';
@@ -12,6 +12,7 @@ const sections = [
   { id: 'agentes', title: 'Agentes', icon: ListChecks },
   { id: 'inventario', title: 'Inventario', icon: Boxes },
   { id: 'referencias', title: 'Referencias', icon: Images },
+  { id: 'airbnb', title: 'Airbnb', icon: ClipboardCheck },
 ] as const;
 
 export function Workspace({ session, onLogout, loggingOut, logoutError, project, view, children }: Account & {

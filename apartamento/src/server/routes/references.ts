@@ -10,7 +10,8 @@ import { getDb } from '../db/client.js';
 import { projectReferenceAnalyses, projectReferences } from '../db/schema.js';
 import { requireUser } from '../services/auth.js';
 import { loadOwnedProject, saveProjectPayload } from '../services/projects.js';
-import { identifyQuoteSuggestions, suggestedItemId, suggestionAlreadyInInventory } from '../services/referenceVision.js';
+import { loadAirbnbAssessment } from '../services/airbnbAssessment.js';
+import { analyzeProjectImages, suggestedItemId, suggestionAlreadyInInventory } from '../services/referenceVision.js';
 
 const projectParams = z.object({ projectId: z.string().uuid() });
 const referenceParams = projectParams.extend({ referenceId: z.string().uuid() });
@@ -54,6 +55,13 @@ export function registerReferenceRoutes(app: FastifyInstance, assetDir: string) 
     if (row.assetName && assetNames.has(row.assetName)) return readFile(path.join(assetDir, row.assetName));
     throw new Error('Missing reference asset');
   }
+
+  app.get('/api/projects/:projectId/airbnb', async (request, reply) => {
+    const params = projectParams.safeParse(request.params);
+    if (!params.success) return reply.code(404).send({ error: 'No se encontró el proyecto.' });
+    const scope = await authorize(request, reply, params.data.projectId);
+    if (scope) return loadAirbnbAssessment(scope.db, scope.project);
+  });
 
   app.get('/api/projects/:projectId/references', async (request, reply) => {
     const params = projectParams.safeParse(request.params);
@@ -140,9 +148,9 @@ export function registerReferenceRoutes(app: FastifyInstance, assetDir: string) 
     if (images.reduce((bytes, image) => bytes + image.content.length, 0) > REFERENCE_MAX_ANALYSIS_BYTES) {
       return reply.code(413).send({ error: 'Las imágenes seleccionadas superan 12 MB en total. Analiza menos referencias a la vez.' });
     }
-    let suggestions;
+    let output;
     try {
-      suggestions = await identifyQuoteSuggestions(project, images);
+      output = await analyzeProjectImages(project, images);
     } catch (error) {
       request.log.warn({ errorType: error instanceof Error ? error.name : 'unknown' }, 'Reference analysis provider failed');
       return reply.code(502).send({ error: 'No se pudo analizar las referencias. Inténtalo de nuevo en un momento.' });
@@ -153,9 +161,11 @@ export function registerReferenceRoutes(app: FastifyInstance, assetDir: string) 
       const currentImages = await tx.select({ id: projectReferences.id }).from(projectReferences)
         .where(and(eq(projectReferences.projectId, project.id), inArray(projectReferences.id, ids)));
       if (currentImages.length !== ids.length) return null;
+      const [previous] = await tx.select().from(projectReferenceAnalyses).where(eq(projectReferenceAnalyses.projectId, project.id));
       const result: ReferenceAnalysis = {
+        observations: [...(previous?.result.observations ?? []).filter((o) => !ids.includes(o.referenceId)), ...output.observations],
         createdAt: new Date().toISOString(),
-        suggestions: suggestions.filter((suggestion) => !suggestionAlreadyInInventory(latest.items, suggestion)),
+        suggestions: output.suggestions.filter((suggestion) => !suggestionAlreadyInInventory(latest.items, suggestion)),
       };
       await tx.insert(projectReferenceAnalyses).values({ projectId: project.id, result }).onConflictDoUpdate({
         target: projectReferenceAnalyses.projectId, set: { result },

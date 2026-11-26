@@ -31,6 +31,8 @@ export type LineItemQuote = {
   storeUrl: string;
   productUrl: string;
   title: string;
+  brand?: string;
+  modelIds?: string[];
   priceCrc: number;
   priceUsd?: number;
   availability: 'in_stock' | 'out_of_stock' | 'unknown';
@@ -39,6 +41,12 @@ export type LineItemQuote = {
   tier?: BudgetTier;
   review?: ProductReview;
   capturedAt: string;
+};
+
+export type QuoteSearch = {
+  checkedAt: string;
+  detail: string;
+  offers: LineItemQuote[];
 };
 
 export type CatalogItem = {
@@ -53,6 +61,7 @@ export type CatalogItem = {
   quotes: LineItemQuote[];
   unquotedReason?: string;
   parentItemId?: string;
+  lastSearch?: Partial<Record<BudgetTier, QuoteSearch>>;
 };
 
 export type ProjectZone = {
@@ -108,6 +117,7 @@ export type ReferenceSuggestion = {
 export type ReferenceAnalysis = {
   createdAt: string;
   suggestions: ReferenceSuggestion[];
+  observations?: AirbnbObservation[];
 };
 
 export type AgentStage =
@@ -156,6 +166,7 @@ export const QUOTE_CONCURRENCY = 3;
 export type BudgetQuote = { itemId: string; tier: BudgetTier };
 
 export type QuoteActivity = BudgetQuote & {
+  search?: QuoteSearch;
   itemName: string;
   stage: 'queued' | 'searching' | 'verifying' | 'catalog' | 'saving' | 'completed' | 'failed';
   detail: string;
@@ -174,3 +185,19 @@ export type WorkflowState = {
   summary?: string;
   errors: string[];
 };
+
+export const VISUAL_AIRBNB_TOPICS = ['sleeping', 'bathrooms', 'kitchen', 'terrace'] as const;
+export type AirbnbVisualTopic = (typeof VISUAL_AIRBNB_TOPICS)[number];
+export type AirbnbObservation = { topic: AirbnbVisualTopic; referenceId: string; detail: string };
+
+export type AirbnbCheck = {
+  id: string;
+  title: string;
+  policy: string;
+  sourceUrl: string;
+  status: 'discrepancy' | 'documented' | 'pending';
+  evidence: { text: string; reference?: Pick<ProjectReference, 'id' | 'title'> }[];
+  action: string;
+};
+
+export type AirbnbAssessment = { policyDate: string; checks: AirbnbCheck[] };

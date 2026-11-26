@@ -28,7 +28,7 @@ npm run build
 
 - **Cotizar** / **Actualizar** por ítem: `POST /api/projects/:projectId/items/:itemId/quote` (URL opcional con JSON-LD).
 - **Cotizar pendientes**: `POST /api/projects/:projectId/quote-pending`.
-- Sin URL: catálogo regional de referencia; con estimado para ítems bloqueados (secadora, escritorio D.3, flete).
+- Sin URL se buscan productos en las tiendas registradas. Los precios activos requieren ficha directa verificada. Se prefieren los modelos con buenas reseñas. Si no hay reseñas suficientes se usa el mejor precio publicado compatible y se indica su evidencia.
 - Con URL pública: `fetchJsonLdOffers` + guardrail SSRF.
 
 ### 2. Pipeline multi-agente (LangGraph + HITL)
@@ -40,7 +40,7 @@ Botón **Ejecutar agentes** → `POST /api/workflow/start`. Aprobaciones → `PO
 | `orchestrator` | FurnishingOrchestrator | Arranque; nota si `AI_OFFLINE_STUB=1` |
 | `visual_space` | VisualSpaceAgent | **Gate 1** `zone_layout` — layout 9 zonas |
 | `market_scrape` | RegionalStoreScout + MarketScraperAgent | Nota de mercado; scrape masivo aún no enlazado |
-| `quality_critic` | AirbnbQualityCriticAgent | Cuenta ítems sin cotización (menaje, climatización) |
+| `quality_critic` | AirbnbQualityCriticAgent | Contrasta las referencias con los criterios de Airbnb y resume cotizaciones pendientes |
 | `budget_quoter` | BudgetQuoterAgent | **Gate 2** `final_budget` — antes de Excel |
 
 Flujo: `START → orchestrator → visual_space → [Gate1] → market_scrape → quality_critic → budget_quoter → [Gate2] → END`.
@@ -65,8 +65,8 @@ Convención env local (`env`): OpenRouter en `env`; compose solo fuerza `DATABAS
 | --- | --- | --- |
 | MisterPrecios / AhorraYa | JSON-LD en `jsonld-offer.ts`, `fetchPage.ts` | URL de producto on demand |
 | Tiendas CR | `stores-seed.ts`, probe `store-probe.ts` | Registro regional |
-| Catálogo demo | `demo-quotes.ts` | Seed + cotizar sin URL |
-| Manual / estimado | `quoteOnDemand.ts` | Ítems con `unquotedReason` |
+| Catálogo demo | `demo-quotes.ts` | Datos históricos para pruebas |
+| Manual / estimado | `quoteOnDemand.ts` | Verificación de una URL indicada por el usuario |
 
 CLI: `npm run prices:sync -- <url>` (una página, stdout JSON).
 
@@ -86,5 +86,5 @@ CLI: `npm run prices:sync -- <url>` (una página, stdout JSON).
 ## Tests relevantes
 
 - `tests/furnishing-graph.test.ts` — grafo con ambos gates aprobados.
-- `tests/quote-on-demand.test.ts` — cotización catálogo / estimado.
+- `tests/quote-on-demand.test.ts` — cotización y búsqueda sin IA.
 - `tests/jsonld-offer.test.ts`, `tests/ssrf-guard.test.ts` — parsers y seguridad.

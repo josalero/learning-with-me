@@ -29,6 +29,7 @@ No hay clases OOP en el sentido clásico: el servidor es **funciones + Fastify**
 | `/proyectos/:id/agentes` | AgentReview |
 | `/proyectos/:id/inventario` | Inventory |
 | `/proyectos/:id/referencias` | References |
+| `/proyectos/:id/airbnb` | Revisión por criterio con fuentes y evidencias del proyecto |
 
 ## Servidor — rutas
 
@@ -45,7 +46,7 @@ Autenticación: `requireUser` en handlers protegidos; cookie `natarundi_sid` →
 | --- | --- | --- |
 | **auth** | `services/auth.ts` | scrypt passwords, crear/validar sesión, cookies |
 | **projects** | `services/projects.ts` | `projectFromRow`, `loadOwnedProject`, `saveProjectPayload` |
-| **quoteOnDemand** | `services/quoteOnDemand.ts` | Cotizar ítem/proyecto: URL, catálogo, estimado |
+| **quoteOnDemand** | `services/quoteOnDemand.ts` | Verificar fichas de productos y conservar las ofertas revisadas por artículo y nivel |
 | **fxRate** | `services/fxRate.ts` | Proveedores BCCR proxy, exchangerate-api, static |
 | **fxProjectSync** | `services/fxProjectSync.ts` | Propagar tasa a filas `projects` |
 | **excelExport** | `services/excelExport.ts` | Workbook ExcelJS por zonas y tiers |
@@ -78,7 +79,7 @@ Autenticación: `requireUser` en handlers protegidos; cookie `natarundi_sid` →
 | Módulo | Archivo | Rol |
 | --- | --- | --- |
 | **natarundi-catalog** | `domain/natarundi-catalog.ts` | 9 zonas, ~20 ítems, medidas del plano |
-| **demo-quotes** | `domain/demo-quotes.ts` | Precios demo/estimados para seed y cotizar sin URL |
+| **demo-quotes** | `domain/demo-quotes.ts` | Datos históricos usados en pruebas de migración |
 | **natarundi-references** | `domain/natarundi-references.ts` | Metadatos de assets públicos |
 
 ## Shared (`src/shared/`)

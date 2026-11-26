@@ -1,0 +1,407 @@
+{
+  "i-bath-enclosure": [
+    {
+      "tier": "economy",
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/cortina-de-bano-peva-blanco-183-x-183-cm",
+      "title": "Cortina de baño PEVA blanca 183 × 183 cm",
+      "priceCrc": 2995,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:36.054Z",
+      "availability": "in_stock",
+      "brand": "Aqua Nuova",
+      "modelIds": [
+        "100004315"
+      ]
+    },
+    {
+      "productUrl": "https://glassmarcr.com/products/copia-de-puerta-para-ducha-sistema-corrediza-con-marco-en-vidrio-temperado-claro-accesorios-cromados?variant=43752946172159",
+      "title": "Puerta para ducha Atlantis de vidrio temperado de 6 mm, 105–117 cm",
+      "priceCrc": 155000,
+      "storeName": "Glassmar",
+      "capturedAt": "2026-11-26T16:17:35.268Z",
+      "availability": "in_stock",
+      "brand": "Glassmar",
+      "modelIds": [
+        "GL-0611"
+      ]
+    },
+    {
+      "tier": "premium",
+      "productUrl": "https://glassmarcr.com/products/puerta-de-ducha-de-vidrio-temperado?variant=43406926217471",
+      "title": "Puerta para ducha Lusso de vidrio temperado de 8 mm, 110 × 200 cm",
+      "priceCrc": 245000,
+      "storeName": "Glassmar",
+      "capturedAt": "2026-11-26T16:17:35.281Z",
+      "availability": "in_stock",
+      "brand": "Glassmar",
+      "modelIds": [
+        "GL-0522"
+      ]
+    }
+  ],
+  "i-bath-showerhead": [
+    {
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/cabeza-de-ducha-redonda-95-cm-abs-plata-cromado-aqua-nuova",
+      "title": "Cabeza de ducha redonda 9,5 cm ABS cromada",
+      "priceCrc": 2395,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:36.757Z",
+      "availability": "in_stock",
+      "brand": "Aqua Nuova",
+      "modelIds": [
+        "100023503"
+      ]
+    }
+  ],
+  "i-bath-soapdish": [
+    {
+      "productUrl": "https://cr.siman.com/jabonera-de-pared-eleve-negro-104975977/p",
+      "title": "Jabonera de plástico para pared",
+      "priceCrc": 4830,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:38.380Z",
+      "availability": "in_stock",
+      "brand": "OU",
+      "modelIds": [
+        "08594765",
+        "104975977"
+      ]
+    }
+  ],
+  "i-br2-bed": [
+    {
+      "productUrl": "https://www.tiendamonge.com/combo-base-matrimonial-colchon-respaldo-comfortex-esencial-ortopedico-201667",
+      "title": "Combo Base Matrimonial | Colchón | Respaldo Comfortex Esencial Ortopédico",
+      "priceCrc": 269900,
+      "storeName": "Monge",
+      "capturedAt": "2026-11-26T16:17:37.440Z",
+      "availability": "in_stock",
+      "brand": "Comfortex",
+      "modelIds": [
+        "201667"
+      ]
+    }
+  ],
+  "i-br3-bed": [
+    {
+      "productUrl": "https://www.tiendamonge.com/combo-base-individual-colchon-respaldo-comfortex-esencial-ortopedico-201666",
+      "title": "Combo Base Individual | Colchón | Respaldo Comfortex Esencial Ortopédico",
+      "priceCrc": 199900,
+      "storeName": "Monge",
+      "capturedAt": "2026-11-26T16:17:37.898Z",
+      "availability": "in_stock",
+      "brand": "Comfortex",
+      "modelIds": [
+        "201666"
+      ]
+    }
+  ],
+  "i-br3-desk": [
+    {
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/repisa-utilita-mdp-blanco-60-x-40-x-38-cm",
+      "title": "Repisa Utilita MDP blanco 60 x 40 x 3,8 cm",
+      "priceCrc": 16995,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:38.997Z",
+      "availability": "in_stock",
+      "brand": "Prat-K"
+    }
+  ],
+  "i-cookware-cubiertos": [
+    {
+      "productUrl": "https://cr.siman.com/set-de-cubiertos-20-piezas-ella-satin-105044727/p",
+      "title": "Set de cubiertos de acero inoxidable 20 piezas Hamilton forge",
+      "priceCrc": 34900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:39.593Z",
+      "availability": "in_stock",
+      "brand": "Hampton Forge",
+      "modelIds": [
+        "725B020HFN"
+      ]
+    }
+  ],
+  "i-cookware-ollas": [
+    {
+      "productUrl": "https://cr.siman.com/jgo-ollas-marmol-negro-12pzs-100489847/p",
+      "title": "Juego de ollas",
+      "priceCrc": 101900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:39.893Z",
+      "availability": "in_stock",
+      "brand": "Monix",
+      "modelIds": [
+        "49009",
+        "812688011342"
+      ]
+    }
+  ],
+  "i-cookware-sarten": [
+    {
+      "productUrl": "https://cr.siman.com/sarten-antiadherente-ceramico-10-gris-oscuro-105216232/p",
+      "title": "Sartén antiadherente cerámico 10\" gris oscuro",
+      "priceCrc": 15900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:41.592Z",
+      "availability": "in_stock",
+      "brand": "Figmint",
+      "modelIds": [
+        "070010375"
+      ]
+    }
+  ],
+  "i-cookware-utensilios": [
+    {
+      "productUrl": "https://cr.siman.com/set-de-utensilios-de-silicon-10-pcs-gris-105073615/p",
+      "title": "Set de utensilios Figmint de silicón 10 piezas",
+      "priceCrc": 24900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:41.905Z",
+      "availability": "in_stock",
+      "brand": "Figmint",
+      "modelIds": [
+        "070050364"
+      ]
+    }
+  ],
+  "i-cookware-vajilla": [
+    {
+      "productUrl": "https://cr.siman.com/vajilla-gris-oscuro-16-pcs-104935427/p",
+      "title": "Vajilla de cerámica Detalles 16 piezas",
+      "priceCrc": 9900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:41.804Z",
+      "availability": "in_stock",
+      "brand": "Detalles",
+      "modelIds": [
+        "D16T14"
+      ]
+    }
+  ],
+  "i-dining-set": [
+    {
+      "productUrl": "https://cr.siman.com/comedor-4-personas-redondo-104278562/p",
+      "title": "Juego de Comedor Sparky 4 personas",
+      "priceCrc": 194500,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:44.200Z",
+      "availability": "in_stock",
+      "brand": "Home Furniture",
+      "modelIds": [
+        "SPARKYDSND648414705"
+      ]
+    }
+  ],
+  "i-dryer": [
+    {
+      "productUrl": "https://cr.siman.com/secadora-de-ropa-electrica-18-kg-7mwed1800em-whirlpool-100476588/p",
+      "title": "Secadora de ropa eléctrica 18 kg 7MWED1800EM Whirlpool",
+      "priceCrc": 249900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:45.587Z",
+      "availability": "in_stock",
+      "brand": "Whirlpool",
+      "modelIds": [
+        "7MWED1800EM",
+        "883049389806"
+      ]
+    }
+  ],
+  "i-fan-kitchen": [
+    {
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/ventilador-orbital-de-techo-16",
+      "title": "Ventilador orbital de techo 16\"",
+      "priceCrc": 29995,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:43.046Z",
+      "availability": "in_stock",
+      "brand": "Ferreteria EPA"
+    }
+  ],
+  "i-fan-living": [
+    {
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/ventilador-techo-36-5-aspas-1-luz-chocolate-designers-lighting",
+      "title": "Ventilador techo 36\" 5 aspas 1 luz chocolate designers lighting",
+      "priceCrc": 59950,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:44.364Z",
+      "availability": "in_stock",
+      "brand": "Designers Lighting - Fan"
+    }
+  ],
+  "i-fan-master": [
+    {
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/ventilador-de-techo-led-tipo-plafon-12-3-cct",
+      "title": "Ventilador de techo LED tipo plafón 12\" 3 CCT",
+      "priceCrc": 40950,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:45.865Z",
+      "availability": "in_stock",
+      "brand": "Designers Lighting"
+    }
+  ],
+  "i-island-stools": [
+    {
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/silla-tipo-bar-beige-44-x-41-x-62-cm",
+      "title": "Silla tipo bar beige  44 x 41 x 62 cm",
+      "priceCrc": 34950,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:45.770Z",
+      "availability": "in_stock",
+      "brand": "Basic living"
+    }
+  ],
+  "i-linens-sabanas-dormitorio-2": [
+    {
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/juego-de-sabanas-matrimonial-100-algodon-4-piezas-blanco-incluye-2-fundas-para-almohada",
+      "title": "Juego de sábanas matrimonial 100% algodón, 4 piezas, blanco",
+      "priceCrc": 18495,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:46.945Z",
+      "availability": "in_stock",
+      "brand": "Deluxe Suits Hotel",
+      "modelIds": [
+        "100022470"
+      ]
+    }
+  ],
+  "i-linens-sabanas-individual": [
+    {
+      "productUrl": "https://cr.siman.com/set-de-sabana-estampada-killian-patina-vie-gray-full-105265069/p?skuId=8990730",
+      "title": "Juego de sábanas estampadas Killian Patina Vie gris · Set de sábana estampada Killian Patina Vie Gray Twin",
+      "priceCrc": 8450,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:18:22.906Z",
+      "availability": "in_stock",
+      "brand": "BR home",
+      "modelIds": [
+        "105265068"
+      ]
+    }
+  ],
+  "i-linens-sabanas-queen": [
+    {
+      "productUrl": "https://cr.epaenlinea.com/es-cr/products/juego-de-sabanas-queen-100-algodon-4-piezas-blanco-incluye-2-fundas-para-almohada",
+      "title": "Juego de sábanas queen 100% algodón, 4 piezas, blanco",
+      "priceCrc": 20550,
+      "storeName": "EPA",
+      "capturedAt": "2026-11-26T16:17:46.895Z",
+      "availability": "in_stock",
+      "brand": "Deluxe Suits Hotel"
+    }
+  ],
+  "i-linens-toallas": [
+    {
+      "productUrl": "https://cr.siman.com/set-de-toallas-con-textura-6pc-khaki-2bao-2mano-y-2facial-105074532/p?skuId=8728556",
+      "title": "Set de 6 toallas Threshold de algodón con textura (2 baño 2 mano y 2 faciales) · Set de toallas con textura 6pc Khaki (2Baño 2Mano y 2Facial)",
+      "priceCrc": 24900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:18:24.843Z",
+      "availability": "in_stock",
+      "brand": "Threshold",
+      "modelIds": [
+        "105074532"
+      ]
+    }
+  ],
+  "i-master-bed": [
+    {
+      "productUrl": "https://www.tiendamonge.com/combo-base-queen-colchon-respaldo-comfortex-esencial-ortopedico-201668",
+      "title": "Combo Base Queen | Colchón | Respaldo Comfortex Esencial Ortopédico",
+      "priceCrc": 279900,
+      "storeName": "Monge",
+      "capturedAt": "2026-11-26T16:17:47.040Z",
+      "availability": "in_stock",
+      "brand": "Comfortex",
+      "modelIds": [
+        "201668"
+      ]
+    }
+  ],
+  "i-micro": [
+    {
+      "title": "Microondas Midea 31 L (1.1 PCU) silver",
+      "priceCrc": 56900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:50.976Z",
+      "productUrl": "https://cr.siman.com/microondas-1-1pc-10-niveles-104560650/p",
+      "availability": "in_stock",
+      "brand": "Midea",
+      "modelIds": [
+        "08099870",
+        "104560650"
+      ]
+    }
+  ],
+  "i-refri": [
+    {
+      "productUrl": "https://cr.siman.com/refrigerador-tm-12-pc-con-dispensador-102947072/p",
+      "title": "Refrigeradora Top Mount 339 L (12 PCU) No Frost FRTS12K3HTS Frigidaire",
+      "priceCrc": 239900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:48.701Z",
+      "availability": "in_stock",
+      "brand": "Frigidaire",
+      "modelIds": [
+        "FRTS12K3HTS"
+      ]
+    }
+  ],
+  "i-sofa": [
+    {
+      "productUrl": "https://cr.siman.com/sofa-cama-105171137/p?skuId=9036414",
+      "title": "Sofá cama · SOFA CAMA GREY BZ1166-26",
+      "priceCrc": 81750,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:18:26.274Z",
+      "availability": "in_stock",
+      "brand": "Home Furniture",
+      "modelIds": [
+        "105303715"
+      ]
+    }
+  ],
+  "i-terrace-set": [
+    {
+      "productUrl": "https://cr.siman.com/set-de-mesa-con-2-sillas-105078486/p",
+      "title": "Set de mesa con 2 sillas para exterior",
+      "priceCrc": 198750,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:49.131Z",
+      "availability": "in_stock",
+      "brand": "Home Furniture",
+      "modelIds": [
+        "08735767",
+        "105078489"
+      ]
+    }
+  ],
+  "i-tv": [
+    {
+      "productUrl": "https://cr.siman.com/pantalla-xiaomi-a-pro-43--qled-uhd-4k-hdr10--63977-1/p",
+      "title": "Pantalla Xiaomi A Pro 43\" (109.22 cm) QLED UHD 4K HDR10+ 63977",
+      "priceCrc": 139900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:48.599Z",
+      "availability": "in_stock",
+      "brand": "Xiaomi",
+      "modelIds": [
+        "63977"
+      ]
+    }
+  ],
+  "i-washer": [
+    {
+      "productUrl": "https://cr.siman.com/lavadora-con-agitador-24kg-blanca-104331200/p",
+      "title": "Lavadora Whirlpool carga superior 24 kg 8MWTW2424WPM",
+      "priceCrc": 279900,
+      "storeName": "Siman Costa Rica",
+      "capturedAt": "2026-11-26T16:17:50.730Z",
+      "availability": "in_stock",
+      "brand": "Whirlpool",
+      "modelIds": [
+        "8MWTW2424WPM"
+      ]
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Boxes, Images, ListChecks, MapPin } from 'lucide-react';
+import { ArrowRight, Boxes, ClipboardCheck, Images, ListChecks, MapPin } from 'lucide-react';
 import { budgetQuoteJobs, primaryBudgetTier, quotesForTier, selectedBudgetTiers } from '@shared/budgetProfiles';
 import type { BudgetQuote, BudgetTier, CatalogItem, FurnishingProject, QuoteActivity } from '@shared/types';
+import AirbnbReview from './AirbnbReview';
 import AgentReview from './AgentReview';
 import BudgetSettings from './BudgetSettings';
 import Inventory, { QuoteDialog } from './Inventory';
@@ -12,8 +13,9 @@ import { streamPost } from './streamApi';
 import { ApiError } from './ui';
 import { Workspace, type Account } from './Workspace';
 
-const pageTitles = { resumen: 'Resumen', agentes: 'Agentes', inventario: 'Inventario', referencias: 'Referencias' };
+const pageTitles = { resumen: 'Resumen', agentes: 'Agentes', inventario: 'Inventario', referencias: 'Referencias', airbnb: 'Revisión para Airbnb' };
 const overviewLinks = [
+  { view: 'airbnb', title: 'Revisión para Airbnb', description: 'Contrasta el plano con los requisitos del anuncio.', icon: ClipboardCheck },
   { view: 'agentes', title: 'Actividad de los agentes', description: 'Ejecuta la revisión y aprueba sus etapas.', icon: ListChecks },
   { view: 'inventario', title: 'Inventario por ambiente', description: 'Consulta, agrega cotizaciones y revisa pendientes.', icon: Boxes },
   { view: 'referencias', title: 'Referencias y análisis visual', description: 'Sube imágenes y detecta artículos adicionales.', icon: Images },
@@ -36,10 +38,16 @@ export default function Dashboard({ initialProject, view, ...account }: Account 
   const tier = tiers.includes(tierPreference) ? tierPreference : primaryBudgetTier(project);
   const pending = budgetQuoteJobs(project);
 
-  async function openQuote(item: CatalogItem) {
+  function storeSearch(event: QuoteActivity) {
+    if (!event.search) return;
+    setProject((current) => ({ ...current, items: current.items.map((item) => item.id === event.itemId
+      ? { ...item, lastSearch: { ...item.lastSearch, [event.tier]: event.search } } : item) }));
+  }
+
+  async function openQuote(item: CatalogItem, productUrl?: string) {
     setInventoryNotice(null);
     setUpdateActivity(null);
-    if (!quotesForTier(item, tier).length) {
+    if (!productUrl && !quotesForTier(item, tier).length) {
       setQuoteItem(item);
       return;
     }
@@ -51,7 +59,7 @@ export default function Dashboard({ initialProject, view, ...account }: Account 
         project: FurnishingProject;
         quote: CatalogItem['quotes'][number];
         alternatives?: CatalogItem['quotes'];
-      }>(`/api/projects/${project.id}/items/${item.id}/quote`, { tier }, setUpdateActivity);
+      }>(`/api/projects/${project.id}/items/${item.id}/quote`, { tier, ...(productUrl ? { productUrl } : {}) }, (event) => { storeSearch(event); setUpdateActivity(event); });
       setProject(updated);
       const saved = alternatives.length === 1 ? ' Se guardó 1 alternativa.'
         : alternatives.length > 1 ? ` Se guardaron ${alternatives.length} alternativas.` : '';
@@ -117,6 +125,7 @@ export default function Dashboard({ initialProject, view, ...account }: Account 
           </div>
         </section>
       </>}
+      {view === 'airbnb' && <AirbnbReview projectId={project.id} />}
       <div hidden={view !== 'agentes'}><AgentReview projectId={project.id} active={view === 'agentes'} /></div>
       <div hidden={view !== 'inventario'}><Inventory
         project={project} tier={tier} tiers={tiers} onTierChange={setTierPreference} active={view === 'inventario'} pendingCount={pending.length}
@@ -133,7 +142,7 @@ export default function Dashboard({ initialProject, view, ...account }: Account 
         notice={inventoryNotice} onOpenQuote={openQuote} onBulkQuote={quoteBatch} updateActivity={updateActivity}
       /></div>
       <div hidden={view !== 'referencias'}><References project={project} active={view === 'referencias'} onProjectChange={setProject} /></div>
-      {quoteItem && <QuoteDialog projectId={project.id} item={quoteItem} tier={tier} onDismiss={() => setQuoteItem(null)} onSuccess={(updatedProject, message) => {
+      {quoteItem && <QuoteDialog projectId={project.id} item={quoteItem} tier={tier} onSearch={storeSearch} onDismiss={() => setQuoteItem(null)} onSuccess={(updatedProject, message) => {
         setProject(updatedProject);
         setInventoryNotice({ tone: 'success', text: message });
         setQuoteItem(null);

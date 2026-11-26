@@ -1,6 +1,8 @@
 import type { StoreRef } from '../../shared/types.js';
 
 export const SEED_STORES: StoreRef[] = [
+  { id: 'monge-cr', name: 'Monge', region: 'san-jose', websiteUrl: 'https://www.tiendamonge.com/', probeKind: 'json_ld' },
+  { id: 'glassmar-cr', name: 'Glassmar', region: 'san-jose', websiteUrl: 'https://glassmarcr.com/', probeKind: 'shopify' },
   {
     id: 'siman-cr',
     name: 'Siman Costa Rica',

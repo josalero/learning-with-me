@@ -1,7 +1,7 @@
 import { useSyncExternalStore, type ComponentProps } from 'react';
 
 export const projectsPath = '/proyectos';
-export const projectViews = ['resumen', 'agentes', 'inventario', 'referencias'] as const;
+export const projectViews = ['resumen', 'agentes', 'inventario', 'referencias', 'airbnb'] as const;
 export type ProjectView = (typeof projectViews)[number];
 
 export function projectPath(id: string, view: ProjectView = 'resumen') {

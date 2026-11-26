@@ -1,3 +1,4 @@
+import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib';
 import { lookup } from 'node:dns/promises';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
@@ -41,8 +42,8 @@ async function readPage(url: URL, signal: AbortSignal): Promise<{ redirect: stri
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     const request = (url.protocol === 'https:' ? httpsRequest : httpRequest)(url, {
-      signal, lookup: verifiedLookup, agent: false,
-      headers: { 'user-agent': 'NatarundiBudgetBot/0.1', accept: 'text/html,application/xhtml+xml' },
+      signal, lookup: verifiedLookup, agent: false, maxHeaderSize: 64 * 1024,
+      headers: { 'user-agent': 'NatarundiBudgetBot/0.1', accept: 'text/html,application/xhtml+xml,application/json', 'accept-encoding': 'gzip, deflate, br' },
     }, (response) => {
       const status = response.statusCode ?? 0;
       const location = response.headers.location;
@@ -64,14 +65,23 @@ async function readPage(url: URL, signal: AbortSignal): Promise<{ redirect: stri
         if (size > MAX_BODY_BYTES) response.destroy(new Error('Product page too large'));
         else chunks.push(chunk);
       });
-      response.on('end', () => resolve({ html: Buffer.concat(chunks).toString('utf8') }));
+      response.on('end', () => {
+        try {
+          const bytes = Buffer.concat(chunks);
+          const encoding = response.headers['content-encoding'];
+          const options = { maxOutputLength: MAX_BODY_BYTES };
+          const decoded = encoding === 'gzip' ? gunzipSync(bytes, options) : encoding === 'br' ? brotliDecompressSync(bytes, options)
+            : encoding === 'deflate' ? inflateSync(bytes, options) : bytes;
+          resolve({ html: decoded.toString('utf8') });
+        } catch (error) { reject(error); }
+      });
     });
     request.on('error', reject);
     request.end();
   });
 }
 
-async function fetchProductPage(pageUrl: string, website?: URL) {
+export async function fetchProductPage(pageUrl: string, website?: URL) {
   const signal = AbortSignal.timeout(15_000);
   let url = assertPublicHttpUrl(pageUrl);
   for (let redirects = 0; redirects <= 3; redirects++) {

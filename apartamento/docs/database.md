@@ -114,7 +114,7 @@ Estructura típica de `payload` (TypeScript `FurnishingProject`):
     "name": "Sofá dos plazas",
     "category": "mobiliario",
     "qty": 1,
-    "quotes": [{ "tier": "balanced", "priceCrc": 150000, "storeName": "..." }],
+    "quotes": [{ "tier": "balanced", "priceCrc": 150000, "basis": "published", "productUrl": "https://tienda.example/sofa-modelo-a" }],
     "unquotedReason": null
   }],
   "budgetTiers": ["economy", "balanced", "premium"]
@@ -122,6 +122,8 @@ Estructura típica de `payload` (TypeScript `FurnishingProject`):
 ```
 
 Cada ítem puede tener **varias** `quotes` (por tier y fuente). La UI suele mostrar el tier primario (`budgetProfiles.primaryBudgetTier`).
+
+La restricción PostgreSQL `apartment_prices_require_product_url` se aplica a las cotizaciones activas, alternativas, partidas desglosadas y ofertas guardadas en `lastSearch`. Cada precio debe ser positivo y llevar la URL HTTP(S) de una ficha publicada. El servidor verifica el producto y su precio antes de guardar. La migración `0005_require_product_links.sql` guarda los registros históricos sin esa evidencia en `archived_apartment_quotes`, fuera de los totales.
 
 ### `project_references` / `project_reference_analyses`
 
@@ -185,3 +187,4 @@ flowchart LR
 
 - Persistente: volumen Docker `natarundi_pg_data` (Dokploy).
 - Descartable: `price_cache` (UNLOGGED), sesiones expiradas (sin job de limpieza automática aún — expiran en validación).
+La migración 0006 desglosa la partida original de baños de Natarundi y carga precios publicados en los artículos del catálogo que conservan su especificación. El cierre de ducha mantiene una cantidad y una oferta independiente por nivel. Las observaciones iniciales están en `src/domain/natarundi-offers.json`, con fecha y URL. Los precios iniciales se leyeron de las fichas oficiales, incluida la variante elegida cuando la medida o el acabado cambian el precio. Una actualización directa reemplaza la observación cuando la tienda responde. El flete se cotiza al confirmar carga, recorrido y fecha.

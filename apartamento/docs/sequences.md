@@ -36,7 +36,7 @@ sequenceDiagram
   participant Inv as Inventory.tsx
   participant API as api.ts
   participant Q as quoteOnDemand.ts
-  participant S as fetchPage / demo-quotes
+  participant S as Tiendas y fichas de producto
   participant DB as PostgreSQL
 
   U->>Inv: Cotizar (URL opcional)
@@ -47,9 +47,9 @@ sequenceDiagram
     Q->>S: fetchJsonLdOffers + SSRF check
     S-->>Q: ParsedOffer[]
   else sin URL
-    Q->>S: buildCatalogQuoteForItem / estimate
+    Q->>S: Buscar en las tiendas registradas y verificar cada ficha
   end
-  Q-->>API: LineItemQuote
+  Q-->>API: Cotización elegida u ofertas con evidencia insuficiente
   API->>DB: save payload
   API-->>Inv: proyecto actualizado
 ```

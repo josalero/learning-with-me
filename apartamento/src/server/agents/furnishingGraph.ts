@@ -1,7 +1,8 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import { budgetProfiles, budgetQuoteJobs, quotesForTier, selectedBudgetTiers } from '../../shared/budgetProfiles.js';
 import { projectStats } from '../../shared/projectStats.js';
-import type { FurnishingProject, HitlGate, ReviewActivity, ReviewResult, ReviewStep } from '../../shared/types.js';
+import { buildAirbnbAssessment } from '../../domain/airbnb-assessment.js';
+import type { AirbnbAssessment, FurnishingProject, HitlGate, ReviewActivity, ReviewResult, ReviewStep } from '../../shared/types.js';
 
 export const GraphState = Annotation.Root({
   project: Annotation<FurnishingProject>,
@@ -44,11 +45,14 @@ function reviewSources(state: GraphStateType): StepResult {
   return { stage: 'market_scrape', notes: [...state.notes, summary] };
 }
 
-function qualityCritic(state: GraphStateType): StepResult {
+function qualityCritic(state: GraphStateType, assessment: AirbnbAssessment): StepResult {
   const pending = budgetQuoteJobs(state.project).length;
   const summary = !pending ? 'Todos los niveles seleccionados tienen precios registrados.'
     : pending === 1 ? 'Hay una cotización pendiente.' : `Hay ${pending} cotizaciones pendientes.`;
-  return { stage: 'quality_critic', notes: [...state.notes, summary] };
+  const priority = assessment.checks.find((check) => check.status === 'discrepancy');
+  const evidence = assessment.checks.filter((check) => check.evidence.some((entry) => entry.reference)).length;
+  const airbnb = priority ? priority.action : 'Comprueba en sitio las condiciones pendientes.';
+  return { stage: 'quality_critic', notes: [...state.notes, summary + ' Revisión Airbnb: ' + evidence + ' criterios con evidencia visual. ' + airbnb] };
 }
 
 function budgetQuoter(state: GraphStateType): StepResult {
@@ -65,7 +69,8 @@ function budgetQuoter(state: GraphStateType): StepResult {
   };
 }
 
-export function buildFurnishingGraph(onActivity?: (activity: ReviewActivity) => void) {
+export function buildFurnishingGraph(onActivity?: (activity: ReviewActivity) => void,
+  assess: (project: FurnishingProject) => Promise<AirbnbAssessment> | AirbnbAssessment = (project) => buildAirbnbAssessment(project, [])) {
   function track(step: ReviewStep, detail: string, run: (state: GraphStateType) => StepResult | Promise<StepResult>) {
     return async (state: GraphStateType): Promise<StepResult> => {
       onActivity?.({ step, status: 'running', detail });
@@ -84,7 +89,7 @@ export function buildFurnishingGraph(onActivity?: (activity: ReviewActivity) => 
     .addNode('orchestrator', track('orchestrator', 'Cargando el inventario del proyecto.', orchestrator))
     .addNode('visual_space', track('visual_space', 'Comprobando la distribución del inventario por zona.', visualSpace))
     .addNode('market_scrape', track('market_scrape', 'Identificando las fuentes de los precios guardados.', reviewSources))
-    .addNode('quality_critic', track('quality_critic', 'Detectando artículos sin cotizar.', qualityCritic))
+    .addNode('quality_critic', track('quality_critic', 'Contrastando las referencias del proyecto con los criterios de Airbnb.', async (state) => qualityCritic(state, await assess(state.project))))
     .addNode('budget_quoter', track('budget_quoter', 'Calculando el total con las cantidades de cada artículo.', budgetQuoter))
     .addConditionalEdges(START, (state) => {
       if (state.gate === 'zone_layout') return 'visual_space';

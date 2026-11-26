@@ -173,7 +173,7 @@ export default function References({ project, active, onProjectChange }: {
         <section className="panel analysis-panel" aria-labelledby="analysis-title" aria-busy={busy === 'analyze'}>
           <div className="panel-header analysis-header">
             <span className="state-icon"><Sparkles size={20} aria-hidden="true" /></span>
-            <div><h2 id="analysis-title">Análisis visual</h2><p>La IA compara las imágenes seleccionadas con el inventario del proyecto.</p></div>
+            <div><h2 id="analysis-title">Análisis visual</h2><p>La IA busca artículos por cotizar y documenta los espacios para la revisión de Airbnb.</p></div>
           </div>
           <div className="analysis-controls">
             {state.analysisAvailable ? <>
@@ -186,6 +186,7 @@ export default function References({ project, active, onProjectChange }: {
           </div>
           {state.analysis && <div className="analysis-results">
             <div className="analysis-results-head">
+              <Link className="text-action" href={projectPath(project.id, 'airbnb')}>Ver revisión para Airbnb <ArrowUpRight size={14} aria-hidden="true" /></Link>
               <h3>Sugerencias para cotizar</h3><p>Último análisis · {dateTime.format(new Date(state.analysis.createdAt))}</p>
             </div>
             {state.analysis.suggestions.length ? <ul role="list">

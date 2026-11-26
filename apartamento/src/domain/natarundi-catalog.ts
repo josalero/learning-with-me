@@ -18,7 +18,7 @@ function item(
   return { quotes: [], ...partial };
 }
 
-/** Seed catalog — some items have demo quotes; others intentionally unquoted for UI. */
+/** Original purchase brief. The seed itemizes it before attaching observed retail offers. */
 export const NATARUNDI_ITEMS: CatalogItem[] = [
   item({ id: 'i-refri', zoneId: 'z-kitchen', name: 'Refrigeradora (nicho 1.10 m)', category: 'electrodomesticos', qty: 1, dimsM: { w: 0.7, h: 1.75, d: 0.7 } }),
   item({ id: 'i-micro', zoneId: 'z-kitchen', name: 'Microondas', category: 'electrodomesticos', qty: 1 }),

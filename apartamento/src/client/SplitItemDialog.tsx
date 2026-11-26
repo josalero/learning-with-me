@@ -31,9 +31,9 @@ export default function SplitItemDialog({ projectId, item, onClose, onSaved }: {
     }
   }
 
-  return <Modal title="Desglosar artículo" onDismiss={onClose} busy={busy}>
+  return <Modal title="Dividir en artículos" onDismiss={onClose} busy={busy}>
     <p className="quote-item-title">{item.name}</p>
-    <p className="quote-tier-label">Cada artículo tendrá su propia cotización en el mismo ambiente.</p>
+    <p className="quote-tier-label">Sustituye esta partida por dos o más artículos del mismo ambiente. Por ejemplo, «Menaje» puede dividirse en ollas y utensilios. Cada artículo empieza sin precio y se cotiza por separado.</p>
     <form className="manual-form" onSubmit={save}>
       <fieldset disabled={busy} className="split-parts">
         <legend className="sr-only">Artículos del conjunto</legend>
@@ -50,7 +50,7 @@ export default function SplitItemDialog({ projectId, item, onClose, onSaved }: {
           setParts((current) => [...current, next]);
           setNext((value) => value + 1);
         }}><Plus size={17} aria-hidden="true" /> Otra fila</button>
-        <button type="submit" className="button button-primary" disabled={busy}>{busy ? <><Spinner /> Guardando…</> : 'Guardar desglose'}</button>
+        <button type="submit" className="button button-primary" disabled={busy}>{busy ? <><Spinner /> Guardando…</> : 'Guardar artículos'}</button>
       </div>
     </form>
   </Modal>;

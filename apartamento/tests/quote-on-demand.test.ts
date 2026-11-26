@@ -6,20 +6,19 @@ import { buildCatalogQuoteForItem } from '../src/domain/demo-quotes.js';
 describe('quoteItemOnDemand', () => {
   beforeEach(() => vi.stubEnv('AI_OFFLINE_STUB', '1'));
   afterEach(() => vi.unstubAllEnvs());
-  it('returns catalog quote for known item', async () => {
+  it('leaves catalog prices and estimates without product pages out of the budget', async () => {
     const project = buildNatarundiProject('ws', 'p');
-    const item = project.items.find((i) => i.id === 'i-micro')!;
-    const { quote, mode } = await quoteItemOnDemand(item);
-    expect(mode).toBe('catalog');
-    expect(quote.priceCrc).toBeGreaterThan(0);
+    for (const id of ['i-micro', 'i-freight']) {
+      const item = project.items.find((i) => i.id === id)!;
+      await expect(quoteItemOnDemand(item)).rejects.toMatchObject({ search: { offers: [], detail: expect.stringContaining('modo sin IA') } });
+    }
   });
 
-  it('returns estimate for freight on demand', async () => {
-    const project = buildNatarundiProject('ws', 'p');
-    const item = project.items.find((i) => i.id === 'i-freight')!;
-    const { mode } = await quoteItemOnDemand(item, { allowEstimate: true });
-    expect(mode).toBe('estimate');
-    expect(buildCatalogQuoteForItem('i-freight', true)?.storeName).toBeTruthy();
+  it('distinguishes a missing provider key from offline mode', async () => {
+    vi.stubEnv('AI_OFFLINE_STUB', '0');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    const item = buildNatarundiProject('ws', 'p').items[0]!;
+    await expect(quoteItemOnDemand(item)).rejects.toThrow('clave de búsqueda de OpenRouter');
   });
 
   it('attachQuoteToProject replaces line on item', () => {
