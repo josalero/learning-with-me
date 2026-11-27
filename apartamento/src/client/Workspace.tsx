@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { ChevronRight, Download, FolderOpen, House, Images, LayoutGrid, ListChecks, LogOut, ClipboardCheck } from 'lucide-react';
-import type { FurnishingProject } from '@shared/types';
+import type { BudgetTier, FurnishingProject } from '@shared/types';
 import { Link, projectPath, projectsPath, usePathname, type ProjectView } from './navigation';
 import { Brand, Notice, Spinner } from './ui';
 
@@ -15,10 +15,11 @@ const sections = [
   { id: 'airbnb', title: 'Airbnb', icon: ClipboardCheck },
 ] as const;
 
-export function Workspace({ session, onLogout, loggingOut, logoutError, project, view, roomLabel, children }: Account & {
+export function Workspace({ session, onLogout, loggingOut, logoutError, project, view, roomLabel, exportTier, children }: Account & {
   project?: FurnishingProject;
   view?: ProjectView;
   roomLabel?: string;
+  exportTier?: BudgetTier;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -79,7 +80,7 @@ export function Workspace({ session, onLogout, loggingOut, logoutError, project,
               </>
             ) : <span aria-current="page">Proyectos</span>}
           </nav>
-          {project && <a href={`/api/projects/${project.id}/export.xlsx`} className="button button-secondary export-button">
+          {project && <a href={`/api/projects/${project.id}/export.xlsx${exportTier ? `?tier=${exportTier}` : ''}`} className="button button-secondary export-button">
             <Download size={16} aria-hidden="true" /> Exportar Excel
           </a>}
         </header>

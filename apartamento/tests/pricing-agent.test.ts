@@ -88,7 +88,7 @@ it('checks every registered website and compares only verified products on those
     .rejects.toThrow('Se conservó la cotización anterior');
 });
 
-it('refreshes each selected tier using reviews for the exact model and leaves weakly reviewed options as alternatives', async () => {
+it('refreshes only the requested tier and preserves existing prices in other tiers', async () => {
   vi.stubEnv('AI_OFFLINE_STUB', '0');
   vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
   const project = applyDemoQuotes(buildNatarundiProject('workspace', 'project'));
@@ -124,10 +124,11 @@ it('refreshes each selected tier using reviews for the exact model and leaves we
     } },
   ]);
 
-  const result = await quoteProjectItems(project, undefined, undefined, 'all');
-  expect(labels.sort()).toEqual(['Alta gama sin lujo', 'Gama media']);
-  expect(result.saved).toEqual([{ itemId: item.id, tier: 'balanced' }, { itemId: item.id, tier: 'premium' }]);
-  expect(result.project.items[0]?.quotes).toHaveLength(6);
+  const result = await quoteProjectItems(project, undefined, undefined, 'all', 'premium');
+  expect(labels).toEqual(['Gama alta']);
+  expect(result.saved).toEqual([{ itemId: item.id, tier: 'premium' }]);
+  expect(quotesForTier(result.project.items[0]!, 'balanced')).toEqual(quotesForTier(item, 'balanced'));
+  expect(quotesForTier(result.project.items[0]!, 'premium')).toHaveLength(3);
   expect(quotesForTier(result.project.items[0]!, 'premium')[0]).toMatchObject({
     priceCrc: 410_000, productUrl: 'https://tienda.example.cr/alto', review: { count: 90, sourceUrl: 'https://reviews.example.cr/nevera' },
   });

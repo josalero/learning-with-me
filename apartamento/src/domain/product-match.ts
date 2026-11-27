@@ -2,6 +2,14 @@ import { normalizeSearch } from '../shared/search.js';
 import { matchesShowerEnclosure } from '../shared/showerEnclosure.js';
 import type { BudgetTier, CatalogItem } from '../shared/types.js';
 
+export function namesTelevision(value: string) {
+  return /^(?:(?:smart )?tv|televisor|pantalla)\b/.test(normalizeSearch(value));
+}
+
+export function isTelevisionRequest(item: CatalogItem) {
+  return item.id === 'i-tv' || item.parentItemId === 'i-tv' || (item.category === 'electronica' && namesTelevision(item.name));
+}
+
 // Enforce the purchase unit and options in the original apartment brief on each refresh.
 export function matchesPurchase(item: CatalogItem, title: string, description = '', tier: BudgetTier = 'balanced') {
   const name = normalizeSearch(title);
@@ -9,6 +17,10 @@ export function matchesPurchase(item: CatalogItem, title: string, description = 
   if (/\b(juguete|infantil de juguete|para munecas)\b/.test(name)) return false;
   const enclosure = matchesShowerEnclosure(item, tier, name, evidence);
   if (enclosure !== undefined) return enclosure;
+  if (isTelevisionRequest(item)) {
+    return namesTelevision(title) && !/^(?:pantalla|tv|televisor) (?:de repuesto|para reemplazo)\b/.test(name)
+      && (item.id !== 'i-tv' || /\b(4[3-9]|50)\b/.test(evidence));
+  }
   switch (item.id) {
     case 'i-refri': return /^(refrigerador|nevera|frigorifico)/.test(name);
     case 'i-micro': return /^(?:horno (?:de )?)?microondas/.test(name);
@@ -18,7 +30,6 @@ export function matchesPurchase(item: CatalogItem, title: string, description = 
     case 'i-fan-master':
     case 'i-fan-living': return /^(abanico|ventilador)/.test(name) && /techo|plafon/.test(evidence);
     case 'i-sofa': return /sofa/.test(name) && /cama|futon/.test(evidence);
-    case 'i-tv': return /^(pantalla|televisor|smart tv|tv)\b/.test(name) && /\b(4[3-9]|50)\b/.test(evidence);
     case 'i-terrace-set': return /juego|set|conjunto/.test(name) && /exterior|terraza|patio|jardin/.test(evidence);
     case 'i-cookware-vajilla': return /vajilla/.test(name);
     case 'i-master-bed':

@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { BUDGET_TIERS, type BudgetQuote, type CatalogItem, type HitlGate, type ProjectSummary, type QuoteActivity, type ReviewActivity, type ReviewHistoryEvent, type ReviewHistoryPage, type ReviewResult, type ReviewSnapshot } from '../../shared/types.js';
 import { budgetQuoteJobs, primaryBudgetTier, quotesForTier, selectedBudgetTiers } from '../../shared/budgetProfiles.js';
 import { itemizeBundle } from '../../domain/itemize-bundle.js';
+import { isTelevisionRequest, namesTelevision } from '../../domain/product-match.js';
 import {
   buildFurnishingGraph,
   initialGraphState,
@@ -119,9 +120,10 @@ const manualItemSchema = z.object({
   requestId: z.string().regex(/^[0-9a-f]{32}$/).optional(),
 });
 const splitItemSchema = z.object({
-  components: z.array(manualItemSchema.pick({ name: true, qty: true })).min(2).max(12)
-    .refine((entries) => new Set(entries.map(({ name }) => normalizeSearch(name))).size === entries.length),
+  components: z.array(manualItemSchema.pick({ name: true, qty: true, zoneId: true }).partial({ zoneId: true })).min(2).max(12),
 });
+const itemEditSchema = manualItemSchema.pick({ qty: true, zoneId: true }).partial().strict()
+  .refine(({ qty, zoneId }) => qty !== undefined || zoneId !== undefined);
 
 export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/auth/login', async (request, reply) => {
@@ -401,22 +403,25 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     if (!user) return;
     const params = z.object({ projectId: z.string().uuid(), itemId: z.string().min(1).max(100) }).safeParse(request.params);
     if (!params.success) return reply.code(404).send({ error: 'No se encontró el artículo.' });
-    const input = manualItemSchema.pick({ qty: true }).strict().safeParse(request.body);
-    if (!input.success) return reply.code(400).send({ error: 'Ingresa una cantidad entera entre 1 y 999.' });
+    const input = itemEditSchema.safeParse(request.body);
+    if (!input.success) return reply.code(400).send({ error: 'Elige un ambiente o ingresa una cantidad entera entre 1 y 999.' });
     const { projectId, itemId } = params.data;
-    const { qty } = input.data;
+    const { zoneId, qty } = input.data;
     const updated = await getDb().transaction(async (tx) => {
       const project = await loadOwnedProject(tx, user.workspaceId, projectId, true);
       const index = project?.items.findIndex(({ id }) => id === itemId) ?? -1;
       if (!project || index < 0) return null;
+      if (zoneId && !project.zones.some(({ id }) => id === zoneId)) return { invalidZone: true } as const;
       const item = project.items[index]!;
-      if (item.qty !== qty) {
+      const next = { ...item, zoneId: zoneId ?? item.zoneId, qty: qty ?? item.qty };
+      if (next.qty !== item.qty || next.zoneId !== item.zoneId) {
         const items = project.items.slice();
-        items[index] = { ...item, qty };
+        items[index] = next;
         await saveProjectPayload(tx, { ...project, items });
       }
-      return { qty };
+      return { qty: next.qty, zoneId: next.zoneId };
     });
+    if (updated && 'invalidZone' in updated) return reply.code(400).send({ error: 'El ambiente seleccionado no pertenece a este proyecto.' });
     return updated ?? reply.code(404).send({ error: 'No se encontró el artículo.' });
   });
 
@@ -428,16 +433,29 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     if (!params.success || !parsed.success) return reply.code(400).send({ error: 'Agrega entre 2 y 12 artículos con nombres distintos y cantidades válidas.' });
     const { projectId, itemId } = params.data;
     const db = getDb();
-    const updated = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const project = await loadOwnedProject(tx, user.workspaceId, projectId, true);
       if (!project) return null;
       const bundle = project.items.find(({ id }) => id === itemId);
-      if (!bundle) return project.itemizedBundles?.some(({ id }) => id === itemId) ? project : null;
-      const next = itemizeBundle(project, bundle, parsed.data.components.map((component) => ({ ...component, id: randomUUID() })));
+      if (!bundle) return project.itemizedBundles?.some(({ id }) => id === itemId) ? { project } : null;
+      if (isTelevisionRequest(bundle) && parsed.data.components.some(({ name }) => !namesTelevision(name))) {
+        return { error: 'Indica el producto de cada partida, por ejemplo «Televisor para dormitorio».' };
+      }
+      const zones = new Set(project.zones.map(({ id }) => id));
+      if (parsed.data.components.some(({ zoneId }) => zoneId && !zones.has(zoneId))) {
+        return { error: 'Elige ambientes que pertenezcan a este proyecto.' };
+      }
+      const components = parsed.data.components.map((component) => ({ ...component, zoneId: component.zoneId ?? bundle.zoneId, id: randomUUID() }));
+      if (new Set(components.map(({ name, zoneId }) => JSON.stringify([normalizeSearch(name), zoneId]))).size !== components.length) {
+        return { error: 'Los artículos de un mismo ambiente deben tener nombres distintos.' };
+      }
+      const next = itemizeBundle(project, bundle, components);
       await saveProjectPayload(tx, next);
-      return next;
+      return { project: next };
     });
-    return updated ?? reply.code(404).send({ error: 'No se encontró el artículo.' });
+    if (!result) return reply.code(404).send({ error: 'No se encontró el artículo.' });
+    if (result.error) return reply.code(400).send({ error: result.error });
+    return result.project;
   });
 
   app.post('/api/projects/:projectId/items/:itemId/quote', async (request, reply) => {
@@ -459,7 +477,6 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     const item = project.items.find((i) => i.id === itemId);
     if (!item) return reply.code(404).send({ error: 'Item not found' });
     const tier = parsed.data.tier ?? primaryBudgetTier(project);
-    if (!selectedBudgetTiers(project).includes(tier)) return reply.code(409).send({ error: 'Este nivel ya no está seleccionado en el proyecto.' });
     return respondWithProgress(request, reply, async (publish: (activity: QuoteActivity) => void) => {
       let result;
       try {
@@ -509,12 +526,14 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     const user = await requireUser(request, reply);
     if (!user) return;
     const { projectId } = request.params as { projectId: string };
-    const filters = z.object({ scope: z.enum(['pending', 'all']).default('pending'), zoneId: z.string().min(1).max(80).nullable().optional() }).safeParse(request.body ?? {});
+    const filters = z.object({ scope: z.enum(['pending', 'all']).default('pending'), zoneId: z.string().min(1).max(80).nullable().optional(),
+      tier: z.enum(BUDGET_TIERS).optional() }).strict().safeParse(request.body ?? {});
     if (!filters.success) return reply.code(400).send({ error: 'Elige qué artículos cotizar.' });
     const { scope, zoneId } = filters.data;
     const db = getDb();
     const project = await loadOwnedProject(db, user.workspaceId, projectId);
     if (!project) return reply.code(404).send({ error: 'Project not found' });
+    const tier = filters.data.tier ?? primaryBudgetTier(project);
     const zoneIds = new Set(project.zones.map(({ id }) => id));
     if (zoneId && !zoneIds.has(zoneId)) return reply.code(404).send({ error: 'No se encontró el ambiente.' });
     const scopeProject = zoneId === undefined ? project : {
@@ -522,7 +541,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       items: project.items.filter((item) => zoneId === null ? !zoneIds.has(item.zoneId) : item.zoneId === zoneId),
     };
     return respondWithProgress(request, reply, async (publish: (activity: QuoteActivity) => void) => {
-      const result = await quoteProjectItems(scopeProject, publish, await listWorkspaceStores(user.workspaceId), scope);
+      const result = await quoteProjectItems(scopeProject, publish, await listWorkspaceStores(user.workspaceId), scope, tier);
       const before = new Map(scopeProject.items.map((item) => [item.id, item]));
       const priced = new Map(result.project.items.map((item) => [item.id, item]));
       const changedDuringQuote = (item: CatalogItem, tier: BudgetQuote['tier']) =>
@@ -550,11 +569,11 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       });
       if (!updated) throw new ProgressError(404, 'No se encontró el proyecto.');
       const currentItems = new Map(updated.project.items.map((item) => [item.id, item]));
-      for (const { item, tier } of budgetQuoteJobs(scopeProject, scope)) {
+      for (const { item, tier: jobTier } of budgetQuoteJobs(scopeProject, scope, tier)) {
         const current = currentItems.get(item.id);
-        if (!current || !changedDuringQuote(current, tier) || !quotesForTier(current, tier).length) continue;
-        const detail = updated.saved.some((saved) => saved.itemId === item.id && saved.tier === tier) ? 'Cotización guardada.' : 'La cotización de este nivel se actualizó en otra ejecución.';
-        publish(quoteActivity(item, 'completed', detail, tier));
+        if (!current || !changedDuringQuote(current, jobTier) || !quotesForTier(current, jobTier).length) continue;
+        const detail = updated.saved.some((saved) => saved.itemId === item.id && saved.tier === jobTier) ? 'Cotización guardada.' : 'La cotización de este nivel se actualizó en otra ejecución.';
+        publish(quoteActivity(item, 'completed', detail, jobTier));
       }
       return updated;
     });
@@ -563,6 +582,8 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/projects/:id/export.xlsx', async (request, reply) => {
     const user = await requireUser(request, reply);
     if (!user) return;
+    const filter = z.object({ tier: z.enum(BUDGET_TIERS).optional() }).safeParse(request.query);
+    if (!filter.success) return reply.code(400).send({ error: 'Elige un nivel de presupuesto válido.' });
     const { id } = request.params as { id: string };
     const db = getDb();
     const rows = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
@@ -572,7 +593,8 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     }
     const project = projectFromRow(row);
     const slug = normalizeSearch(project.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64) || 'proyecto';
-    const buf = await buildBudgetWorkbook(project);
+    const budgetTiers = filter.data.tier ? [filter.data.tier] : [...BUDGET_TIERS];
+    const buf = await buildBudgetWorkbook({ ...project, budgetTiers });
     reply
       .header('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
       .header('content-disposition', `attachment; filename="${slug}-presupuesto.xlsx"`)

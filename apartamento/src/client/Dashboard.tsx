@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Boxes, ClipboardCheck, Images, ListChecks, MapPin } from 'lucide-react';
-import { budgetQuoteJobs, primaryBudgetTier, quotesForTier, selectedBudgetTiers } from '@shared/budgetProfiles';
-import type { BudgetQuote, BudgetTier, CatalogItem, FurnishingProject, QuoteActivity } from '@shared/types';
+import { budgetQuoteJobs, primaryBudgetTier, quotesForTier } from '@shared/budgetProfiles';
+import { BUDGET_TIERS, type BudgetQuote, type BudgetTier, type CatalogItem, type FurnishingProject, type QuoteActivity } from '@shared/types';
 import AirbnbReview from './AirbnbReview';
 import AgentReview from './AgentReview';
 import BudgetSettings from './BudgetSettings';
 import Inventory, { QuoteDialog, unassignedRoomId, type BulkScope } from './Inventory';
-import { Link, projectPath, type ProjectView } from './navigation';
+import { unassignedLabel } from './ItemLocation';
+import { inventoryPath, Link, navigate, projectPath, type ProjectView } from './navigation';
 import References from './References';
 import { QuoteProgress } from './QuoteProgress';
 import { streamPost } from './streamApi';
@@ -25,8 +26,13 @@ type ActionNotice = { text: string; tone: 'error' | 'success' };
 
 export default function Dashboard({ initialProject, view, roomId, ...account }: Account & { initialProject: FurnishingProject; view: ProjectView; roomId?: string }) {
   const [project, setProject] = useState(initialProject);
-  const [tierPreference, setTierPreference] = useState<BudgetTier>(() => primaryBudgetTier(initialProject));
-  const [savingProfiles, setSavingProfiles] = useState(false);
+  const tierKey = `natarundi-budget:${initialProject.id}`;
+  const [tier, setTier] = useState<BudgetTier>(() => {
+    try {
+      const saved = localStorage.getItem(tierKey);
+      return BUDGET_TIERS.find((candidate) => candidate === saved) ?? primaryBudgetTier(initialProject);
+    } catch { return primaryBudgetTier(initialProject); }
+  });
   const [quoteItem, setQuoteItem] = useState<CatalogItem | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateActivity, setUpdateActivity] = useState<QuoteActivity | null>(null);
@@ -35,18 +41,25 @@ export default function Dashboard({ initialProject, view, roomId, ...account }: 
   const [inventoryNotice, setInventoryNotice] = useState<ActionNotice | null>(null);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   useEffect(() => { setQuoteItem(null); }, [view, roomId]);
-  const tiers = selectedBudgetTiers(project);
-  const tier = tiers.includes(tierPreference) ? tierPreference : primaryBudgetTier(project);
-  const pending = budgetQuoteJobs(project);
-  const roomLabel = roomId === unassignedRoomId ? 'Sin ambiente asignado' : project.zones.find(({ id }) => id === roomId)?.labelEs;
+  const pending = budgetQuoteJobs(project, 'pending', tier);
+  const roomLabel = roomId === unassignedRoomId ? unassignedLabel : project.zones.find(({ id }) => id === roomId)?.labelEs;
 
-  async function saveQuantity(itemId: string, qty: number) {
+  function chooseTier(next: BudgetTier) {
+    setTier(next);
+    if (next !== tier) {
+      setInventoryNotice(null);
+      setBulkActivity({});
+    }
+    try { localStorage.setItem(tierKey, next); } catch { /* The current tab still keeps the selection. */ }
+  }
+
+  async function editItem(itemId: string, changes: { qty: number } | { zoneId: string }) {
     setSavingItemId(itemId);
     try {
-      const updated = await api<{ qty: number }>(`/api/projects/${project.id}/items/${encodeURIComponent(itemId)}`, {
-        method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty }),
+      const updated = await api<Pick<CatalogItem, 'qty' | 'zoneId'>>(`/api/projects/${project.id}/items/${encodeURIComponent(itemId)}`, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(changes),
       });
-      setProject((current) => ({ ...current, items: current.items.map((item) => item.id === itemId ? { ...item, qty: updated.qty } : item) }));
+      setProject((current) => ({ ...current, items: current.items.map((item) => item.id === itemId ? { ...item, ...updated } : item) }));
     } finally {
       setSavingItemId(null);
     }
@@ -93,12 +106,12 @@ export default function Dashboard({ initialProject, view, roomId, ...account }: 
     setInventoryNotice(null);
     setUpdateActivity(null);
     setBulkScope(action);
-    setBulkActivity(Object.fromEntries(budgetQuoteJobs(roomItems ? { ...project, items: roomItems } : project, scope).map(({ item, tier: jobTier }) => [`${item.id}:${jobTier}`, {
+    setBulkActivity(Object.fromEntries(budgetQuoteJobs(roomItems ? { ...project, items: roomItems } : project, scope, tier).map(({ item, tier: jobTier }) => [`${item.id}:${jobTier}`, {
       itemId: item.id, tier: jobTier, itemName: item.name, stage: 'queued', detail: 'En espera de cotización.',
     } satisfies QuoteActivity])));
     try {
       const result = await streamPost<QuoteActivity, { project: FurnishingProject; saved: BudgetQuote[]; failed: BudgetQuote[] }>(
-        `/api/projects/${project.id}/quote-pending`, { scope, zoneId },
+        `/api/projects/${project.id}/quote-pending`, { scope, zoneId, tier },
         (event) => setBulkActivity((current) => ({ ...current, [`${event.itemId}:${event.tier}`]: event })),
       );
       setProject(result.project);
@@ -120,7 +133,7 @@ export default function Dashboard({ initialProject, view, roomId, ...account }: 
   }
 
   return (
-    <Workspace {...account} project={project} view={view} roomLabel={roomLabel}>
+    <Workspace {...account} project={project} view={view} roomLabel={roomLabel} exportTier={view === 'inventario' ? tier : undefined}>
       {view !== 'inventario' && <div className="page-heading">
         <h1 tabIndex={-1}>{view === 'resumen' ? project.name : pageTitles[view]}</h1>
         {view === 'resumen' ? <p>{project.address && <><MapPin size={16} aria-hidden="true" /> {project.address}</>}</p> : (
@@ -128,7 +141,10 @@ export default function Dashboard({ initialProject, view, roomId, ...account }: 
         )}
       </div>}
       {view === 'resumen' && <>
-        <BudgetSettings project={project} locked={bulkScope !== null || updating || savingProfiles || savingItemId !== null} onSaving={setSavingProfiles} onSaved={setProject} />
+        <BudgetSettings project={project} locked={bulkScope !== null || updating || quoteItem !== null} onChoose={(next) => {
+          chooseTier(next);
+          navigate(inventoryPath(project.id));
+        }} />
         <section className="panel overview-panel" aria-labelledby="overview-title">
           <div className="panel-header"><h2 id="overview-title">Explorar el proyecto</h2></div>
           <div className="overview-links">
@@ -143,9 +159,14 @@ export default function Dashboard({ initialProject, view, roomId, ...account }: 
       {view === 'airbnb' && <AirbnbReview projectId={project.id} />}
       <div hidden={view !== 'agentes'}><AgentReview projectId={project.id} active={view === 'agentes'} /></div>
       <div hidden={view !== 'inventario'}><Inventory
-        project={project} roomId={roomId} tier={tier} tiers={tiers} onTierChange={setTierPreference} active={view === 'inventario'} pendingCount={pending.length}
-        saving={bulkScope !== null || updating || savingProfiles || quoteItem !== null || savingItemId !== null} bulkScope={bulkScope}
-        savingItemId={savingItemId} onSaveQuantity={saveQuantity} onEnterQuoteUrl={setQuoteItem}
+        project={project} roomId={roomId} tier={tier} onTierChange={chooseTier} active={view === 'inventario'} pendingCount={pending.length}
+        saving={bulkScope !== null || updating || quoteItem !== null || savingItemId !== null} bulkScope={bulkScope}
+        savingItemId={savingItemId} onSaveQuantity={(itemId, qty) => editItem(itemId, { qty })} onEnterQuoteUrl={setQuoteItem}
+        onMoveItem={(itemId, zoneId) => editItem(itemId, { zoneId })}
+        onItemMoved={(item, zoneId) => {
+          const label = project.zones.find(({ id }) => id === zoneId)?.labelEs ?? unassignedLabel;
+          setInventoryNotice({ tone: 'success', text: `Se movió ${item.name} a ${label}.` });
+        }}
         onItemAdded={(updated, item) => {
           setProject(updated);
           setInventoryNotice({ tone: 'success', text: `${item.name} se agregó a los artículos pendientes.` });

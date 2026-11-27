@@ -3,9 +3,9 @@ import { BUDGET_TIERS, type BudgetTier, type CatalogItem, type FurnishingProject
 export const DEFAULT_BUDGET_TIER: BudgetTier = 'balanced';
 
 export const budgetProfiles = {
-  economy: { label: 'Económica', description: 'Funcional y confiable, con prioridad al precio.' },
-  balanced: { label: 'Gama media', description: 'Equilibrio entre calidad, duración y precio.' },
-  premium: { label: 'Alta gama sin lujo', description: 'Mejores materiales, desempeño o garantía a un precio justificable.' },
+  economy: { label: 'Gama baja', description: 'Funcional y confiable, con prioridad al precio.' },
+  balanced: { label: 'Gama intermedia', description: 'Equilibrio entre calidad, duración y precio.' },
+  premium: { label: 'Gama alta', description: 'Mejores materiales, desempeño o garantía, sin lujo.' },
 } satisfies Record<BudgetTier, { label: string; description: string }>;
 
 export function selectedBudgetTiers(project: Pick<FurnishingProject, 'budgetTiers'>) {
@@ -26,8 +26,8 @@ export function quotesForTier(item: CatalogItem, tier: BudgetTier) {
   return item.quotes.filter((quote) => quoteTier(quote) === tier);
 }
 
-export function budgetQuoteJobs(project: FurnishingProject, scope: 'pending' | 'all' = 'pending') {
-  const tiers = selectedBudgetTiers(project);
+export function budgetQuoteJobs(project: FurnishingProject, scope: 'pending' | 'all' = 'pending', tier?: BudgetTier) {
+  const tiers = tier ? [tier] : selectedBudgetTiers(project);
   return project.items.flatMap((item) => tiers
     .filter((tier) => scope === 'all' || !item.quotes.some((quote) => quoteTier(quote) === tier))
     .map((tier) => ({ item, tier })));

@@ -1,5 +1,5 @@
 import { budgetProfiles, DEFAULT_BUDGET_TIER, quotesForTier } from '../../shared/budgetProfiles.js';
-import { purchaseName, isFlexibleEnclosure } from '../../shared/showerEnclosure.js';
+import { purchaseName } from '../../shared/showerEnclosure.js';
 import { brandGuide } from '../../shared/brands.js';
 import { isPurchaseSet } from '../../shared/purchaseUnit.js';
 import type { BudgetTier, CatalogItem, FurnishingProject } from '../../shared/types.js';
@@ -35,7 +35,7 @@ async function searchMarket(instructions: string, query: unknown, website?: URL)
 
 export async function findProductPages(item: CatalogItem, region?: FurnishingProject['region'], website?: URL,
   tier: BudgetTier = DEFAULT_BUDGET_TIER): Promise<string[]> {
-  const reference = quotesForTier(item, tier)[0] ?? (isFlexibleEnclosure(item) ? undefined : item.quotes[0]);
+  const reference = quotesForTier(item, tier)[0];
   const content = await searchMarket(productInstructions, {
     articulo: purchaseName(item, tier),
     categoria: item.category,

@@ -6,7 +6,7 @@ import { productProvenance } from '../../shared/brands.js';
 import { isPurchaseSet } from '../../shared/purchaseUnit.js';
 import { normalizeSearch } from '../../shared/search.js';
 import { findSimanOffers, simanTerm } from '../scrapers/siman.js';
-import { budgetQuoteJobs, DEFAULT_BUDGET_TIER, quoteTier, quotesForTier } from '../../shared/budgetProfiles.js';
+import { budgetQuoteJobs, DEFAULT_BUDGET_TIER, primaryBudgetTier, quoteTier, quotesForTier } from '../../shared/budgetProfiles.js';
 import { QUOTE_CONCURRENCY, type BudgetQuote, type BudgetTier, type CatalogItem, type FurnishingProject, type LineItemQuote, type QuoteActivity, type QuoteSearch, type StoreRef } from '../../shared/types.js';
 import { offlineReason } from '../agents/modelRouter.js';
 import { findProductPages } from '../agents/pricingAgent.js';
@@ -210,13 +210,13 @@ export function replaceTierQuotes(item: CatalogItem, tier: BudgetTier, quotes: L
 }
 
 export async function quoteProjectItems(project: FurnishingProject, onActivity?: (activity: QuoteActivity) => void, stores?: QuoteStore[],
-  scope: 'pending' | 'all' = 'pending'): Promise<{
+  scope: 'pending' | 'all' = 'pending', tier: BudgetTier = primaryBudgetTier(project)): Promise<{
   project: FurnishingProject;
   quoted: string[];
   saved: BudgetQuote[];
   failed: (BudgetQuote & { reason: string; search?: QuoteSearch })[];
 }> {
-  const pending = budgetQuoteJobs(project, scope);
+  const pending = budgetQuoteJobs(project, scope, tier);
   const jobs = pending.entries();
   const results: (BudgetQuote & ({ quotes: LineItemQuote[] } | { reason: string; search?: QuoteSearch }))[] = [];
   for (const { item, tier } of pending) onActivity?.(quoteActivity(item, 'queued', 'En espera de cotización.', tier));

@@ -10,6 +10,7 @@ export const NATARUNDI_ZONES: ProjectZone[] = [
   { id: 'z-br3', slug: 'dormitorio-3', labelEs: 'Dormitorio 3 (ex closet)', notes: 'Layout compacto tipo habitación' },
   { id: 'z-baths', slug: 'banos', labelEs: '2 baños', notes: 'Master + social' },
   { id: 'z-terrace', slug: 'terraza', labelEs: 'Terraza', areaM2: 18.8, notes: '7.38×2.55 m aprox.' },
+  { id: 'z-logistics', slug: 'logistica-del-proyecto', labelEs: 'Logística del proyecto' },
 ];
 
 function item(
@@ -39,7 +40,7 @@ export const NATARUNDI_ITEMS: CatalogItem[] = [
   item({ id: 'i-linens', zoneId: 'z-master', name: 'Juego sábanas + toallas (×3 habitaciones)', category: 'textil', qty: 3 }),
   item({ id: 'i-bath-sets', zoneId: 'z-baths', name: 'Accesorios baño (ducha, jaboneras, cortinas)', category: 'acabados', qty: 2 }),
   item({ id: 'i-terrace-set', zoneId: 'z-terrace', name: 'Muebles terraza resistente clima', category: 'exterior', qty: 1 }),
-  item({ id: 'i-freight', zoneId: 'z-living', name: 'Flete San José / Grecia → Portegolpe', category: 'logistica', qty: 1, unquotedReason: 'Cotización manual según volumen final' }),
+  item({ id: 'i-freight', zoneId: 'z-logistics', name: 'Flete San José / Grecia → Portegolpe', category: 'logistica', qty: 1, unquotedReason: 'Cotización manual según volumen final' }),
 ];
 
 export function buildNatarundiProject(

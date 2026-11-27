@@ -1,8 +1,8 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
-import { budgetProfiles, budgetQuoteJobs, quotesForTier, selectedBudgetTiers } from '../../shared/budgetProfiles.js';
+import { budgetProfiles, quotesForTier } from '../../shared/budgetProfiles.js';
 import { projectStats } from '../../shared/projectStats.js';
 import { buildAirbnbAssessment } from '../../domain/airbnb-assessment.js';
-import type { AirbnbAssessment, FurnishingProject, HitlGate, ReviewActivity, ReviewResult, ReviewStep } from '../../shared/types.js';
+import { BUDGET_TIERS, type AirbnbAssessment, type FurnishingProject, type HitlGate, type ReviewActivity, type ReviewResult, type ReviewStep } from '../../shared/types.js';
 
 export const GraphState = Annotation.Root({
   project: Annotation<FurnishingProject>,
@@ -38,7 +38,7 @@ function visualSpace(state: GraphStateType): StepResult {
 }
 
 function reviewSources(state: GraphStateType): StepResult {
-  const sources = new Set(selectedBudgetTiers(state.project).flatMap((tier) => state.project.items
+  const sources = new Set(BUDGET_TIERS.flatMap((tier) => state.project.items
     .flatMap((item) => quotesForTier(item, tier).slice(0, 1).map(({ storeName }) => storeName))));
   const summary = !sources.size ? 'Aún no hay fuentes de precios en el inventario.'
     : `${sources.size} ${sources.size === 1 ? 'fuente registrada' : 'fuentes registradas'}. ${[...sources].slice(0, 3).join(', ')}${sources.size > 3 ? ' y otras.' : '.'}`;
@@ -46,19 +46,21 @@ function reviewSources(state: GraphStateType): StepResult {
 }
 
 function qualityCritic(state: GraphStateType, assessment: AirbnbAssessment): StepResult {
-  const pending = budgetQuoteJobs(state.project).length;
-  const summary = !pending ? 'Todos los niveles seleccionados tienen precios registrados.'
-    : pending === 1 ? 'Hay una cotización pendiente.' : `Hay ${pending} cotizaciones pendientes.`;
+  const summary = BUDGET_TIERS.map((tier) => {
+    const { itemCount, quotedCount } = projectStats(state.project.items, tier);
+    return `${budgetProfiles[tier].label}: ${itemCount - quotedCount} por cotizar`;
+  }).join(' · ');
   const priority = assessment.checks.find((check) => check.status === 'discrepancy');
   const evidence = assessment.checks.filter((check) => check.evidence.some((entry) => entry.reference)).length;
   const airbnb = priority ? priority.action : 'Comprueba en sitio las condiciones pendientes.';
-  return { stage: 'quality_critic', notes: [...state.notes, summary + ' Revisión Airbnb: ' + evidence + ' criterios con evidencia visual. ' + airbnb] };
+  return { stage: 'quality_critic', notes: [...state.notes, summary + '. Revisión Airbnb: ' + evidence + ' criterios con evidencia visual. ' + airbnb] };
 }
 
 function budgetQuoter(state: GraphStateType): StepResult {
   const approved = state.approvedGates.includes('final_budget');
-  const totals = selectedBudgetTiers(state.project).map((tier) => {
+  const totals = BUDGET_TIERS.map((tier) => {
     const { totalCrc, quotedCount, itemCount } = projectStats(state.project.items, tier);
+    if (!quotedCount) return `${budgetProfiles[tier].label} (sin cotizar)`;
     const conversion = state.project.usdCrcRate > 0 ? ` / ${usd.format(totalCrc / state.project.usdCrcRate)}` : '';
     return `${budgetProfiles[tier].label} (${crc.format(totalCrc)}${conversion}, ${quotedCount} de ${itemCount} cotizados)`;
   });

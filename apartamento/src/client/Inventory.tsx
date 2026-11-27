@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Armchair, ArrowUpRight, Bath, BedDouble, ChevronDown, CookingPot, Fan, House, Lamp, Link2, Minus, PackageOpen, Plus, RefreshCw, Search, Sofa, Sparkles, Tv, Utensils, WashingMachine } from 'lucide-react';
-import { budgetProfiles, budgetQuoteJobs, quotesForTier } from '@shared/budgetProfiles';
+import { Armchair, ArrowUpRight, Bath, BedDouble, ChevronDown, CookingPot, Fan, House, Lamp, Link2, Minus, PackageOpen, Plus, RefreshCw, Search, Sofa, Sparkles, Truck, Tv, Utensils, WashingMachine } from 'lucide-react';
+import { budgetProfiles, quotesForTier } from '@shared/budgetProfiles';
 import { brandLabel, productClass, productProvenance } from '@shared/brands';
 import { enclosureAdvice, isFlexibleEnclosure, purchaseName } from '@shared/showerEnclosure';
 import { BrandGuide } from './BrandGuide';
@@ -9,7 +9,8 @@ import { projectStats } from '@shared/projectStats';
 import { isPurchaseSet } from '@shared/purchaseUnit';
 import { quoteBasisLabel, quoteLink } from '@shared/quoteBasis';
 import { normalizeSearch } from '@shared/search';
-import type { BudgetTier, CatalogItem, FurnishingProject, LineItemQuote, QuoteActivity, QuoteSearch } from '@shared/types';
+import { BUDGET_TIERS, type BudgetTier, type CatalogItem, type FurnishingProject, type LineItemQuote, type QuoteActivity, type QuoteSearch } from '@shared/types';
+import { MoveItemDialog, unassignedLabel } from './ItemLocation';
 import { inventoryPath, Link, navigate, projectPath } from './navigation';
 import { QuoteJob } from './QuoteProgress';
 import SplitItemDialog from './SplitItemDialog';
@@ -72,7 +73,7 @@ export const unassignedRoomId = 'sin-asignar';
 
 const areaIcons: Record<string, typeof Sofa> = {
   sala: Sofa, comedor: Utensils, cocina: CookingPot, cuartos: BedDouble, banos: Bath,
-  lavanderia: WashingMachine, terraza: Armchair,
+  lavanderia: WashingMachine, terraza: Armchair, 'zone:z-logistics': Truck,
 };
 
 type Room = { id: string; label: string; icon: typeof Sofa; zoneId: string | null; items: CatalogItem[] };
@@ -84,7 +85,7 @@ function projectRooms(project: FurnishingProject): Room[] {
     id: zone.id, label: zone.labelEs, icon: areaIcons[id] ?? House, zoneId: zone.id, items: [],
   })));
   const byZone = new Map(rooms.map((room) => [room.zoneId, room]));
-  const unassigned = { id: unassignedRoomId, label: 'Sin ambiente asignado', icon: PackageOpen, zoneId: null, items: [] as CatalogItem[] };
+  const unassigned = { id: unassignedRoomId, label: unassignedLabel, icon: PackageOpen, zoneId: null, items: [] as CatalogItem[] };
   for (const item of project.items) (byZone.get(item.zoneId) ?? unassigned).items.push(item);
   if (unassigned.items.length || !rooms.length) rooms.push(unassigned);
   return rooms;
@@ -111,20 +112,20 @@ function RoomLinks({ projectId, rooms, currentRoom }: { projectId: string; rooms
 }
 
 function PlannerTotal({ label, items, tier, hasDraft }: { label: string; items: CatalogItem[]; tier: BudgetTier; hasDraft: boolean }) {
-  const { totalCrc, quotedCount } = projectStats(items, tier);
+  const { totalCrc, quotedCount, itemCount } = projectStats(items, tier);
   return <div className="planner-total">
     <span>{label}</span>
     <strong aria-live="polite">{quotedCount ? money.format(totalCrc) : 'Por cotizar'}</strong>
+    {quotedCount > 0 && quotedCount < itemCount && <small>Parcial · {quotedCount} de {itemCount} cotizados</small>}
     {hasDraft && <small>Vista previa · cantidades sin guardar</small>}
   </div>;
 }
 
-export default function Inventory({ project, roomId, tier, tiers, onTierChange, active, pendingCount, saving, bulkScope, savingItemId,
-  onSaveQuantity, onOpenQuote, onEnterQuoteUrl, onBulkQuote, onItemAdded, onItemSplit, notice, activity, updateActivity }: {
+export default function Inventory({ project, roomId, tier, onTierChange, active, pendingCount, saving, bulkScope, savingItemId,
+  onSaveQuantity, onMoveItem, onItemMoved, onOpenQuote, onEnterQuoteUrl, onBulkQuote, onItemAdded, onItemSplit, notice, activity, updateActivity }: {
   project: FurnishingProject;
   roomId?: string;
   tier: BudgetTier;
-  tiers: BudgetTier[];
   onTierChange: (tier: BudgetTier) => void;
   active: boolean;
   pendingCount: number;
@@ -132,6 +133,8 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
   bulkScope: BulkScope | null;
   savingItemId: string | null;
   onSaveQuantity: (itemId: string, qty: number) => Promise<void>;
+  onMoveItem: (itemId: string, zoneId: string) => Promise<void>;
+  onItemMoved: (item: CatalogItem, zoneId: string) => void;
   onOpenQuote: (item: CatalogItem, productUrl?: string) => void;
   onEnterQuoteUrl: (item: CatalogItem) => void;
   onBulkQuote: (scope: BulkScope, roomItems?: CatalogItem[], zoneId?: string | null) => void;
@@ -143,16 +146,16 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
 }) {
   const [showManualForm, setShowManualForm] = useState(false);
   const [splitItem, setSplitItem] = useState<CatalogItem | null>(null);
+  const [movingItem, setMovingItem] = useState<CatalogItem | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [filterState, setFilterState] = useState({ roomId, ...defaultFilters });
-  useEffect(() => { setShowManualForm(false); setSplitItem(null); }, [active, roomId]);
+  useEffect(() => { setShowManualForm(false); setSplitItem(null); setMovingItem(null); }, [active, roomId]);
 
   const rooms = projectRooms(project);
   const room = roomId === undefined ? rooms[0] : rooms.find(({ id }) => id === roomId);
   const filters = filterState.roomId === roomId ? filterState : defaultFilters;
   const roomItems = room?.items ?? [];
   const roomPending = roomItems.filter((item) => !quotesForTier(item, tier).length).length;
-  const roomJobs = budgetQuoteJobs({ ...project, items: roomItems }).length;
   const query = normalizeSearch(filters.query);
   const visible = roomItems.filter((item) => {
     const quotes = quotesForTier(item, tier);
@@ -212,6 +215,20 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
           <summary><House size={17} aria-hidden="true" /> Cambiar de ambiente <ChevronDown size={16} aria-hidden="true" /></summary>
           <nav aria-label="Ambientes de la casa"><RoomLinks projectId={project.id} rooms={rooms} currentRoom={room} /></nav>
         </details>
+        <div className="planner-scenario panel">
+          <fieldset disabled={saving}>
+            <legend>Presupuesto activo</legend>
+            <div className="segmented scenario-options">
+              {BUDGET_TIERS.map((option) => <label key={option}>
+                <input className="sr-only" type="radio" name={`scenario-${project.id}`} checked={option === tier} onChange={() => onTierChange(option)} />
+                <span>{budgetProfiles[option].label}</span>
+              </label>)}
+            </div>
+          </fieldset>
+          {pendingCount > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('pending')}>
+            {bulkScope === 'pending' ? <><Spinner /> Cotizando…</> : <><Sparkles size={16} aria-hidden="true" /> Cotizar proyecto</>}
+          </button>}
+        </div>
         <header className="planner-heading">
           <div className="page-heading">
             {room && <p><room.icon size={17} aria-hidden="true" /> Equipamiento por ambiente</p>}
@@ -229,7 +246,7 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
               <button type="button" aria-pressed={filters.status === 'quoted'} onClick={() => setFilters({ status: 'quoted' })}>Con precio</button>
             </div>
             <div className="button-row">
-              {roomJobs > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('room', room.items, room.zoneId)}>
+              {roomPending > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('room', room.items, room.zoneId)}>
                 {bulkScope === 'room' ? <><Spinner /> Cotizando…</> : 'Cotizar ambiente'}
               </button>}
               <button type="button" className="button button-primary" disabled={saving} onClick={() => setShowManualForm(true)}>
@@ -245,15 +262,7 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
             <details className="planner-settings">
               <summary>Opciones del presupuesto <ChevronDown size={15} aria-hidden="true" /></summary>
               <div className="planner-settings-body panel">
-                <div className="inventory-budget">
-                  {tiers.length > 1 ? <div className="segmented" role="group" aria-label="Nivel de presupuesto visible">
-                    {tiers.map((option) => <button key={option} type="button" aria-pressed={option === tier} onClick={() => onTierChange(option)}>
-                      {budgetProfiles[option].label}
-                    </button>)}
-                  </div> : <strong>{budgetProfiles[tier].label}</strong>}
-                  <Link href={projectPath(project.id)}>Cambiar niveles</Link>
-                  {tiers.length > 1 && <p>La cotización por lote incluye todos los niveles seleccionados.</p>}
-                </div>
+                <Link className="text-action" href={projectPath(project.id)}>Comparar los tres presupuestos</Link>
                 <div className="segmented" role="group" aria-label="Agrupar artículos">
                   <button type="button" aria-pressed={filters.group === 'plan'} onClick={() => setFilters({ group: 'plan' })}>Sin agrupar</button>
                   <button type="button" aria-pressed={filters.group === 'brand'} onClick={() => setFilters({ group: 'brand' })}>Por marca</button>
@@ -263,9 +272,6 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
                 <div className="button-row">
                   {project.items.length > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('all')}>
                     {bulkScope === 'all' ? <><Spinner /> Actualizando…</> : <><RefreshCw size={16} aria-hidden="true" /> Actualizar todo el proyecto</>}
-                  </button>}
-                  {pendingCount > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('pending')}>
-                    {bulkScope === 'pending' ? <><Spinner /> Cotizando…</> : <><Sparkles size={16} aria-hidden="true" /> Cotizar pendientes del proyecto</>}
                   </button>}
                 </div>
               </div>
@@ -284,6 +290,7 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
                     <InventoryItem key={item.id} item={item} tier={tier} disabled={saving} saving={savingItemId === item.id}
                       draft={drafts[item.id]} onChange={(value) => changeDraft(item, value)} onSave={(value) => save(item, value)}
                       onQuote={(url) => onOpenQuote(item, url)} onEnterQuoteUrl={() => onEnterQuoteUrl(item)} onSplit={() => setSplitItem(item)}
+                      onMove={() => setMovingItem(item)}
                       updateActivity={updateActivity?.itemId === item.id && updateActivity.tier === tier ? updateActivity : undefined} />
                   ))}</ul>
                 </div>
@@ -304,7 +311,14 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
         setShowManualForm(false);
         navigate(inventoryPath(project.id, item.zoneId || unassignedRoomId));
       }} />}
-      {splitItem && <SplitItemDialog projectId={project.id} item={splitItem} onClose={() => setSplitItem(null)} onSaved={(updated) => {
+      {movingItem && <MoveItemDialog item={movingItem} zones={project.zones} onClose={() => setMovingItem(null)}
+        onSave={(zoneId) => onMoveItem(movingItem.id, zoneId)} onMoved={(zoneId) => {
+          onItemMoved(movingItem, zoneId);
+          setFilterState({ ...defaultFilters, roomId: zoneId || unassignedRoomId });
+          setMovingItem(null);
+          navigate(inventoryPath(project.id, zoneId || unassignedRoomId));
+        }} />}
+      {splitItem && <SplitItemDialog projectId={project.id} item={splitItem} zones={project.zones} onClose={() => setSplitItem(null)} onSaved={(updated) => {
         setFilters(defaultFilters);
         changeDraft(splitItem, String(splitItem.qty));
         onItemSplit(updated, splitItem);
@@ -315,7 +329,7 @@ export default function Inventory({ project, roomId, tier, tiers, onTierChange, 
   );
 }
 
-function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, onQuote, onEnterQuoteUrl, onSplit, updateActivity }: {
+function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, onQuote, onEnterQuoteUrl, onSplit, onMove, updateActivity }: {
   item: CatalogItem;
   tier: BudgetTier;
   draft?: string;
@@ -326,6 +340,7 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
   onQuote: (url?: string) => void;
   onEnterQuoteUrl: () => void;
   onSplit: () => void;
+  onMove: () => void;
   updateActivity?: QuoteActivity;
 }) {
   const [error, setError] = useState('');
@@ -426,6 +441,7 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
         <QuoteStoreLink quote={alternative} itemName={name} /><ReviewLink quote={alternative} />
         <button type="button" className="text-action" disabled={disabled} onClick={() => onQuote(alternative.productUrl)}>Usar este precio</button>
       </li>)}</ul>}
+      <button type="button" className="text-action" disabled={disabled} onClick={onMove} aria-label={`Mover a otro ambiente: ${name}`}>Mover a otro ambiente</button>
       <button type="button" className="text-action" disabled={disabled} onClick={onSplit} aria-label={`Dividir en artículos: ${name}`}>Dividir en artículos</button>
     </div>
     {search && <SearchFindings search={search} busy={disabled} onUse={onQuote} />}

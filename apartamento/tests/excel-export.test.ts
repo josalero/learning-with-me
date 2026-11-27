@@ -51,7 +51,7 @@ describe('Excel budget export', () => {
     expect(comparison.getCell('B7').result).toBe(505_000);
     expect(comparison.getCell('C7').result).toBe(1);
     expect(row.getCell(1).text).toContain('Cuartos · Dormitorio principal');
-    expect(row.getCell(16).text).toBe('Alta gama sin lujo');
+    expect(row.getCell(16).text).toBe('Gama alta');
     expect(row.getCell(18).hyperlink).toBe('https://resenas.example.cr/cama-500');
   });
 
