@@ -192,21 +192,6 @@
       ]
     }
   ],
-  "i-dryer": [
-    {
-      "productUrl": "https://cr.siman.com/secadora-de-ropa-electrica-18-kg-7mwed1800em-whirlpool-100476588/p",
-      "title": "Secadora de ropa eléctrica 18 kg 7MWED1800EM Whirlpool",
-      "priceCrc": 249900,
-      "storeName": "Siman Costa Rica",
-      "capturedAt": "2026-11-26T16:17:45.587Z",
-      "availability": "in_stock",
-      "brand": "Whirlpool",
-      "modelIds": [
-        "7MWED1800EM",
-        "883049389806"
-      ]
-    }
-  ],
   "i-fan-kitchen": [
     {
       "productUrl": "https://cr.epaenlinea.com/es-cr/products/ventilador-orbital-de-techo-16",
@@ -390,18 +375,45 @@
       ]
     }
   ],
-  "i-washer": [
+  "i-laundry-tower": [
     {
-      "productUrl": "https://cr.siman.com/lavadora-con-agitador-24kg-blanca-104331200/p",
-      "title": "Lavadora Whirlpool carga superior 24 kg 8MWTW2424WPM",
-      "priceCrc": 279900,
-      "storeName": "Siman Costa Rica",
-      "capturedAt": "2026-11-26T16:17:50.730Z",
+      "productUrl": "https://ambitec.cr/producto/ge-centro-de-lavado-electrico-gud27essmww/",
+      "title": "Centro de lavado eléctrico GE Spacemaker GUD27ESSMWW",
+      "description": "Lavadora de carga superior de 3,8 pies³ y secadora de 5,9 pies³. Controles de perilla y detección automática de carga.",
+      "dimensions": { "w": 0.67945, "h": 1.927225, "d": 0.784225 },
+      "priceCrc": 589000,
+      "storeName": "Ambitec",
+      "capturedAt": "2026-11-27T20:55:00.000Z",
       "availability": "in_stock",
-      "brand": "Whirlpool",
-      "modelIds": [
-        "8MWTW2424WPM"
-      ]
+      "brand": "GE",
+      "modelIds": ["GUD27ESSMWW"],
+      "tier": "economy"
+    },
+    {
+      "productUrl": "https://ambitec.cr/producto/mabe-centro-de-lavado-electrico-220v-24kg-blanco-mcl2440esbb0/",
+      "title": "Centro de lavado eléctrico Mabe Ultra Capacity MCL2440ESBB0, 24 kg",
+      "description": "Torre de 220 V con capacidad de lavado de hasta 24 kg, ciclo de sanitizado y canasta de acero inoxidable.",
+      "dimensions": { "w": 0.6807, "h": 1.9177, "d": 0.7836 },
+      "priceCrc": 659000,
+      "storeName": "Ambitec",
+      "capturedAt": "2026-11-27T20:55:00.000Z",
+      "availability": "in_stock",
+      "brand": "Mabe",
+      "modelIds": ["MCL2440ESBB0"],
+      "tier": "balanced"
+    },
+    {
+      "productUrl": "https://ezcomerce.com/producto/centro-de-lavado-lg-washtower-22kg-wk22ws6pe/",
+      "title": "Torre de lavado eléctrica LG WashTower WK22WS6PE, 22 kg",
+      "description": "Carga frontal, motor inverter, sensor de humedad para el secado y panel central. La tienda publica 22 kg de lavado y 22 kg de secado.",
+      "dimensions": { "w": 0.701, "h": 1.89, "d": 0.77 },
+      "priceCrc": 1213338,
+      "storeName": "Ezcomerce",
+      "capturedAt": "2026-11-27T20:55:00.000Z",
+      "availability": "unknown",
+      "brand": "LG",
+      "modelIds": ["WK22WS6PE"],
+      "tier": "premium"
     }
   ]
 }

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowUpRight, ChevronDown, Fan, Lamp, Link2, Minus, PackageOpen, Plus, RefreshCw, Search, Sofa, Sparkles, Tv, WashingMachine } from 'lucide-react';
-import { budgetProfiles, quotesForTier } from '@shared/budgetProfiles';
+import { budgetProfiles, quantityForTier, quotesForTier } from '@shared/budgetProfiles';
 import { brandLabel, productClass, productProvenance } from '@shared/brands';
+import { formatDimensions, itemSpecifications } from '@shared/itemSpecifications';
 import { enclosureAdvice, isFlexibleEnclosure, purchaseName } from '@shared/showerEnclosure';
 import { BrandGuide } from './BrandGuide';
+import { BudgetCriteria } from './BudgetSettings';
 import { projectStats } from '@shared/projectStats';
 import { isPurchaseSet } from '@shared/purchaseUnit';
 import { quoteBasisLabel, quoteLink } from '@shared/quoteBasis';
@@ -13,6 +15,7 @@ import { MoveItemDialog } from './ItemLocation';
 import { lineCount, ProjectAtlas, projectRooms, unassignedRoomId } from './ProjectAtlas';
 import { inventoryPath, Link, navigate, projectPath } from './navigation';
 import { QuoteJob } from './QuoteProgress';
+import { SpecificationField, specificationError, specificationLines } from './SpecificationField';
 import SplitItemDialog from './SplitItemDialog';
 import { streamPost } from './streamApi';
 import { ApiError, Modal, money, Notice, post, Spinner } from './ui';
@@ -77,18 +80,18 @@ function quantity(value: string) {
   return /^\d+$/.test(value) && Number.isInteger(number) && number >= 1 && number <= 999 ? number : undefined;
 }
 
-function PlannerTotal({ label, items, tier, hasDraft }: { label: string; items: CatalogItem[]; tier: BudgetTier; hasDraft: boolean }) {
+function PlannerTotal({ id, label, items, tier, hasDraft }: { id?: string; label?: string; items: CatalogItem[]; tier: BudgetTier; hasDraft: boolean }) {
   const { totalCrc, quotedCount, itemCount } = projectStats(items, tier);
-  return <div className="planner-total">
-    <span>{label}</span>
+  return <span id={id} className="planner-total">
+    {label && <span>{label}</span>}
     <strong aria-live="polite">{quotedCount ? money.format(totalCrc) : 'Por cotizar'}</strong>
-    {quotedCount > 0 && quotedCount < itemCount && <small>Parcial · {quotedCount} de {itemCount} cotizados</small>}
+    {itemCount > 0 && <small>{quotedCount > 0 && quotedCount < itemCount && 'Parcial · '}{quotedCount} de {itemCount} cotizados</small>}
     {hasDraft && <small>Vista previa · cantidades sin guardar</small>}
-  </div>;
+  </span>;
 }
 
 export default function Inventory({ project, roomId, tier, onTierChange, active, pendingCount, saving, bulkScope, savingItemId,
-  onSaveQuantity, onMoveItem, onItemMoved, onOpenQuote, onEnterQuoteUrl, onBulkQuote, onItemAdded, onItemSplit, notice, activity, updateActivity }: {
+  onSaveQuantity, onSaveSpecifications, onMoveItem, onItemMoved, onOpenQuote, onEnterQuoteUrl, onBulkQuote, onItemAdded, onItemSplit, notice, activity, updateActivity }: {
   project: FurnishingProject;
   roomId?: string;
   tier: BudgetTier;
@@ -99,6 +102,7 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
   bulkScope: BulkScope | null;
   savingItemId: string | null;
   onSaveQuantity: (itemId: string, qty: number) => Promise<void>;
+  onSaveSpecifications: (itemId: string, specifications: string[]) => Promise<void>;
   onMoveItem: (itemId: string, zoneId: string) => Promise<void>;
   onItemMoved: (item: CatalogItem, zoneId: string) => void;
   onOpenQuote: (item: CatalogItem, productUrl?: string) => void;
@@ -113,9 +117,10 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
   const [showManualForm, setShowManualForm] = useState(false);
   const [splitItem, setSplitItem] = useState<CatalogItem | null>(null);
   const [movingItem, setMovingItem] = useState<CatalogItem | null>(null);
+  const [specificationItem, setSpecificationItem] = useState<CatalogItem | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [filterState, setFilterState] = useState({ roomId, ...defaultFilters });
-  useEffect(() => { setShowManualForm(false); setSplitItem(null); setMovingItem(null); }, [active, roomId]);
+  useEffect(() => { setShowManualForm(false); setSplitItem(null); setMovingItem(null); setSpecificationItem(null); }, [active, roomId]);
 
   const rooms = projectRooms(project);
   const room = roomId === undefined ? rooms[0] : rooms.find(({ id }) => id === roomId);
@@ -127,7 +132,10 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
     const quotes = quotesForTier(item, tier);
     if (filters.status === 'pending' && quotes.length) return false;
     if (filters.status === 'quoted' && !quotes.length) return false;
-    return !query || normalizeSearch(`${purchaseName(item, tier)} ${brandLabel(quotes[0])} ${quotes.map(({ storeName, title }) => `${storeName} ${title}`).join(' ')}`).includes(query);
+    return !query || normalizeSearch([
+      purchaseName(item, tier), brandLabel(quotes[0]), ...itemSpecifications(item, tier),
+      ...quotes.flatMap(({ storeName, title }) => [storeName, title]),
+    ].join(' ')).includes(query);
   });
   const groups = new Map<string, CatalogItem[]>();
   for (const item of visible) {
@@ -138,10 +146,11 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
     else groups.set(name, [item]);
   }
 
-  function preview(items: CatalogItem[]) {
+  function preview(items: CatalogItem[], scenario: BudgetTier) {
     return items.map((item) => {
-      const value = quantity(drafts[item.id] ?? '');
-      return value === undefined || value === item.qty ? item : { ...item, qty: value };
+      const value = quantity(drafts[`${scenario}:${item.id}`] ?? '');
+      return value === undefined || value === quantityForTier(item, scenario) ? item
+        : { ...item, quantityByTier: { ...item.quantityByTier, [scenario]: value } };
     });
   }
 
@@ -152,40 +161,49 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
   function changeDraft(item: CatalogItem, value: string) {
     setDrafts((previous) => {
       const next = { ...previous };
-      if (value === String(item.qty)) delete next[item.id];
-      else next[item.id] = value;
+      const key = `${tier}:${item.id}`;
+      if (value === String(quantityForTier(item, tier))) delete next[key];
+      else next[key] = value;
       return next;
     });
   }
 
   async function save(item: CatalogItem, value: number) {
     await onSaveQuantity(item.id, value);
-    changeDraft(item, String(item.qty));
+    changeDraft(item, String(quantityForTier(item, tier)));
   }
 
-  const previewRoom = preview(roomItems);
-  const previewProject = preview(project.items);
-  const projectTotal = <PlannerTotal label="Total del proyecto" tier={tier} items={previewProject}
-    hasDraft={previewProject.some((item, index) => item !== project.items[index])} />;
+  const previewRoom = preview(roomItems, tier);
 
   return (
     <section id="inventario" className="planner-layout" aria-labelledby="inventory-title">
-      <ProjectAtlas id="plano-espacios" project={project} rooms={rooms} activeRoom={room?.id}>{projectTotal}</ProjectAtlas>
+      <ProjectAtlas id="plano-espacios" project={project} rooms={rooms} activeRoom={room?.id} />
       <div className="planner-workspace" id="detalle-espacio">
         <a className="atlas-back text-action" href="#plano-espacios">Volver al plano</a>
         <div className="planner-scenario panel">
           <fieldset disabled={saving}>
-            <legend>Presupuesto activo</legend>
-            <div className="segmented scenario-options">
-              {BUDGET_TIERS.map((option) => <label key={option}>
-                <input className="sr-only" type="radio" name={`scenario-${project.id}`} checked={option === tier} onChange={() => onTierChange(option)} />
-                <span>{budgetProfiles[option].label}</span>
-              </label>)}
+            <legend>Presupuestos del proyecto</legend>
+            <div className="scenario-options">
+              {BUDGET_TIERS.map((option) => {
+                const items = preview(project.items, option);
+                const { label } = budgetProfiles[option];
+                return <label key={option}>
+                  <input className="sr-only" type="radio" name={`scenario-${project.id}`} checked={option === tier}
+                    aria-label={label} aria-describedby={`budget-total-${option}`} onChange={() => onTierChange(option)} />
+                  <span className="scenario-name">{label}</span>
+                  <PlannerTotal id={`budget-total-${option}`} tier={option} items={items}
+                    hasDraft={items.some((item, index) => item !== project.items[index])} />
+                </label>;
+              })}
             </div>
           </fieldset>
-          {pendingCount > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('pending')}>
-            {bulkScope === 'pending' ? <><Spinner /> Cotizando…</> : <><Sparkles size={16} aria-hidden="true" /> Cotizar proyecto</>}
-          </button>}
+          <div className="scenario-description">
+            <p>{budgetProfiles[tier].description}</p>
+            <BudgetCriteria tier={tier} items={project.items} />
+            {pendingCount > 0 && <button type="button" className="button scenario-quote" disabled={saving} onClick={() => onBulkQuote('pending')}>
+              {bulkScope === 'pending' ? <><Spinner /> Cotizando…</> : <><Sparkles size={16} aria-hidden="true" /> Cotizar {budgetProfiles[tier].label.toLowerCase()}</>}
+            </button>}
+          </div>
         </div>
         <header className="planner-heading" key={room?.id ?? roomId}>
           <div className="page-heading">
@@ -193,7 +211,7 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
             <h1 id="inventory-title" tabIndex={-1}>{room?.label ?? 'Espacio no disponible'}</h1>
             {room && <p>{lineCount(roomItems.length)} · {roomPending} por cotizar</p>}
           </div>
-          {room && <PlannerTotal label="Subtotal del espacio" items={previewRoom} tier={tier}
+          {room && <PlannerTotal label={`Subtotal · ${budgetProfiles[tier].label}`} items={previewRoom} tier={tier}
             hasDraft={previewRoom.some((item, index) => item !== roomItems[index])} />}
         </header>
         {room ? <>
@@ -246,9 +264,9 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
                   {groupName && <h2>{groupName}</h2>}
                   <ul className="planner-items" role="list">{items.map((item) => (
                     <InventoryItem key={item.id} item={item} tier={tier} disabled={saving} saving={savingItemId === item.id}
-                      draft={drafts[item.id]} onChange={(value) => changeDraft(item, value)} onSave={(value) => save(item, value)}
+                      draft={drafts[`${tier}:${item.id}`]} onChange={(value) => changeDraft(item, value)} onSave={(value) => save(item, value)}
                       onQuote={(url) => onOpenQuote(item, url)} onEnterQuoteUrl={() => onEnterQuoteUrl(item)} onSplit={() => setSplitItem(item)}
-                      onMove={() => setMovingItem(item)}
+                      onMove={() => setMovingItem(item)} onEditSpecifications={() => setSpecificationItem(item)}
                       updateActivity={updateActivity?.itemId === item.id && updateActivity.tier === tier ? updateActivity : undefined} />
                   ))}</ul>
                 </div>
@@ -268,6 +286,8 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
         setShowManualForm(false);
         navigate(inventoryPath(project.id, item.zoneId || unassignedRoomId));
       }} />}
+      {specificationItem && <EditSpecificationsDialog item={specificationItem} tier={tier} onDismiss={() => setSpecificationItem(null)}
+        onSave={(lines) => onSaveSpecifications(specificationItem.id, lines)} />}
       {movingItem && <MoveItemDialog item={movingItem} zones={project.zones} onClose={() => setMovingItem(null)}
         onSave={(zoneId) => onMoveItem(movingItem.id, zoneId)} onMoved={(zoneId) => {
           onItemMoved(movingItem, zoneId);
@@ -277,7 +297,7 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
         }} />}
       {splitItem && <SplitItemDialog projectId={project.id} item={splitItem} zones={project.zones} onClose={() => setSplitItem(null)} onSaved={(updated) => {
         setFilters(defaultFilters);
-        changeDraft(splitItem, String(splitItem.qty));
+        changeDraft(splitItem, String(quantityForTier(splitItem, tier)));
         onItemSplit(updated, splitItem);
         setSplitItem(null);
         requestAnimationFrame(() => document.getElementById('inventory-title')?.focus({ preventScroll: true }));
@@ -286,7 +306,7 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
   );
 }
 
-function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, onQuote, onEnterQuoteUrl, onSplit, onMove, updateActivity }: {
+function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, onQuote, onEnterQuoteUrl, onSplit, onMove, onEditSpecifications, updateActivity }: {
   item: CatalogItem;
   tier: BudgetTier;
   draft?: string;
@@ -298,6 +318,7 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
   onEnterQuoteUrl: () => void;
   onSplit: () => void;
   onMove: () => void;
+  onEditSpecifications: () => void;
   updateActivity?: QuoteActivity;
 }) {
   const [error, setError] = useState('');
@@ -305,11 +326,13 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
   const input = useRef<HTMLInputElement>(null);
   const [quote, ...alternatives] = quotesForTier(item, tier);
   const name = purchaseName(item, tier);
+  const specs = itemSpecifications(item, tier);
   const Icon = categoryIcons[item.category] ?? PackageOpen;
-  const count = draft === undefined ? item.qty : quantity(draft);
+  const committedQty = quantityForTier(item, tier);
+  const count = draft === undefined ? committedQty : quantity(draft);
   const isSet = isPurchaseSet(item);
   const unit = isSet ? 'juego' : 'unidad';
-  const dirty = draft !== undefined && count !== item.qty;
+  const dirty = draft !== undefined && count !== committedQty;
   const errorId = `qty-error-${item.id}`;
   const detailsId = `item-details-${item.id}`;
   const search = item.lastSearch?.[tier];
@@ -338,6 +361,7 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
         <span className="item-icon"><Icon size={17} aria-hidden="true" /></span>
         <div>
           <h3>{name}</h3>
+          <p className="item-spec-preview">{specs[0] ?? 'Especificaciones por completar'}</p>
           {quote ? <><p>{quote.title}</p><QuoteStoreLink quote={quote} itemName={name} showAddress={false} /></>
             : <p>{item.unquotedReason || 'Sin oferta guardada'}</p>}
           {item.id === 'i-freight' && item.category === 'logistica' && !quote &&
@@ -350,23 +374,25 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
           {quote.basis !== 'published' && <small>{quoteBasisLabel(quote)}</small>}
         </> : <span className="pending-label">Por cotizar</span>}
       </div>
-      <form className="planner-quantity" onSubmit={submit} aria-busy={saving} noValidate>
+      {item.id === 'i-laundry-tower' ? <div className="planner-quantity">
+        <span className="planner-field-label">Cantidad</span><strong>{committedQty}</strong><small>equipo integrado</small>
+      </div> : <form className="planner-quantity" onSubmit={submit} aria-busy={saving} noValidate>
         <span className="planner-field-label">Cantidad</span>
         <div className="planner-stepper">
-          <button type="button" disabled={disabled || count === undefined || count <= 1} onClick={() => change(String((count ?? item.qty) - 1))} aria-label={`Restar ${unit} de ${name}`}><Minus size={15} aria-hidden="true" /></button>
+          <button type="button" disabled={disabled || count === undefined || count <= 1} onClick={() => change(String((count ?? committedQty) - 1))} aria-label={`Restar ${unit} de ${name}`}><Minus size={15} aria-hidden="true" /></button>
           <input ref={input} type="number" inputMode="numeric" min={1} max={999} step={1} required
-            value={draft ?? String(item.qty)} readOnly={disabled} aria-label={`Cantidad de ${name}`}
+            value={draft ?? String(committedQty)} readOnly={disabled} aria-label={`Cantidad de ${name}`}
             aria-invalid={dirty && count === undefined}
             aria-describedby={count === undefined || error ? errorId : undefined}
             onChange={(event) => change(event.target.value)} />
-          <button type="button" disabled={disabled || count === undefined || count >= 999} onClick={() => change(String((count ?? item.qty) + 1))} aria-label={`Sumar ${unit} de ${name}`}><Plus size={15} aria-hidden="true" /></button>
+          <button type="button" disabled={disabled || count === undefined || count >= 999} onClick={() => change(String((count ?? committedQty) + 1))} aria-label={`Sumar ${unit} de ${name}`}><Plus size={15} aria-hidden="true" /></button>
         </div>
         <small>{count === 1 ? unit : isSet ? 'juegos' : 'unidades'}</small>
         {dirty && <button type="submit" className="button button-secondary button-small planner-save" disabled={disabled || count === undefined} aria-label={`Guardar cantidad de ${name}`}>
           {saving ? <><Spinner /> Guardando</> : 'Guardar'}
         </button>}
         {(count === undefined || error) && <small id={errorId} className="planner-error" role="alert">{error || 'Ingresá un entero de 1 a 999.'}</small>}
-      </form>
+      </form>}
       <div className="planner-price planner-subtotal">
         <span className="planner-field-label">Subtotal</span>
         <strong>{quote && count !== undefined ? money.format(quote.priceCrc * count) : 'Pendiente'}</strong>
@@ -376,15 +402,22 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
           {quote ? 'Actualizar' : 'Cotizar'}
         </button>
         <button type="button" className="planner-item-more" aria-expanded={showDetails} aria-controls={detailsId}
-          aria-label={`Detalles de ${name}`} onClick={() => setShowDetails(!showDetails)}>Detalles <ChevronDown size={13} aria-hidden="true" /></button>
+          aria-label={`Ficha y opciones de ${name}`} onClick={() => setShowDetails(!showDetails)}>Ficha y opciones <ChevronDown size={13} aria-hidden="true" /></button>
       </div>
     </div>
     <div id={detailsId} className="planner-item-detail-body" hidden={!showDetails}>
-      {item.notes && <p>{item.notes}</p>}
-      {isFlexibleEnclosure(item) && <p>{enclosureAdvice(tier)}</p>}
+      <section className="item-specifications" aria-labelledby={`specs-${item.id}`}>
+        <h4 id={`specs-${item.id}`}>Especificaciones · {budgetProfiles[tier].label}</h4>
+        {specs.length ? <ul>{specs.map((spec, index) => <li key={index}>{spec}</li>)}</ul>
+          : <p>Agregá material, medidas u otros detalles para orientar la búsqueda.</p>}
+        {item.notes && !specs.includes(item.notes) && <p>{item.notes}</p>}
+        {isFlexibleEnclosure(item) && <p>{enclosureAdvice(tier)}</p>}
+        <button type="button" className="text-action" disabled={disabled} aria-label={`Editar especificaciones de ${name}`}
+          onClick={onEditSpecifications}>Editar especificaciones</button>
+      </section>
+      <ItemBudgetComparison item={item} tier={tier} />
       {quote && <>
         {address && <details className="product-address"><summary>Ver URL de la ficha</summary><span>{address}</span></details>}
-        <p>Marca · {brandLabel(quote)}</p>
         {productProvenance(quote.title, quote.brand) === 'replica' && <p>El vendedor lo anuncia como réplica.</p>}
         {!!quote.modelIds?.length && <p>Modelo publicado · {quote.modelIds.join(', ')}. Autenticidad por confirmar con el fabricante.</p>}
         {quoteBasisLabel(quote) && <p>{quoteBasisLabel(quote)}</p>}
@@ -399,12 +432,84 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
         <button type="button" className="text-action" disabled={disabled} onClick={() => onQuote(alternative.productUrl)}>Usar este precio</button>
       </li>)}</ul>}
       <button type="button" className="text-action" disabled={disabled} onClick={onMove} aria-label={`Mover a otro espacio: ${name}`}>Mover a otro espacio</button>
-      <button type="button" className="text-action" disabled={disabled} onClick={onSplit} aria-label={`Dividir en artículos: ${name}`}>Dividir en artículos</button>
+      {item.id !== 'i-laundry-tower' && <button type="button" className="text-action" disabled={disabled} onClick={onSplit}
+        aria-label={`Dividir en artículos: ${name}`}>Dividir en artículos</button>}
     </div>
     {search && <SearchFindings search={search} busy={disabled} onUse={onQuote} />}
     {updateActivity && !(updateActivity.stage === 'failed' && search?.detail === updateActivity.detail) &&
       <div className="quote-single-progress" role="status"><QuoteJob activity={updateActivity} single /></div>}
   </li>;
+}
+
+function ItemBudgetComparison({ item, tier }: { item: CatalogItem; tier: BudgetTier }) {
+  return <section className="item-budget-comparison" aria-labelledby={`comparison-${item.id}`}>
+    <h4 id={`comparison-${item.id}`}>Productos cotizados por gama</h4>
+    <div className="item-budget-options">
+      {BUDGET_TIERS.map((option) => {
+        const [quote] = quotesForTier(item, option);
+        const dimensions = formatDimensions(quote?.dimensions);
+        const brand = brandLabel(quote);
+        const line = productClass(quote);
+        return <div key={option} className="item-budget-option" data-active={option === tier}>
+          <strong>{budgetProfiles[option].label}</strong>
+          {quote ? <>
+            <p>{quote.title}</p>
+            {brand !== 'Por identificar' && <small>Marca · {brand}</small>}
+            {line !== 'Línea por identificar' && <small>{line}</small>}
+            {dimensions && <small>Medidas publicadas · {dimensions}</small>}
+            {quote.description && <p>{quote.description}</p>}
+            <strong>{money.format(quote.priceCrc)} por {isPurchaseSet(item) ? 'juego' : 'unidad'}</strong>
+            <QuoteStoreLink quote={quote} itemName={purchaseName(item, option)} showAddress={false} />
+          </> : <p>Por cotizar</p>}
+        </div>;
+      })}
+    </div>
+  </section>;
+}
+
+function EditSpecificationsDialog({ item, tier, onDismiss, onSave }: {
+  item: CatalogItem;
+  tier: BudgetTier;
+  onDismiss: () => void;
+  onSave: (lines: string[]) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const lines = specificationLines(new FormData(form).get('edit-specifications'));
+    const invalid = specificationError(lines);
+    if (invalid) {
+      setError(invalid);
+      form.querySelector('textarea')?.focus();
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await onSave(lines);
+      onDismiss();
+    } catch (cause) {
+      setError(cause instanceof ApiError ? cause.message : 'No se pudieron guardar las especificaciones. Intentá de nuevo.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <Modal title="Editar especificaciones" onDismiss={onDismiss} busy={busy}>
+    <p className="quote-item-title">{purchaseName(item, tier)} · {budgetProfiles[tier].label}</p>
+    <p className="quote-tier-label">La IA usará esta ficha en la próxima búsqueda de esta gama.</p>
+    <form className="manual-form" onSubmit={save}>
+      <SpecificationField id="edit-specifications" lines={itemSpecifications(item, tier)} busy={busy} />
+      {error && <Notice>{error}</Notice>}
+      <div className="button-row modal-actions">
+        <button type="button" className="button button-secondary" onClick={onDismiss} disabled={busy}>Cancelar</button>
+        <button type="submit" className="button button-primary" disabled={busy}>{busy ? <><Spinner /> Guardando…</> : 'Guardar especificaciones'}</button>
+      </div>
+    </form>
+  </Modal>;
 }
 
 function ManualItemDialog({ project, defaultZone, onDismiss, onSuccess }: {
@@ -425,12 +530,19 @@ function ManualItemDialog({ project, defaultZone, onDismiss, onSuccess }: {
       setError('Escribe un nombre de al menos dos caracteres.');
       return;
     }
+    const specifications = specificationLines(data.get('item-specifications'));
+    const invalid = specificationError(specifications);
+    if (invalid) {
+      setError(invalid);
+      event.currentTarget.querySelector<HTMLTextAreaElement>('textarea[name="item-specifications"]')?.focus();
+      return;
+    }
     setBusy(true);
     setError('');
     try {
       const result = await post<{ project: FurnishingProject; item: CatalogItem }>(`/api/projects/${project.id}/items`, {
         name, qty: Number(data.get('qty')), zoneId: String(data.get('zoneId') ?? ''),
-        notes: String(data.get('notes')).trim(), purchaseUnit: String(data.get('purchaseUnit')), requestId,
+        notes: String(data.get('notes')).trim(), specifications, purchaseUnit: String(data.get('purchaseUnit')), requestId,
       });
       onSuccess(result.project, result.item);
     } catch (cause) {
@@ -447,10 +559,10 @@ function ManualItemDialog({ project, defaultZone, onDismiss, onSuccess }: {
       <input id="item-name" name="name" placeholder="Ej. Mamparas para ducha" minLength={2} maxLength={120} autoFocus required readOnly={busy} />
       <div className="manual-fields">
         <div>
-          <label htmlFor="item-zone">Zona</label>
+          <label htmlFor="item-zone">Espacio</label>
           <div className="select-field">
             <select id="item-zone" name="zoneId" defaultValue={defaultZone} disabled={busy}>
-              <option value="">Sin zona asignada</option>
+              <option value="">Sin espacio asignado</option>
               {project.zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.labelEs}</option>)}
             </select>
             <ChevronDown size={15} aria-hidden="true" />
@@ -466,8 +578,9 @@ function ManualItemDialog({ project, defaultZone, onDismiss, onSuccess }: {
         <label><input type="radio" name="purchaseUnit" value="unit" defaultChecked disabled={busy} /> Por unidad</label>
         <label><input type="radio" name="purchaseUnit" value="set" disabled={busy} /> Por juego</label>
       </fieldset>
+      <SpecificationField id="item-specifications" busy={busy} />
       <label htmlFor="item-notes">Notas <span>(opcional)</span></label>
-      <textarea id="item-notes" name="notes" rows={3} maxLength={500} placeholder="Medidas, materiales u otros detalles" readOnly={busy} />
+      <textarea id="item-notes" name="notes" rows={2} maxLength={500} placeholder="Ej. Falta confirmar el acceso de entrega" readOnly={busy} />
       {error && <Notice>{error}</Notice>}
       <div className="button-row modal-actions">
         <button type="button" className="button button-secondary" onClick={onDismiss} disabled={busy}>Cancelar</button>

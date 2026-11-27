@@ -3,10 +3,26 @@ import { BUDGET_TIERS, type BudgetTier, type CatalogItem, type FurnishingProject
 export const DEFAULT_BUDGET_TIER: BudgetTier = 'balanced';
 
 export const budgetProfiles = {
-  economy: { label: 'Gama baja', description: 'Funcional y confiable, con prioridad al precio.' },
-  balanced: { label: 'Gama intermedia', description: 'Equilibrio entre calidad, duración y precio.' },
-  premium: { label: 'Gama alta', description: 'Mejores materiales, desempeño o garantía, sin lujo.' },
-} satisfies Record<BudgetTier, { label: string; description: string }>;
+  economy: {
+    label: 'Gama baja', description: 'Prioriza el precio y cubre las funciones esenciales.',
+    quality: 'Materiales sencillos y de fácil reposición.',
+    brands: 'Líneas de entrada o genéricos con ficha, precio y respaldo del vendedor.',
+  },
+  balanced: {
+    label: 'Gama media', description: 'Equilibra el precio con la durabilidad para uso frecuente.',
+    quality: 'Materiales, acabados y garantía adecuados para el uso diario.',
+    brands: 'Modelos con soporte local, disponibilidad de repuestos o buenas valoraciones documentadas.',
+  },
+  premium: {
+    label: 'Gama alta', description: 'Paga por mejoras comprobables en el producto.',
+    quality: 'Mejor material, rendimiento o garantía, según la ficha del modelo.',
+    brands: 'Líneas superiores de cualquier marca que documenten esa mejora.',
+  },
+} satisfies Record<BudgetTier, { label: string; description: string; quality: string; brands: string }>;
+
+export function quantityForTier(item: CatalogItem, tier: BudgetTier) {
+  return item.quantityByTier?.[tier] ?? item.qty;
+}
 
 export function selectedBudgetTiers(project: Pick<FurnishingProject, 'budgetTiers'>) {
   const selected = BUDGET_TIERS.filter((tier) => project.budgetTiers?.includes(tier));

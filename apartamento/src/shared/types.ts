@@ -33,6 +33,8 @@ export type LineItemQuote = {
   title: string;
   brand?: string;
   modelIds?: string[];
+  description?: string;
+  dimensions?: CatalogItem['dimsM'];
   priceCrc: number;
   priceUsd?: number;
   availability: 'in_stock' | 'out_of_stock' | 'unknown';
@@ -55,8 +57,11 @@ export type CatalogItem = {
   name: string;
   category: string;
   qty: number;
+  quantityByTier?: Partial<Record<BudgetTier, number>>;
   purchaseUnit?: 'unit' | 'set';
   notes?: string;
+  specifications?: string[];
+  specificationsByTier?: Partial<Record<BudgetTier, string[]>>;
   dimsM?: { w?: number; h?: number; d?: number };
   quotes: LineItemQuote[];
   unquotedReason?: string;

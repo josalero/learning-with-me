@@ -1,7 +1,8 @@
 import ExcelJS from 'exceljs';
-import { budgetProfiles, quotesForTier, selectedBudgetTiers } from '../../shared/budgetProfiles.js';
+import { budgetProfiles, quantityForTier, quotesForTier, selectedBudgetTiers } from '../../shared/budgetProfiles.js';
 import { purchaseName, isFlexibleEnclosure, enclosureAdvice } from '../../shared/showerEnclosure.js';
 import { brandLabel, productClass } from '../../shared/brands.js';
+import { formatDimensions, itemSpecifications } from '../../shared/itemSpecifications.js';
 import { projectAreas } from '../../shared/projectAreas.js';
 import { projectStats } from '../../shared/projectStats.js';
 import { isPurchaseSet } from '../../shared/purchaseUnit.js';
@@ -153,16 +154,22 @@ function addDetailRows(sheet: ExcelJS.Worksheet, groups: AreaGroup[], tier: Budg
     for (const item of group.items) {
       const label = categoryNames[item.category] ?? item.category;
       const quotes = quotesForTier(item, tier);
+      const qty = quantityForTier(item, tier);
+      const specs = itemSpecifications(item, tier);
       const rows = quotes.length ? quotes : [undefined];
       for (const [index, quote] of rows.entries()) {
         const isBudgetQuote = quote && index === 0;
         const state = !quote ? 'Pendiente' : isBudgetQuote ? 'Cotizado' : 'Alternativa';
         const basis = quote ? quoteBasisLabel(quote) ?? 'Sin clasificación' : null;
-        const notes = [item.notes, isFlexibleEnclosure(item) ? enclosureAdvice(tier) : undefined, !quote ? item.unquotedReason ?? 'Por buscar' : undefined].filter(Boolean).join('\n');
+        const dimensions = formatDimensions(quote?.dimensions);
+        const notes = [...specs, item.notes && !specs.includes(item.notes) ? item.notes : undefined,
+          isFlexibleEnclosure(item) ? enclosureAdvice(tier) : undefined,
+          quote?.description && `Ficha de tienda · ${quote.description}`, dimensions && `Medidas publicadas · ${dimensions}`,
+          !quote ? item.unquotedReason ?? 'Por buscar' : undefined].filter(Boolean).join('\n');
         const date = quote ? priceDate(quote.capturedAt) : null;
         const location = locationLabel(group, item);
         const row = sheet.addRow([
-          location, purchaseName(item, tier), item.qty, state, basis, quote?.priceCrc ?? null, null,
+          location, purchaseName(item, tier), qty, state, basis, quote?.priceCrc ?? null, null,
           quote?.storeName ?? null, quote ? storeLink(quote) : null, null,
           quote ? availability[quote.availability] : null, label, quote ? sources[quote.source] : null, date, notes || null,
           budgetProfiles[tier].label, quote?.title ?? null, reviewLink(quote),
@@ -183,7 +190,7 @@ function addDetailRows(sheet: ExcelJS.Worksheet, groups: AreaGroup[], tier: Budg
           };
         }
         if (isBudgetQuote) {
-          row.getCell(7).value = { formula: `C${row.number}*F${row.number}`, result: item.qty * quote.priceCrc };
+          row.getCell(7).value = { formula: `C${row.number}*F${row.number}`, result: qty * quote.priceCrc };
           row.getCell(7).font = { name: fontName, size: 10, bold: true, color: { argb: colors.ink } };
         }
         row.getCell(10).value = quote.priceUsd ?? {
@@ -225,10 +232,12 @@ function addSummary(sheet: ExcelJS.Worksheet, project: FurnishingProject, groups
   cell(sheet, ['E11', 'F11'], 'Tipo de cambio CRC por USD', { font: { bold: true }, alignment: { horizontal: 'left', indent: 1 } });
   cell(sheet, ['G11', 'H11'], exchangeRate, { background: colors.purpleSoft, numFmt: '#,##0.00', font: { color: { argb: colors.blue } }, alignment: { horizontal: 'right', indent: 1 } });
   sheet.getRow(11).height = 24;
-  cell(sheet, ['A12', 'H12'], 'El total incluye la oferta principal de cada artículo de este nivel. En Ítems puedes consultar las alternativas y sus fuentes.', {
+  const profile = budgetProfiles[tier];
+  const criteria = `${profile.description}\nCalidad · ${profile.quality}\nMarcas y líneas · ${profile.brands}`;
+  cell(sheet, ['A12', 'H12'], criteria, {
     font: { italic: true, color: { argb: colors.muted } }, alignment: { wrapText: true },
   });
-  sheet.getRow(12).height = 25;
+  sheet.getRow(12).height = fittedHeight([criteria, 125]);
   cell(sheet, ['A14', 'H14'], 'Presupuesto por ambiente', { font: { size: 13, bold: true, color: { argb: colors.purple } } });
   sheet.getRow(14).height = 24;
   for (const [span, label] of [
@@ -281,24 +290,27 @@ function addSummary(sheet: ExcelJS.Worksheet, project: FurnishingProject, groups
 }
 
 function addComparison(sheet: ExcelJS.Worksheet, project: FurnishingProject, summaries: { tier: BudgetTier; sheet: ExcelJS.Worksheet }[]) {
-  heading(sheet, 'Comparación de presupuestos', project.name, 'E');
-  tableHeader(sheet, detailHeaderRow, ['Nivel', 'Total en CRC', 'Cotizados', 'Pendientes', 'Cobertura']);
+  heading(sheet, 'Comparación de presupuestos', project.name, 'F');
+  tableHeader(sheet, detailHeaderRow, ['Nivel', 'Total en CRC', 'Cotizados', 'Pendientes', 'Cobertura', 'Criterios de compra']);
   for (const { tier, sheet: summary } of summaries) {
     const { totalCrc, quotedCount, itemCount } = projectStats(project.items, tier);
     const ref = `'${summary.name}'!`;
+    const { label, description, quality, brands } = budgetProfiles[tier];
+    const criteria = [description, quality, brands].join('\n');
     const row = sheet.addRow([
-      budgetProfiles[tier].label,
+      label,
       { formula: ref + 'A8', result: totalCrc },
       { formula: ref + 'E8', result: quotedCount },
       { formula: ref + 'G8', result: itemCount - quotedCount },
       { formula: ref + 'C11', result: itemCount ? quotedCount / itemCount : 0 },
+      criteria,
     ]);
-    row.height = 28;
-    styleRow(row, 5, row.number % 2 === 0);
+    row.height = fittedHeight([criteria, 69]);
+    styleRow(row, 6, row.number % 2 === 0);
     row.getCell(2).numFmt = crc;
     row.getCell(5).numFmt = percent;
   }
-  cell(sheet, [`A${sheet.rowCount + 2}`, `E${sheet.rowCount + 2}`], 'Compara también la cobertura. Un nivel con pendientes muestra un total parcial.', {
+  cell(sheet, [`A${sheet.rowCount + 2}`, `F${sheet.rowCount + 2}`], 'Compara también la cobertura. Un nivel con pendientes muestra un total parcial.', {
     font: { italic: true, color: { argb: colors.muted } },
   });
 }
@@ -309,7 +321,7 @@ export async function buildBudgetWorkbook(project: FurnishingProject): Promise<B
   workbook.calcProperties.fullCalcOnLoad = true;
   const tiers = selectedBudgetTiers(project);
   const exchangeRate = Number.isFinite(project.usdCrcRate) && project.usdCrcRate > 0 ? project.usdCrcRate : null;
-  const comparison = tiers.length > 1 ? addSheet(workbook, 'Comparación', [29, 20, 16, 16, 16], { tab: colors.purple }) : undefined;
+  const comparison = tiers.length > 1 ? addSheet(workbook, 'Comparación', [29, 20, 16, 16, 16, 70], { tab: colors.purple }) : undefined;
   const summaries = tiers.map((tier, index) => ({
     tier,
     sheet: addSheet(workbook, index === 0 ? 'Resumen' : `Resumen ${budgetProfiles[tier].label}`,
@@ -321,7 +333,7 @@ export async function buildBudgetWorkbook(project: FurnishingProject): Promise<B
   const pending = addSheet(workbook, 'Sin cotizar', [34, 25, 11, 57, 24], { frozen: { xSplit: 0, ySplit: detailHeaderRow }, tab: colors.amber });
 
   heading(detail, 'Detalle del presupuesto', project.name, 'U');
-  tableHeader(detail, detailHeaderRow, ['Ambiente', 'Artículo', 'Cantidad', 'Estado', 'Origen del precio', 'Unitario CRC', 'Subtotal CRC', 'Tienda', 'Producto', 'Unitario USD', 'Disponibilidad', 'Categoría', 'Fuente', 'Fecha del precio', 'Notas y motivo', 'Nivel', 'Modelo publicado', 'Valoraciones', 'Unidad de compra', 'Marca', 'Gama y origen']);
+  tableHeader(detail, detailHeaderRow, ['Ambiente', 'Artículo', 'Cantidad', 'Estado', 'Origen del precio', 'Unitario CRC', 'Subtotal CRC', 'Tienda', 'Producto', 'Unitario USD', 'Disponibilidad', 'Categoría', 'Fuente', 'Fecha del precio', 'Especificaciones y notas', 'Nivel', 'Modelo publicado', 'Valoraciones', 'Unidad de compra', 'Marca', 'Gama y origen']);
   heading(pending, 'Artículos pendientes de cotizar', project.name, 'E');
   tableHeader(pending, detailHeaderRow, ['Artículo', 'Ambiente', 'Cantidad', 'Motivo o notas', 'Nivel']);
   for (const { tier, sheet } of summaries) {
@@ -332,7 +344,7 @@ export async function buildBudgetWorkbook(project: FurnishingProject): Promise<B
       for (const item of group.items.filter((entry) => !quotesForTier(entry, tier).length)) {
         const reason = [item.unquotedReason ?? 'Sin cotizar para este nivel', item.notes].filter(Boolean).join('\n');
         const location = locationLabel(group, item);
-        const row = pending.addRow([purchaseName(item, tier), location, item.qty, reason, budgetProfiles[tier].label]);
+        const row = pending.addRow([purchaseName(item, tier), location, quantityForTier(item, tier), reason, budgetProfiles[tier].label]);
         row.height = fittedHeight([item.name, 31], [location, 22], [reason, 54]);
         styleRow(row, 5, row.number % 2 === 0);
         row.getCell(3).alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };

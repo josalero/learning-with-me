@@ -4,9 +4,10 @@ import { expect, it } from 'vitest';
 import { applyDemoQuotes } from '../src/domain/demo-quotes.js';
 import { itemizeBundle, itemizeCatalogBundles } from '../src/domain/itemize-bundle.js';
 import { buildNatarundiProject } from '../src/domain/natarundi-catalog.js';
+import { applyNatarundiLaundryPrices } from '../src/domain/natarundi-opening.js';
 import { projectStats } from '../src/shared/projectStats.js';
 import { matchesPurchase } from '../src/domain/product-match.js';
-import type { FurnishingProject } from '../src/shared/types.js';
+import type { CatalogItem, FurnishingProject } from '../src/shared/types.js';
 
 it('migrates legacy bundles once while preserving independently priced items and real sets', async () => {
   const db = new PGlite();
@@ -64,6 +65,39 @@ it('repairs the split television and project freight without losing quantities o
     expect(project.items.find(({ id }) => id === 'i-freight')?.zoneId).toBe('z-logistics');
     expect(project.zones.filter(({ id }) => id === 'z-logistics')).toHaveLength(1);
     expect(other!.payload).toEqual(JSON.parse(JSON.stringify(unrelated)));
+  } finally {
+    await db.close();
+  }
+});
+
+it('archives the old laundry appliances once, keeps custom items, and fills only the new tower prices', async () => {
+  const db = new PGlite();
+  try {
+    const template = buildNatarundiProject('workspace', 'natarundi');
+    const tower = template.items.find(({ id }) => id === 'i-laundry-tower')!;
+    const standalone: CatalogItem[] = [
+      { ...tower, id: 'i-washer', name: 'Lavadora (torre o individual)', qty: 2, quantityByTier: { premium: 3 } },
+      { ...tower, id: 'i-dryer', name: 'Secadora (si no es torre)' },
+    ];
+    const basket = { ...tower, id: 'custom-basket', name: 'Canasta de ropa', category: 'equipamiento' };
+    const legacy = { ...template, items: [template.items[0]!, ...standalone, basket] };
+    const unrelated = { ...legacy, id: 'unrelated', name: 'Otro proyecto' };
+    await db.exec('CREATE TABLE projects (id text PRIMARY KEY, name text, address text, payload jsonb NOT NULL, updated_at timestamptz)');
+    for (const project of [legacy, unrelated]) {
+      await db.query('INSERT INTO projects (id, name, address, payload) VALUES ($1, $2, $3, $4::jsonb)',
+        [project.id, project.name, project.address, JSON.stringify(project)]);
+    }
+    const migration = await readFile(new URL('../src/server/db/migrations/0008_natarundi_laundry.sql', import.meta.url), 'utf8');
+    await db.exec(migration);
+    await db.exec(migration);
+    const { rows: [row, other] } = await db.query<{ payload: FurnishingProject }>('SELECT payload FROM projects ORDER BY id');
+    const project = applyNatarundiLaundryPrices(row!.payload);
+    expect(project.itemizedBundles).toEqual(standalone);
+    expect(project.items).toHaveLength(3);
+    expect(project.items).toContainEqual(basket);
+    expect(project.items[0]!.quotes).toEqual([]);
+    expect(project.items.find(({ id }) => id === tower.id)?.quotes).toHaveLength(3);
+    expect(other!.payload).toEqual(unrelated);
   } finally {
     await db.close();
   }

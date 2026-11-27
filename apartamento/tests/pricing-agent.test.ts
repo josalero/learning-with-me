@@ -9,6 +9,35 @@ import { QUOTE_CONCURRENCY, type QuoteActivity } from '../src/shared/types.js';
 vi.mock('../src/server/scrapers/fetchPage.js', () => ({ fetchJsonLdOffers: vi.fn(), fetchProductReviews: vi.fn() }));
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.resetAllMocks(); });
 
+it('searches using specs from the selected tier and gives its verified matches priority over a previous price', async () => {
+  vi.stubEnv('AI_OFFLINE_STUB', '0');
+  vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+  const item = buildNatarundiProject('workspace', 'project').items.find(({ id }) => id === 'i-master-bed')!;
+  const preferred = 'https://tienda.example.cr/cama-queen-madera';
+  const previous = 'https://tienda.example.cr/cama-queen-metal';
+  item.specificationsByTier = { balanced: ['Material: madera.', 'Respaldo: alto.'], premium: ['Material: nogal.'] };
+  item.quotes = [{ id: 'old', storeUrl: 'https://tienda.example.cr', storeName: 'Tienda', productUrl: previous,
+    title: 'Cama base queen de metal con colchón', priceCrc: 100_000, source: 'store_direct', basis: 'published',
+    availability: 'in_stock', capturedAt: '2026-11-26T12:00:00Z' }];
+  const search = vi.fn(async (_url, options: RequestInit) => {
+    const request = JSON.parse(String(options.body));
+    const query = JSON.parse(request.messages[1].content);
+    expect(query.especificaciones).toEqual(item.specificationsByTier!.balanced);
+    expect(query.nivel.label).toBe('Gama media');
+    return Response.json({ choices: [{ message: { content: preferred } }] });
+  });
+  vi.stubGlobal('fetch', search);
+  vi.mocked(fetchJsonLdOffers).mockImplementation(async (productUrl) => [{ productUrl,
+    title: `Cama base queen con colchón de ${productUrl === preferred ? 'madera' : 'metal'}`,
+    availability: 'InStock', priceCrc: productUrl === preferred ? 150_000 : 100_000,
+    description: productUrl === preferred ? 'Respaldo alto.' : undefined,
+    review: { rating: 4.8, count: 50, sourceUrl: productUrl },
+  }]);
+  const result = await quoteItemOnDemand(item, { tier: 'balanced' });
+  expect(search).toHaveBeenCalledOnce();
+  expect(result.quote).toMatchObject({ productUrl: preferred, description: 'Respaldo alto.', tier: 'balanced' });
+});
+
 it('quotes pending items in a bounded parallel pool and uses prices published by the store', async () => {
   vi.stubEnv('AI_OFFLINE_STUB', '0');
   vi.stubEnv('OPENROUTER_API_KEY', 'test-key');

@@ -40,6 +40,8 @@ describe('Excel budget export', () => {
     const project = applyDemoQuotes(buildNatarundiProject('workspace', 'project'));
     project.budgetTiers = ['balanced', 'premium'];
     const item = project.items.find(({ id }) => id === 'i-master-bed')!;
+    item.quantityByTier = { premium: 2 };
+    item.specificationsByTier = { premium: ['Material: madera sólida.', 'Tamaño: queen.'] };
     const direct = 'https://tienda.example.cr/cama-queen-500';
     item.quotes.push({ ...item.quotes[0]!, id: 'premium', basis: 'published', priceCrc: 505_000, tier: 'premium', productUrl: direct,
       review: { rating: 4.8, count: 90, sourceUrl: 'https://resenas.example.cr/cama-500' } });
@@ -48,10 +50,12 @@ describe('Excel budget export', () => {
     const detail = workbook.getWorksheet('Ítems')!;
     const row = detail.getRows(6, detail.rowCount)!.find((entry) => entry.getCell(9).hyperlink === direct)!;
     expect(comparison.getCell('B6').result).toBe(projectStats(project.items).totalCrc);
-    expect(comparison.getCell('B7').result).toBe(505_000);
+    expect(comparison.getCell('B7').result).toBe(1_010_000);
     expect(comparison.getCell('C7').result).toBe(1);
     expect(row.getCell(1).text).toContain('Cuartos · Dormitorio principal');
     expect(row.getCell(16).text).toBe('Gama alta');
+    expect(row.getCell(3).value).toBe(2);
+    expect(row.getCell(15).text).toContain('Material: madera sólida.');
     expect(row.getCell(18).hyperlink).toBe('https://resenas.example.cr/cama-500');
   });
 

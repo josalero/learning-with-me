@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { applyNatarundiOpeningPrices } from '../../domain/natarundi-opening.js';
+import { applyNatarundiLaundryPrices, applyNatarundiOpeningPrices } from '../../domain/natarundi-opening.js';
 import type { FurnishingProject } from '../../shared/types.js';
 import { getPool } from './client.js';
 
@@ -20,13 +20,15 @@ async function main(): Promise<void> {
     for (const file of files) {
       if (known.has(file)) continue;
       await client.query(readFileSync(path.join(migrations, file), 'utf8'));
-      if (file === '0006_natarundi_inventory.sql') {
+      const attachPrices = file === '0006_natarundi_inventory.sql' ? applyNatarundiOpeningPrices
+        : file === '0008_natarundi_laundry.sql' ? applyNatarundiLaundryPrices : undefined;
+      if (attachPrices) {
         const rows = await client.query<{ id: string; payload: FurnishingProject }>(
           'SELECT id, payload FROM projects WHERE name = $1 AND address = $2 FOR UPDATE',
           ['Condominio Natarundi — Portegolpe', 'Condominio Natarundi, Portegolpe, Guanacaste']);
         for (const { id, payload } of rows.rows) {
           await client.query('UPDATE projects SET payload = $1, updated_at = now() WHERE id = $2',
-            [applyNatarundiOpeningPrices(payload), id]);
+            [attachPrices(payload), id]);
         }
       }
       await client.query('INSERT INTO schema_migrations (name) VALUES ($1)', [file]);

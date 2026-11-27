@@ -30,6 +30,7 @@ import { syncAllProjectsFxRate } from '../services/fxProjectSync.js';
 import { loadOwnedProject, projectFromRow, saveProjectPayload } from '../services/projects.js';
 import { ProgressError, respondWithProgress } from '../services/progress.js';
 import { projectStats } from '../../shared/projectStats.js';
+import { MAX_SPECIFICATIONS, MAX_SPECIFICATION_LENGTH } from '../../shared/itemSpecifications.js';
 import { normalizeSearch } from '../../shared/search.js';
 import {
   attachQuoteToProject,
@@ -116,14 +117,17 @@ const manualItemSchema = z.object({
   zoneId: z.string().max(80),
   qty: z.number().int().min(1).max(999),
   notes: z.string().trim().max(500).optional(),
+  specifications: z.array(z.string().trim().min(1).max(MAX_SPECIFICATION_LENGTH)).min(1).max(MAX_SPECIFICATIONS).optional(),
   purchaseUnit: z.enum(['unit', 'set']).optional(),
   requestId: z.string().regex(/^[0-9a-f]{32}$/).optional(),
 });
 const splitItemSchema = z.object({
-  components: z.array(manualItemSchema.pick({ name: true, qty: true, zoneId: true }).partial({ zoneId: true })).min(2).max(12),
+  components: z.array(manualItemSchema.pick({ name: true, qty: true, zoneId: true, specifications: true }).partial({ zoneId: true })).min(2).max(12),
 });
-const itemEditSchema = manualItemSchema.pick({ qty: true, zoneId: true }).partial().strict()
-  .refine(({ qty, zoneId }) => qty !== undefined || zoneId !== undefined);
+const itemEditSchema = manualItemSchema.pick({ qty: true, zoneId: true, specifications: true }).extend({
+  tier: z.enum(BUDGET_TIERS),
+}).partial().strict().refine(({ qty, zoneId, specifications }) =>
+  qty !== undefined || zoneId !== undefined || specifications !== undefined);
 
 export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/auth/login', async (request, reply) => {
@@ -376,8 +380,8 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     const params = z.object({ projectId: z.string().uuid() }).safeParse(request.params);
     if (!params.success) return reply.code(404).send({ error: 'No se encontró el proyecto.' });
     const input = manualItemSchema.safeParse(request.body);
-    if (!input.success) return reply.code(400).send({ error: 'Revisa el nombre, la zona y la cantidad del artículo.' });
-    const { name, qty, zoneId, notes, purchaseUnit, requestId } = input.data;
+    if (!input.success) return reply.code(400).send({ error: 'Revisa el nombre, el espacio, la cantidad y las especificaciones del artículo.' });
+    const { name, qty, zoneId, notes, specifications, purchaseUnit, requestId } = input.data;
     const id = `manual-${requestId ?? randomUUID()}`;
     const result = await getDb().transaction(async (tx) => {
       const project = await loadOwnedProject(tx, user.workspaceId, params.data.projectId, true);
@@ -386,7 +390,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       if (existing) return { status: 'existing', project, item: existing } as const;
       if (zoneId && !project.zones.some((zone) => zone.id === zoneId)) return { status: 'invalid-zone' } as const;
       const item: CatalogItem = {
-        id, name, qty, zoneId, notes: notes || undefined, purchaseUnit, category: 'equipamiento', quotes: [],
+        id, name, qty, zoneId, notes: notes || undefined, specifications, purchaseUnit, category: 'equipamiento', quotes: [],
         unquotedReason: 'Pendiente de buscar precios en las tiendas registradas.',
       };
       const updated = { ...project, items: [...project.items, item] };
@@ -404,24 +408,35 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     const params = z.object({ projectId: z.string().uuid(), itemId: z.string().min(1).max(100) }).safeParse(request.params);
     if (!params.success) return reply.code(404).send({ error: 'No se encontró el artículo.' });
     const input = itemEditSchema.safeParse(request.body);
-    if (!input.success) return reply.code(400).send({ error: 'Elige un ambiente o ingresa una cantidad entera entre 1 y 999.' });
+    if (!input.success) return reply.code(400).send({ error: 'Revisa el espacio, las especificaciones o la cantidad. La cantidad debe ser un entero entre 1 y 999.' });
     const { projectId, itemId } = params.data;
-    const { zoneId, qty } = input.data;
+    const { zoneId, qty, tier, specifications } = input.data;
     const updated = await getDb().transaction(async (tx) => {
       const project = await loadOwnedProject(tx, user.workspaceId, projectId, true);
       const index = project?.items.findIndex(({ id }) => id === itemId) ?? -1;
       if (!project || index < 0) return null;
       if (zoneId && !project.zones.some(({ id }) => id === zoneId)) return { invalidZone: true } as const;
       const item = project.items[index]!;
-      const next = { ...item, zoneId: zoneId ?? item.zoneId, qty: qty ?? item.qty };
-      if (next.qty !== item.qty || next.zoneId !== item.zoneId) {
+      if (item.id === 'i-laundry-tower' && qty !== undefined && qty !== 1) return { fixedQuantity: true } as const;
+      const next: CatalogItem = { ...item, zoneId: zoneId ?? item.zoneId };
+      if (qty !== undefined) {
+        if (tier) next.quantityByTier = { ...item.quantityByTier, [tier]: qty };
+        else next.qty = qty;
+      }
+      if (specifications) {
+        if (tier) next.specificationsByTier = { ...item.specificationsByTier, [tier]: specifications };
+        else next.specifications = specifications;
+      }
+      if (next.qty !== item.qty || next.zoneId !== item.zoneId || (tier && qty !== undefined) || specifications) {
         const items = project.items.slice();
         items[index] = next;
         await saveProjectPayload(tx, { ...project, items });
       }
-      return { qty: next.qty, zoneId: next.zoneId };
+      return { qty: next.qty, zoneId: next.zoneId, quantityByTier: next.quantityByTier,
+        specifications: next.specifications, specificationsByTier: next.specificationsByTier };
     });
     if (updated && 'invalidZone' in updated) return reply.code(400).send({ error: 'El ambiente seleccionado no pertenece a este proyecto.' });
+    if (updated && 'fixedQuantity' in updated) return reply.code(400).send({ error: 'La lavandería tiene espacio para un solo centro de lavado.' });
     return updated ?? reply.code(404).send({ error: 'No se encontró el artículo.' });
   });
 
@@ -438,6 +453,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       if (!project) return null;
       const bundle = project.items.find(({ id }) => id === itemId);
       if (!bundle) return project.itemizedBundles?.some(({ id }) => id === itemId) ? { project } : null;
+      if (bundle.id === 'i-laundry-tower') return { error: 'Cotizá el centro de lavado como un equipo integrado.' };
       if (isTelevisionRequest(bundle) && parsed.data.components.some(({ name }) => !namesTelevision(name))) {
         return { error: 'Indica el producto de cada partida, por ejemplo «Televisor para dormitorio».' };
       }

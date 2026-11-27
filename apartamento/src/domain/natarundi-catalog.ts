@@ -2,7 +2,7 @@ import type { CatalogItem, FurnishingProject, ProjectZone } from '../shared/type
 
 export const NATARUNDI_ZONES: ProjectZone[] = [
   { id: 'z-kitchen', slug: 'cocina-isla', labelEs: 'Cocina + isla', areaM2: 18.5, notes: 'Isla 2.16×0.90 m; nicho refri 1.10 m' },
-  { id: 'z-laundry', slug: 'lavanderia', labelEs: 'Lavandería', notes: 'Línea eléctrica; torre lavadora' },
+  { id: 'z-laundry', slug: 'lavanderia', labelEs: 'Lavandería', notes: 'Línea eléctrica; espacio para un centro de lavado vertical' },
   { id: 'z-dining', slug: 'comedor', labelEs: 'Comedor', notes: 'Junto a cocina' },
   { id: 'z-living', slug: 'sala', labelEs: 'Sala', notes: 'Abanico de techo' },
   { id: 'z-master', slug: 'dormitorio-principal', labelEs: 'Dormitorio principal', notes: 'Abanico; walk-in closet original' },
@@ -26,8 +26,8 @@ export const NATARUNDI_ITEMS: CatalogItem[] = [
   item({ id: 'i-cookware', zoneId: 'z-kitchen', name: 'Menaje cocina Airbnb (ollas, sartenes, utensilios)', category: 'menaje', qty: 1 }),
   item({ id: 'i-island-stools', zoneId: 'z-kitchen', name: 'Taburetes isla (×3)', category: 'mobiliario', qty: 3 }),
   item({ id: 'i-fan-kitchen', zoneId: 'z-kitchen', name: 'Abanico techo cocina', category: 'climatizacion', qty: 1 }),
-  item({ id: 'i-washer', zoneId: 'z-laundry', name: 'Lavadora (torre o individual)', category: 'electrodomesticos', qty: 1 }),
-  item({ id: 'i-dryer', zoneId: 'z-laundry', name: 'Secadora (si no es torre)', category: 'electrodomesticos', qty: 1, unquotedReason: 'Pendiente confirmar si hay espacio para torre vs par' }),
+  item({ id: 'i-laundry-tower', zoneId: 'z-laundry', name: 'Centro de lavado eléctrico vertical', category: 'electrodomesticos', qty: 1,
+    notes: 'Confirmar las medidas libres del nicho, toma eléctrica, ventilación y costo de instalación y entrega en Portegolpe.' }),
   item({ id: 'i-dining-set', zoneId: 'z-dining', name: 'Mesa comedor + sillas (4–6)', category: 'mobiliario', qty: 1 }),
   item({ id: 'i-sofa', zoneId: 'z-living', name: 'Sofá cama o sofá + futón', category: 'mobiliario', qty: 1 }),
   item({ id: 'i-tv', zoneId: 'z-living', name: 'TV smart 43–50"', category: 'electronica', qty: 1 }),

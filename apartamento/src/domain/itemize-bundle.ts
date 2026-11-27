@@ -1,6 +1,6 @@
 import type { CatalogItem, FurnishingProject } from '../shared/types.js';
 
-export type BundleComponent = Pick<CatalogItem, 'id' | 'name' | 'qty' | 'purchaseUnit' | 'notes'> & { zoneId?: string };
+export type BundleComponent = Pick<CatalogItem, 'id' | 'name' | 'qty' | 'purchaseUnit' | 'notes' | 'specifications'> & { zoneId?: string };
 
 export function itemizeBundle(project: FurnishingProject, bundle: CatalogItem, components: BundleComponent[]): FurnishingProject {
   const items = project.items.flatMap((item) => item.id === bundle.id ? components.map((component): CatalogItem => ({

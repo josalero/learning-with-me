@@ -53,6 +53,8 @@ function offerToQuote(offer: ParsedOffer, usdCrcRate = 0): LineItemQuote | null 
     productUrl: offer.productUrl,
     basis: 'published',
     title: offer.title, brand: offer.brand?.trim().slice(0,120), modelIds: offer.modelIds,
+    description: offer.description?.trim().replace(/\s+/g, ' ').slice(0, 480) || undefined,
+    dimensions: offer.dimensions && Object.values(offer.dimensions).some(Boolean) ? offer.dimensions : undefined,
     priceCrc: Math.round(amount),
     priceUsd: offer.priceUsd,
     availability: stock === 'instock' ? 'in_stock'
@@ -128,13 +130,22 @@ export async function quoteItemOnDemand(item: CatalogItem, options: QuoteOptions
   const counts: SearchCounts = { queries: 0, errors: 0, pages: 0, unreadable: 0 };
   const known = [...current, ...(item.lastSearch?.[tier]?.offers ?? [])]
     .filter((q) => q.basis === 'published').map((q) => q.productUrl);
+  const customSpecs = item.specificationsByTier?.[tier]?.length || item.specifications?.length;
   const stores = options.stores ?? [];
   const products: PricedProduct[] = [];
+  const newMatches = new Set<string>();
   let checked = 0;
   async function discover(website?: URL) {
     if (offline) return [];
     counts.queries++;
-    try { return await findProductPages(item, options.region, website, tier); }
+    try {
+      const links = await findProductPages(item, options.region, website, tier);
+      for (const link of links) {
+        const url = publicUrl(link);
+        if (url && (!website || matchesStoreWebsite(url, website))) newMatches.add(url.href);
+      }
+      return links;
+    }
     catch { counts.errors++; return []; }
   }
   report(offline ? 'verifying' : 'searching', offline ? 'Comprobando las fuentes directas disponibles.' : 'Buscando fichas de producto en las tiendas.');
@@ -172,7 +183,9 @@ export async function quoteItemOnDemand(item: CatalogItem, options: QuoteOptions
   if (!stores.length) remaining.push(...await discover());
   products.push(...await verifyCandidates(remaining, item, counts, tier, options.usdCrcRate));
   const eligible = products.filter((p) => productProvenance(p.quote.title, p.quote.brand) !== 'replica');
-  const result = await rankReviewedProducts(eligible, () => report('verifying', 'Comparando precio y reseñas del modelo exacto.'), !offline);
+  const matches = customSpecs ? eligible.filter(({ quote }) => newMatches.has(quote.productUrl)) : [];
+  const result = await rankReviewedProducts(matches.length ? matches : eligible,
+    () => report('verifying', 'Comparando precio y reseñas del modelo exacto.'), !offline);
   const alternatives = result.alternatives.map((entry) => ({ ...entry, tier }));
   if (result.recommendation) return { quote: { ...result.recommendation, tier }, alternatives, mode: 'agent' };
 

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Plus, X } from 'lucide-react';
 import type { CatalogItem, FurnishingProject, ProjectZone } from '@shared/types';
 import { ItemZonePicker, unassignedLabel } from './ItemLocation';
+import { SpecificationField, specificationError, specificationLines } from './SpecificationField';
 import { ApiError, Modal, Notice, post, Spinner } from './ui';
 
 export default function SplitItemDialog({ projectId, item, zones, onClose, onSaved }: {
@@ -21,7 +22,15 @@ export default function SplitItemDialog({ projectId, item, zones, onClose, onSav
     const data = new FormData(event.currentTarget);
     const components = parts.map((id) => ({
       name: String(data.get(`part-${id}`) ?? '').trim(), qty: Number(data.get(`qty-${id}`)), zoneId: data.get(`zone-${id}`),
+      specifications: specificationLines(data.get(`specifications-${id}`)),
     }));
+    const invalidSpecifications = components.findIndex(({ specifications }) => specificationError(specifications));
+    if (invalidSpecifications >= 0) {
+      setError(`Artículo ${invalidSpecifications + 1}. ${specificationError(components[invalidSpecifications]!.specifications)}`);
+      const field = event.currentTarget.elements.namedItem(`specifications-${parts[invalidSpecifications]}`);
+      if (field instanceof HTMLElement) field.focus();
+      return;
+    }
     const firstUnassigned = components.findIndex(({ zoneId }) => zoneId === null);
     if (firstUnassigned >= 0) {
       setError(`Elegí el espacio del artículo ${firstUnassigned + 1}.`);
@@ -52,6 +61,7 @@ export default function SplitItemDialog({ projectId, item, zones, onClose, onSav
           <button type="button" className="icon-button" disabled={parts.length <= 2} aria-label={`Quitar artículo ${index + 1}`}
             onClick={() => setParts((current) => current.filter((value) => value !== id))}><X size={17} aria-hidden="true" /></button>
           <ItemZonePicker name={`zone-${id}`} label={`Espacio del artículo ${index + 1}`} zones={zones} disabled={busy} />
+          <SpecificationField id={`specifications-${id}`} label={`Especificaciones del artículo ${index + 1}`} compact busy={busy} />
         </div>)}
       </fieldset>
       {error && <Notice>{error}</Notice>}

@@ -54,10 +54,10 @@ export default function Dashboard({ initialProject, view, roomId, ...account }: 
     try { localStorage.setItem(tierKey, next); } catch { /* The current tab still keeps the selection. */ }
   }
 
-  async function editItem(itemId: string, changes: { qty: number } | { zoneId: string }) {
+  async function editItem(itemId: string, changes: { qty: number; tier: BudgetTier } | { zoneId: string } | { specifications: string[]; tier: BudgetTier }) {
     setSavingItemId(itemId);
     try {
-      const updated = await api<Pick<CatalogItem, 'qty' | 'zoneId'>>(`/api/projects/${project.id}/items/${encodeURIComponent(itemId)}`, {
+      const updated = await api<Pick<CatalogItem, 'qty' | 'zoneId' | 'quantityByTier' | 'specifications' | 'specificationsByTier'>>(`/api/projects/${project.id}/items/${encodeURIComponent(itemId)}`, {
         method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(changes),
       });
       setProject((current) => ({ ...current, items: current.items.map((item) => item.id === itemId ? { ...item, ...updated } : item) }));
@@ -165,7 +165,8 @@ export default function Dashboard({ initialProject, view, roomId, ...account }: 
       <div hidden={view !== 'inventario'}><Inventory
         project={project} roomId={roomId} tier={tier} onTierChange={chooseTier} active={view === 'inventario'} pendingCount={pending.length}
         saving={bulkScope !== null || updating || quoteItem !== null || savingItemId !== null} bulkScope={bulkScope}
-        savingItemId={savingItemId} onSaveQuantity={(itemId, qty) => editItem(itemId, { qty })} onEnterQuoteUrl={setQuoteItem}
+        savingItemId={savingItemId} onSaveQuantity={(itemId, qty) => editItem(itemId, { qty, tier })} onEnterQuoteUrl={setQuoteItem}
+        onSaveSpecifications={(itemId, specifications) => editItem(itemId, { specifications, tier })}
         onMoveItem={(itemId, zoneId) => editItem(itemId, { zoneId })}
         onItemMoved={(item, zoneId) => {
           const label = project.zones.find(({ id }) => id === zoneId)?.labelEs ?? unassignedLabel;

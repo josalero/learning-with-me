@@ -22,6 +22,13 @@ export function matchesPurchase(item: CatalogItem, title: string, description = 
       && (item.id !== 'i-tv' || /\b(4[3-9]|50)\b/.test(evidence));
   }
   switch (item.id) {
+    case 'i-laundry-tower': {
+      const equipment = /\b(?:(?:centro|torre) de lavado|wash ?tower|lavadora y secadora (?:vertical|apilada))\b/;
+      if (!equipment.test(name) || /^(?:kit|base|pedestal|repuesto|accesorio|soporte)\b/.test(name)
+        || /\b(?:para (?:el |un )?(?:centro|torre) de lavado|a gas)\b/.test(name) || /\bsecadora (?:de|a) gas\b/.test(evidence)) return false;
+      if (!/\b(electric[oa]s?|220\s*v(?:oltios)?|240\s*v(?:oltios)?)\b/.test(evidence)) return false;
+      return tier !== 'premium' || /\b(inverter|bomba de calor|secado por condensacion|vapor|antivibracion)\b/.test(evidence);
+    }
     case 'i-refri': return /^(refrigerador|nevera|frigorifico)/.test(name);
     case 'i-micro': return /^(?:horno (?:de )?)?microondas/.test(name);
     case 'i-washer': return /^lavadora/.test(name);

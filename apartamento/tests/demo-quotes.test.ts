@@ -6,9 +6,9 @@ describe('applyDemoQuotes', () => {
   it('quotes most catalog items and keeps only intentional gaps', () => {
     const p = applyDemoQuotes(buildNatarundiProject('ws', 'proj'));
     const unquoted = p.items.filter((i) => i.quotes.length === 0);
-    expect(p.items.length).toBe(20);
+    expect(p.items.length).toBe(19);
     expect(unquoted).toHaveLength(3);
-    expect(unquoted.map((i) => i.id).sort()).toEqual(['i-br3-desk', 'i-dryer', 'i-freight']);
+    expect(unquoted.map((i) => i.id).sort()).toEqual(['i-br3-desk', 'i-freight', 'i-laundry-tower']);
     for (const q of p.items.flatMap((i) => i.quotes)) {
       expect(q.storeName.length).toBeGreaterThan(0);
       expect(q.productUrl).toMatch(/^https:\/\//);
