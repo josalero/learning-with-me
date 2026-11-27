@@ -3,7 +3,7 @@ import { Check, ChevronDown } from 'lucide-react';
 import type { CatalogItem, ProjectZone } from '@shared/types';
 import { ApiError, Modal, Notice, Spinner } from './ui';
 
-export const unassignedLabel = 'Sin ambiente asignado';
+export const unassignedLabel = 'Sin espacio asignado';
 
 export function ItemZonePicker({ name, label, zones, initialZoneId, disabled = false }: {
   name: string;
@@ -21,9 +21,9 @@ export function ItemZonePicker({ name, label, zones, initialZoneId, disabled = f
     <span className="item-zone-label">{label}</span>
     {selected !== undefined && <input type="hidden" name={name} value={selected} />}
     <details className="item-zone-picker" ref={menu}>
-      <summary aria-label={`${label}. ${currentLabel ?? 'Elegí un ambiente'}`} aria-disabled={disabled || undefined}
+      <summary aria-label={`${label}. ${currentLabel ?? 'Elegí un espacio'}`} aria-disabled={disabled || undefined}
         onClick={(event) => { if (disabled) event.preventDefault(); }}>
-        <span>{currentLabel ?? 'Elegí un ambiente'}</span><ChevronDown size={15} aria-hidden="true" />
+        <span>{currentLabel ?? 'Elegí un espacio'}</span><ChevronDown size={15} aria-hidden="true" />
       </summary>
       <ul role="list" aria-label={label}>{options.map(({ id, label: option }) => <li key={id}>
         <button type="button" disabled={disabled} aria-pressed={selected === id} onClick={() => {
@@ -55,7 +55,7 @@ export function MoveItemDialog({ item, zones, onClose, onSave, onMoved }: {
     const zoneId = new FormData(event.currentTarget).get('zoneId');
     if (busy) return;
     if (typeof zoneId !== 'string' || zoneId === (current?.id ?? '')) {
-      setError('Elegí un ambiente distinto para mover el artículo.');
+      setError('Elegí un espacio distinto para mover el artículo.');
       return;
     }
     setBusy(true);
@@ -70,11 +70,11 @@ export function MoveItemDialog({ item, zones, onClose, onSave, onMoved }: {
     }
   }
 
-  return <Modal title="Mover a otro ambiente" onDismiss={onClose} busy={busy}>
+  return <Modal title="Mover a otro espacio" onDismiss={onClose} busy={busy}>
     <p className="quote-item-title">{item.name}</p>
     <p className="quote-tier-label">Ubicación actual · {current?.labelEs ?? unassignedLabel}</p>
     <form className="manual-form" onSubmit={submit}>
-      <ItemZonePicker name="zoneId" label="Ambiente de destino" zones={zones} initialZoneId={current?.id ?? ''} disabled={busy} />
+      <ItemZonePicker name="zoneId" label="Espacio de destino" zones={zones} initialZoneId={current?.id ?? ''} disabled={busy} />
       {error && <Notice>{error}</Notice>}
       <div className="button-row modal-actions">
         <button type="button" className="button button-secondary" onClick={onClose} disabled={busy}>Cancelar</button>

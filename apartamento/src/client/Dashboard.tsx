@@ -5,8 +5,9 @@ import { BUDGET_TIERS, type BudgetQuote, type BudgetTier, type CatalogItem, type
 import AirbnbReview from './AirbnbReview';
 import AgentReview from './AgentReview';
 import BudgetSettings from './BudgetSettings';
-import Inventory, { QuoteDialog, unassignedRoomId, type BulkScope } from './Inventory';
+import Inventory, { QuoteDialog, type BulkScope } from './Inventory';
 import { unassignedLabel } from './ItemLocation';
+import { ProjectAtlas, projectRooms, unassignedRoomId } from './ProjectAtlas';
 import { inventoryPath, Link, navigate, projectPath, type ProjectView } from './navigation';
 import References from './References';
 import { QuoteProgress } from './QuoteProgress';
@@ -18,7 +19,7 @@ const pageTitles = { resumen: 'Resumen', agentes: 'Agentes', inventario: 'Invent
 const overviewLinks = [
   { view: 'airbnb', title: 'Revisión para Airbnb', description: 'Contrasta el plano con los requisitos del anuncio.', icon: ClipboardCheck },
   { view: 'agentes', title: 'Actividad de los agentes', description: 'Ejecuta la revisión y aprueba sus etapas.', icon: ListChecks },
-  { view: 'inventario', title: 'Equipamiento por ambiente', description: 'Revisa artículos, cantidades y cotizaciones.', icon: Boxes },
+  { view: 'inventario', title: 'Equipamiento por espacio', description: 'Revisa artículos, cantidades y cotizaciones.', icon: Boxes },
   { view: 'referencias', title: 'Referencias y análisis visual', description: 'Sube imágenes y detecta artículos adicionales.', icon: Images },
 ] as const;
 
@@ -141,10 +142,13 @@ export default function Dashboard({ initialProject, view, roomId, ...account }: 
         )}
       </div>}
       {view === 'resumen' && <>
-        <BudgetSettings project={project} locked={bulkScope !== null || updating || quoteItem !== null} onChoose={(next) => {
-          chooseTier(next);
-          navigate(inventoryPath(project.id));
-        }} />
+        <div className="atlas-overview">
+          <ProjectAtlas project={project} rooms={projectRooms(project)} />
+          <BudgetSettings project={project} locked={bulkScope !== null || updating || quoteItem !== null} onChoose={(next) => {
+            chooseTier(next);
+            navigate(inventoryPath(project.id));
+          }} />
+        </div>
         <section className="panel overview-panel" aria-labelledby="overview-title">
           <div className="panel-header"><h2 id="overview-title">Explorar el proyecto</h2></div>
           <div className="overview-links">

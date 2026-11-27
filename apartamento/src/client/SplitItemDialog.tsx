@@ -24,7 +24,7 @@ export default function SplitItemDialog({ projectId, item, zones, onClose, onSav
     }));
     const firstUnassigned = components.findIndex(({ zoneId }) => zoneId === null);
     if (firstUnassigned >= 0) {
-      setError(`Elegí el ambiente del artículo ${firstUnassigned + 1}.`);
+      setError(`Elegí el espacio del artículo ${firstUnassigned + 1}.`);
       event.currentTarget.querySelectorAll('summary')[firstUnassigned]?.focus();
       return;
     }
@@ -42,7 +42,7 @@ export default function SplitItemDialog({ projectId, item, zones, onClose, onSav
   return <Modal title="Dividir en artículos" onDismiss={onClose} busy={busy}>
     <p className="quote-item-title">{item.name}</p>
     <p className="quote-tier-label">Ubicación original · {zones.find(({ id }) => id === item.zoneId)?.labelEs ?? unassignedLabel}</p>
-    <p className="quote-tier-label">Elegí el ambiente de cada artículo. Cada partida nueva se cotiza por separado.</p>
+    <p className="quote-tier-label">Elegí el espacio de cada artículo. Cada partida nueva se cotiza por separado.</p>
     <form className="manual-form" onSubmit={save}>
       <fieldset disabled={busy} className="split-parts">
         <legend className="sr-only">Artículos del conjunto</legend>
@@ -51,7 +51,7 @@ export default function SplitItemDialog({ projectId, item, zones, onClose, onSav
           <label>Cantidad<span className="sr-only"> del artículo {index + 1}</span><input name={`qty-${id}`} type="number" min={1} max={999} defaultValue={item.qty} required /></label>
           <button type="button" className="icon-button" disabled={parts.length <= 2} aria-label={`Quitar artículo ${index + 1}`}
             onClick={() => setParts((current) => current.filter((value) => value !== id))}><X size={17} aria-hidden="true" /></button>
-          <ItemZonePicker name={`zone-${id}`} label={`Ambiente del artículo ${index + 1}`} zones={zones} disabled={busy} />
+          <ItemZonePicker name={`zone-${id}`} label={`Espacio del artículo ${index + 1}`} zones={zones} disabled={busy} />
         </div>)}
       </fieldset>
       {error && <Notice>{error}</Notice>}

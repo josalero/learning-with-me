@@ -8,7 +8,7 @@ import { api, ApiError, Notice, Spinner } from './ui';
 
 const stages = [
   { id: 'orchestrator', title: 'Preparación', description: 'Carga el inventario.', icon: Workflow },
-  { id: 'visual_space', title: 'Distribución', description: 'Revisa las zonas del apartamento.', icon: Map },
+  { id: 'visual_space', title: 'Distribución', description: 'Revisa los espacios del apartamento.', icon: Map },
   { id: 'market_scrape', title: 'Fuentes de precios', description: 'Identifica el origen de los precios guardados.', icon: Store },
   { id: 'quality_critic', title: 'Control de calidad', description: 'Contrasta el plano con los criterios de Airbnb y detecta cotizaciones pendientes.', icon: ClipboardCheck },
   { id: 'budget_quoter', title: 'Presupuesto', description: 'Consolida los importes.', icon: Calculator },
@@ -32,6 +32,7 @@ export default function AgentReview({ projectId, active }: { projectId: string; 
   const [error, setError] = useState('');
   const [lastEvent, setLastEvent] = useState<string>();
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [selectedStep, setSelectedStep] = useState<ReviewStep>();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,6 +55,7 @@ export default function AgentReview({ projectId, active }: { projectId: string; 
   async function run() {
     if (busy || loading) return;
     const gate = workflow?.pendingGate;
+    setSelectedStep(undefined);
     setBusy(true);
     setError('');
     setLastEvent('Conectando con los agentes…');
@@ -90,6 +92,9 @@ export default function AgentReview({ projectId, active }: { projectId: string; 
   const gate = workflow?.pendingGate;
   const completed = workflow?.stage === 'completed' && !error;
   const action = gate === 'zone_layout' ? 'Aprobar distribución' : gate === 'final_budget' ? 'Aprobar presupuesto' : completed ? 'Volver a ejecutar' : 'Ejecutar agentes';
+  const current = stages.find(({ id }) => id === selectedStep) ?? stages.find(({ id }) => ['running', 'waiting'].includes(activity[id]?.status ?? ''))
+    ?? stages.find(({ id }) => id === workflow?.stage) ?? stages[0]!;
+  const selectedEvent = activity[current.id];
 
   return (
     <div className="agent-review-page">
@@ -108,22 +113,25 @@ export default function AgentReview({ projectId, active }: { projectId: string; 
         </div>
         <div className="sr-only" role="status">{lastEvent}</div>
         <ol className="agent-flow" role="list" aria-label="Etapas de los agentes">
-          {stages.map(({ id, title, description, icon: Icon }) => {
+          {stages.map(({ id, title, icon: Icon }) => {
             const event = activity[id];
             const status = event?.status ?? 'ready';
             const StatusIcon = status === 'waiting' ? Clock3 : status === 'completed' ? Check : status === 'failed' ? CircleAlert : null;
             return (
               <li className="agent-step" key={id} data-status={status} aria-current={status === 'running' || status === 'waiting' ? 'step' : undefined}>
-                <div className="agent-step-top">
+                <button type="button" className="agent-step-choice" aria-pressed={current.id === id} onClick={() => setSelectedStep(id)}>
                   <span className="agent-step-icon"><Icon size={18} aria-hidden="true" /></span>
+                  <strong>{title}</strong>
                   <span className="agent-step-status">{status === 'running' ? <Spinner /> : StatusIcon && <StatusIcon size={14} aria-hidden="true" />} {statusLabels[status]}</span>
-                </div>
-                <strong>{title}</strong>
-                <p>{event?.detail ?? description}</p>
+                </button>
               </li>
             );
           })}
         </ol>
+        <div className="agent-step-detail" aria-live="polite">
+          <h3>{current.title}</h3><p>{selectedEvent?.detail ?? current.description}</p>
+          {current.id === 'visual_space' && <Link className="text-action" href={projectPath(projectId, 'inventario')}>Abrir Plano vivo <ArrowRight size={14} aria-hidden="true" /></Link>}
+        </div>
         {error && <div className="agent-footer"><Notice>{error}</Notice></div>}
         {gate && !busy && (
           <div className="agent-footer agent-approval">

@@ -9,6 +9,7 @@ export default function AirbnbReview({ projectId }: { projectId: string }) {
   const [report, setReport] = useState<AirbnbAssessment>();
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [filter, setFilter] = useState<'all' | AirbnbCheck['status']>('all');
   useEffect(() => {
     const controller = new AbortController();
     setFailed(false);
@@ -20,6 +21,9 @@ export default function AirbnbReview({ projectId }: { projectId: string }) {
   if (failed) return <div className="panel page-state"><Notice>No se pudo cargar la revisión.</Notice>
     <button className="button button-secondary" onClick={() => setRetry((n) => n + 1)}>Reintentar</button></div>;
   if (!report) return <p className="page-loading" role="status"><Spinner /> Revisando referencias e inventario…</p>;
+  const visible = filter === 'all' ? report.checks : report.checks.filter((check) => check.status === filter);
+  const layoutChecks = visible.filter((check) => check.policy === 'Anuncio y espacio');
+  const visitChecks = visible.filter((check) => check.policy !== 'Anuncio y espacio');
   function row(check: AirbnbCheck) {
     return <details key={check.id} className="audit-check" open={check.status === 'discrepancy' || undefined}>
       <summary><span><strong>{check.title}</strong><small>{check.policy}</small></span>
@@ -33,13 +37,22 @@ export default function AirbnbReview({ projectId }: { projectId: string }) {
     </details>;
   }
   return <div className="audit-page">
-    <section className="panel" aria-labelledby="audit-layout"><div className="panel-header">
+    <div className="audit-guide" role="group" aria-label="Filtrar criterios de Airbnb">
+      {(['all', 'discrepancy', 'pending', 'documented'] as const).map((option) => (
+        <button type="button" key={option} aria-pressed={filter === option} onClick={() => setFilter(option)}>
+          <span>{option === 'all' ? 'Todos los criterios' : statuses[option]}</span>
+          <strong>{option === 'all' ? report.checks.length : report.checks.filter((check) => check.status === option).length}</strong>
+        </button>
+      ))}
+    </div>
+    {layoutChecks.length > 0 && <section className="panel" aria-labelledby="audit-layout"><div className="panel-header">
       <div><h2 id="audit-layout">Lo que muestran las referencias</h2><p>Comprueba la distribución real antes de fijar la capacidad del anuncio.</p></div>
       <Link className="button button-secondary" href={projectPath(projectId, 'referencias')}>Ver planos y fotos</Link>
-    </div>{report.checks.filter((c) => c.policy === 'Anuncio y espacio').map(row)}</section>
-    <section className="panel" aria-labelledby="audit-visit"><div className="panel-header"><div><h2 id="audit-visit">Antes de recibir huéspedes</h2>
+    </div>{layoutChecks.map(row)}</section>}
+    {visitChecks.length > 0 && <section className="panel" aria-labelledby="audit-visit"><div className="panel-header"><div><h2 id="audit-visit">Antes de recibir huéspedes</h2>
       <p>Contrasta el presupuesto con el equipamiento instalado y las condiciones de operación.</p></div></div>
-      {report.checks.filter((c) => c.policy !== 'Anuncio y espacio').map(row)}</section>
+      {visitChecks.map(row)}</section>}
+    {!visible.length && <div className="panel page-state" role="status">No hay criterios con este estado.</div>}
     <p className="audit-date">Criterios consultados el {new Intl.DateTimeFormat('es-CR', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(report.policyDate))}.</p>
   </div>;
 }

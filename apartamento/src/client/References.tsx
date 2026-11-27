@@ -25,6 +25,7 @@ export default function References({ project, active, onProjectChange }: {
   const [retry, setRetry] = useState(0);
   const [busy, setBusy] = useState<'upload' | 'delete' | 'analyze' | 'add' | null>(null);
   const [preview, setPreview] = useState<ProjectReference | null>(null);
+  const [featuredId, setFeaturedId] = useState<string>();
   const [deleting, setDeleting] = useState<ProjectReference | null>(null);
   const [modalError, setModalError] = useState('');
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
@@ -124,6 +125,7 @@ export default function References({ project, active, onProjectChange }: {
   </div> : <p className="page-loading" role="status"><Spinner /> Cargando referencias…</p>;
 
   const byId = new Map(state.references.map((reference) => [reference.id, reference]));
+  const featured = (featuredId ? byId.get(featuredId) : undefined) ?? state.references[0];
   const zoneNames = new Map(project.zones.map(({ id, labelEs }) => [id, labelEs]));
 
   return (
@@ -142,15 +144,25 @@ export default function References({ project, active, onProjectChange }: {
               {busy === 'upload' ? <><Spinner /> Subiendo…</> : <><ImagePlus size={17} aria-hidden="true" /> Subir imagen</>}
             </button>
           </div>
+          {featured && <figure className="reference-stage">
+            <div className="reference-stage-media" key={featured.id}>
+              <img src={referenceImage(project.id, featured.id)} alt={featured.title} />
+            </div>
+            <figcaption><strong aria-live="polite">{featured.title}</strong>
+              <button type="button" className="button button-secondary button-small" onClick={() => setPreview(featured)}>
+                <Maximize2 size={15} aria-hidden="true" /> Ampliar
+              </button>
+            </figcaption>
+          </figure>}
           {state.references.length ? (
             <ul className="reference-gallery" role="list">
               {state.references.map((reference) => {
                 const isSelected = selected.includes(reference.id);
                 return (
-                  <li className="reference-card" key={reference.id}>
-                    <button className="reference-preview" type="button" onClick={() => setPreview(reference)} aria-label={`Ampliar ${reference.title}`}>
+                  <li className="reference-card" key={reference.id} data-featured={featured?.id === reference.id}>
+                    <button className="reference-preview" type="button" onClick={() => setFeaturedId(reference.id)}
+                      aria-pressed={featured?.id === reference.id} aria-label={`Mostrar ${reference.title}`}>
                       <img src={referenceImage(project.id, reference.id)} alt="" loading="lazy" />
-                      <span><Maximize2 size={16} aria-hidden="true" /></span>
                     </button>
                     <div className="reference-meta">
                       <h3>{reference.title}</h3>

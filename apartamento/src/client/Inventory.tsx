@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Armchair, ArrowUpRight, Bath, BedDouble, ChevronDown, CookingPot, Fan, House, Lamp, Link2, Minus, PackageOpen, Plus, RefreshCw, Search, Sofa, Sparkles, Truck, Tv, Utensils, WashingMachine } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, Fan, Lamp, Link2, Minus, PackageOpen, Plus, RefreshCw, Search, Sofa, Sparkles, Tv, WashingMachine } from 'lucide-react';
 import { budgetProfiles, quotesForTier } from '@shared/budgetProfiles';
 import { brandLabel, productClass, productProvenance } from '@shared/brands';
 import { enclosureAdvice, isFlexibleEnclosure, purchaseName } from '@shared/showerEnclosure';
 import { BrandGuide } from './BrandGuide';
-import { projectAreas } from '@shared/projectAreas';
 import { projectStats } from '@shared/projectStats';
 import { isPurchaseSet } from '@shared/purchaseUnit';
 import { quoteBasisLabel, quoteLink } from '@shared/quoteBasis';
 import { normalizeSearch } from '@shared/search';
 import { BUDGET_TIERS, type BudgetTier, type CatalogItem, type FurnishingProject, type LineItemQuote, type QuoteActivity, type QuoteSearch } from '@shared/types';
-import { MoveItemDialog, unassignedLabel } from './ItemLocation';
+import { MoveItemDialog } from './ItemLocation';
+import { lineCount, ProjectAtlas, projectRooms, unassignedRoomId } from './ProjectAtlas';
 import { inventoryPath, Link, navigate, projectPath } from './navigation';
 import { QuoteJob } from './QuoteProgress';
 import SplitItemDialog from './SplitItemDialog';
@@ -69,46 +69,12 @@ function SearchFindings({ search, onUse, busy }: { search: QuoteSearch; onUse: (
 }
 
 export type BulkScope = 'pending' | 'all' | 'room';
-export const unassignedRoomId = 'sin-asignar';
-
-const areaIcons: Record<string, typeof Sofa> = {
-  sala: Sofa, comedor: Utensils, cocina: CookingPot, cuartos: BedDouble, banos: Bath,
-  lavanderia: WashingMachine, terraza: Armchair, 'zone:z-logistics': Truck,
-};
-
-type Room = { id: string; label: string; icon: typeof Sofa; zoneId: string | null; items: CatalogItem[] };
 type InventoryFilters = { query: string; status: 'all' | 'pending' | 'quoted'; group: 'plan' | 'brand' | 'class' };
 const defaultFilters: InventoryFilters = { query: '', status: 'all', group: 'plan' };
-
-function projectRooms(project: FurnishingProject): Room[] {
-  const rooms = projectAreas(project.zones).flatMap(({ id, zones }) => zones.map((zone): Room => ({
-    id: zone.id, label: zone.labelEs, icon: areaIcons[id] ?? House, zoneId: zone.id, items: [],
-  })));
-  const byZone = new Map(rooms.map((room) => [room.zoneId, room]));
-  const unassigned = { id: unassignedRoomId, label: unassignedLabel, icon: PackageOpen, zoneId: null, items: [] as CatalogItem[] };
-  for (const item of project.items) (byZone.get(item.zoneId) ?? unassigned).items.push(item);
-  if (unassigned.items.length || !rooms.length) rooms.push(unassigned);
-  return rooms;
-}
-
-function lineCount(count: number) {
-  return `${count} ${count === 1 ? 'artículo' : 'artículos'}`;
-}
 
 function quantity(value: string) {
   const number = Number(value);
   return /^\d+$/.test(value) && Number.isInteger(number) && number >= 1 && number <= 999 ? number : undefined;
-}
-
-function RoomLinks({ projectId, rooms, currentRoom }: { projectId: string; rooms: Room[]; currentRoom?: Room }) {
-  return <ul className="planner-room-links" role="list">{rooms.map(({ id, icon: Icon, label, items }) => (
-    <li key={id}>
-      <Link href={inventoryPath(projectId, id)} aria-current={currentRoom?.id === id ? 'page' : undefined}>
-        <Icon size={17} aria-hidden="true" /><span>{label}</span>
-        <small aria-label={lineCount(items.length)}>{items.length}</small>
-      </Link>
-    </li>
-  ))}</ul>;
 }
 
 function PlannerTotal({ label, items, tier, hasDraft }: { label: string; items: CatalogItem[]; tier: BudgetTier; hasDraft: boolean }) {
@@ -204,17 +170,9 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
 
   return (
     <section id="inventario" className="planner-layout" aria-labelledby="inventory-title">
-      <aside className="planner-sidebar panel">
-        <nav aria-label="Ambientes de la casa"><h2>Ambientes</h2>
-          <RoomLinks projectId={project.id} rooms={rooms} currentRoom={room} />
-        </nav>
-        {projectTotal}
-      </aside>
-      <div className="planner-workspace">
-        <details className="planner-room-picker panel" key={room?.id ?? roomId}>
-          <summary><House size={17} aria-hidden="true" /> Cambiar de ambiente <ChevronDown size={16} aria-hidden="true" /></summary>
-          <nav aria-label="Ambientes de la casa"><RoomLinks projectId={project.id} rooms={rooms} currentRoom={room} /></nav>
-        </details>
+      <ProjectAtlas id="plano-espacios" project={project} rooms={rooms} activeRoom={room?.id}>{projectTotal}</ProjectAtlas>
+      <div className="planner-workspace" id="detalle-espacio">
+        <a className="atlas-back text-action" href="#plano-espacios">Volver al plano</a>
         <div className="planner-scenario panel">
           <fieldset disabled={saving}>
             <legend>Presupuesto activo</legend>
@@ -229,13 +187,13 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
             {bulkScope === 'pending' ? <><Spinner /> Cotizando…</> : <><Sparkles size={16} aria-hidden="true" /> Cotizar proyecto</>}
           </button>}
         </div>
-        <header className="planner-heading">
+        <header className="planner-heading" key={room?.id ?? roomId}>
           <div className="page-heading">
-            {room && <p><room.icon size={17} aria-hidden="true" /> Equipamiento por ambiente</p>}
-            <h1 id="inventory-title" tabIndex={-1}>{room?.label ?? 'Ambiente no disponible'}</h1>
+            {room && <p><room.icon size={17} aria-hidden="true" /> Equipamiento por espacio</p>}
+            <h1 id="inventory-title" tabIndex={-1}>{room?.label ?? 'Espacio no disponible'}</h1>
             {room && <p>{lineCount(roomItems.length)} · {roomPending} por cotizar</p>}
           </div>
-          {room && <PlannerTotal label="Subtotal del ambiente" items={previewRoom} tier={tier}
+          {room && <PlannerTotal label="Subtotal del espacio" items={previewRoom} tier={tier}
             hasDraft={previewRoom.some((item, index) => item !== roomItems[index])} />}
         </header>
         {room ? <>
@@ -247,7 +205,7 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
             </div>
             <div className="button-row">
               {roomPending > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('room', room.items, room.zoneId)}>
-                {bulkScope === 'room' ? <><Spinner /> Cotizando…</> : 'Cotizar ambiente'}
+                {bulkScope === 'room' ? <><Spinner /> Cotizando…</> : 'Cotizar espacio'}
               </button>}
               <button type="button" className="button button-primary" disabled={saving} onClick={() => setShowManualForm(true)}>
                 <Plus size={17} aria-hidden="true" /> Agregar artículo
@@ -256,8 +214,8 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
           </div>
           <div className="planner-options">
             <label className="search-field">
-              <Search size={17} aria-hidden="true" /><span className="sr-only">Buscar en este ambiente</span>
-              <input type="search" placeholder="Buscar en este ambiente" value={filters.query} onChange={(event) => setFilters({ query: event.target.value })} />
+              <Search size={17} aria-hidden="true" /><span className="sr-only">Buscar en este espacio</span>
+              <input type="search" placeholder="Buscar en este espacio" value={filters.query} onChange={(event) => setFilters({ query: event.target.value })} />
             </label>
             <details className="planner-settings">
               <summary>Opciones del presupuesto <ChevronDown size={15} aria-hidden="true" /></summary>
@@ -281,7 +239,7 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
           {activity}
           <section className="planner-sheet panel" aria-label={`Artículos de ${room.label}`}>
             {visible.length > 0 ? <>
-              {filters.group === 'plan' && <h2 className="sr-only">Artículos del ambiente</h2>}
+              {filters.group === 'plan' && <h2 className="sr-only">Artículos del espacio</h2>}
               <div className="planner-sheet-head planner-columns" aria-hidden="true"><span>Artículo y ficha</span><span>Precio unitario</span><span>Cantidad</span><span>Subtotal</span></div>
               {[...groups.entries()].sort(([a], [b]) => a.localeCompare(b, 'es')).map(([groupName, items]) => (
                 <div className="planner-group" key={groupName}>
@@ -297,13 +255,12 @@ export default function Inventory({ project, roomId, tier, onTierChange, active,
               ))}
             </> : <div className="inventory-empty">
               <PackageOpen size={25} aria-hidden="true" />
-              <p>{roomItems.length === 0 ? 'Este ambiente todavía no tiene artículos.' : query ? 'No hay artículos que coincidan con la búsqueda.'
-                : filters.status === 'pending' ? 'Todos los artículos de este ambiente tienen precio.' : 'Aún no hay artículos con precio en este ambiente.'}</p>
+              <p>{roomItems.length === 0 ? 'Este espacio todavía no tiene artículos.' : query ? 'No hay artículos que coincidan con la búsqueda.'
+                : filters.status === 'pending' ? 'Todos los artículos de este espacio tienen precio.' : 'Aún no hay artículos con precio en este espacio.'}</p>
               {(query || filters.status !== 'all') && <button type="button" className="button button-secondary" onClick={() => setFilters({ query: '', status: 'all' })}>Ver todos los artículos</button>}
             </div>}
           </section>
-        </> : <div className="panel page-state"><p>Elegí un ambiente del proyecto para continuar.</p><Link className="button button-secondary" href={inventoryPath(project.id)}>Ver el primer ambiente</Link></div>}
-        <div className="planner-mobile-total">{projectTotal}</div>
+        </> : <div className="panel page-state"><p>Elegí un espacio del proyecto para continuar.</p><Link className="button button-secondary" href={inventoryPath(project.id)}>Ver el primer espacio</Link></div>}
       </div>
       {showManualForm && <ManualItemDialog project={project} defaultZone={room?.zoneId ?? ''} onDismiss={() => setShowManualForm(false)} onSuccess={(updated, item) => {
         setFilters(defaultFilters);
@@ -441,7 +398,7 @@ function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, 
         <QuoteStoreLink quote={alternative} itemName={name} /><ReviewLink quote={alternative} />
         <button type="button" className="text-action" disabled={disabled} onClick={() => onQuote(alternative.productUrl)}>Usar este precio</button>
       </li>)}</ul>}
-      <button type="button" className="text-action" disabled={disabled} onClick={onMove} aria-label={`Mover a otro ambiente: ${name}`}>Mover a otro ambiente</button>
+      <button type="button" className="text-action" disabled={disabled} onClick={onMove} aria-label={`Mover a otro espacio: ${name}`}>Mover a otro espacio</button>
       <button type="button" className="text-action" disabled={disabled} onClick={onSplit} aria-label={`Dividir en artículos: ${name}`}>Dividir en artículos</button>
     </div>
     {search && <SearchFindings search={search} busy={disabled} onUse={onQuote} />}
