@@ -1,5 +1,10 @@
 import type { StoreRef } from '../../shared/types.js';
 
+export const HOME_STORES: StoreRef[] = [
+  { id: 'cemaco-cr', name: 'Cemaco Costa Rica', region: 'san-jose', websiteUrl: 'https://www.cemaco.co.cr/', probeKind: 'json_ld' },
+  { id: 'crate-barrel-cr', name: 'Crate & Barrel Costa Rica', region: 'san-jose', websiteUrl: 'https://www.crateandbarrel.co.cr/', probeKind: 'shopify' },
+];
+
 export const SEED_STORES: StoreRef[] = [
   { id: 'monge-cr', name: 'Monge', region: 'san-jose', websiteUrl: 'https://www.tiendamonge.com/', probeKind: 'json_ld' },
   { id: 'glassmar-cr', name: 'Glassmar', region: 'san-jose', websiteUrl: 'https://glassmarcr.com/', probeKind: 'shopify' },

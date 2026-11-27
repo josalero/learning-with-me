@@ -38,7 +38,9 @@ export function matchesPurchase(item: CatalogItem, title: string, description = 
     case 'i-fan-living': return /^(abanico|ventilador)/.test(name) && /techo|plafon/.test(evidence);
     case 'i-sofa': return /sofa/.test(name) && /cama|futon/.test(evidence);
     case 'i-terrace-set': return /juego|set|conjunto/.test(name) && /exterior|terraza|patio|jardin/.test(evidence);
-    case 'i-cookware-vajilla': return /vajilla/.test(name);
+    case 'i-cookware-vajilla':
+      return /\bvajillas?\b/.test(name) && !/\bcubiertos?\b/.test(name)
+        && (/\b(platos?|tazones?|cuencos?|tazas?)\b/.test(evidence) || !/\b(cubiertos?|tenedores?|cuchillos?|cucharillas?)\b/.test(evidence));
     case 'i-master-bed':
     case 'i-br2-bed': return /\b(colchon|mattress)\b/.test(name) && /\b(cama|base)\b/.test(name)
       && (item.id === 'i-master-bed' ? /queen/ : /matrimonial|full|queen/).test(name);

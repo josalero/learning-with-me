@@ -6,7 +6,7 @@ import { applyNatarundiOpeningPrices } from '../../domain/natarundi-opening.js';
 import { itemizeCatalogBundles } from '../../domain/itemize-bundle.js';
 import { hashPassword } from '../services/auth.js';
 import { fetchUsdCrcRate } from '../services/fxRate.js';
-import { SEED_STORES } from '../scrapers/stores-seed.js';
+import { HOME_STORES, SEED_STORES } from '../scrapers/stores-seed.js';
 import { getDb, getPool } from './client.js';
 import { projectReferences, projects, regionalStores, users, workspaces } from './schema.js';
 
@@ -57,19 +57,14 @@ async function main(): Promise<void> {
     return;
   }
 
-  for (const store of SEED_STORES) {
-    await db
-      .insert(regionalStores)
-      .values({
-        id: store.id,
-        workspaceId: seeded.workspaceId,
-        name: store.name,
-        region: store.region,
-        websiteUrl: store.websiteUrl,
-        probeKind: store.probeKind,
-      })
-      .onConflictDoNothing();
-  }
+  const existingStores = await db.select({ websiteUrl: regionalStores.websiteUrl }).from(regionalStores)
+    .where(eq(regionalStores.workspaceId, seeded.workspaceId));
+  const existingHosts = new Set(existingStores.map(({ websiteUrl }) => new URL(websiteUrl).hostname.replace(/^www\./, '')));
+  await db.insert(regionalStores).values([
+    ...SEED_STORES.map((store) => ({ ...store, workspaceId: seeded.workspaceId })),
+    ...HOME_STORES.filter((store) => !existingHosts.has(new URL(store.websiteUrl).hostname.replace(/^www\./, '')))
+      .map((store) => ({ ...store, id: `${store.id}-${seeded.workspaceId}`, workspaceId: seeded.workspaceId })),
+  ]).onConflictDoNothing();
 
   console.log(`Seed OK — demo user ${DEMO_EMAIL}`);
   await getPool().end();

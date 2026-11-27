@@ -7,6 +7,9 @@ import { assertPublicHttpUrl, matchesStoreWebsite } from './ssrf-guard.js';
 import { parseJsonLdOffers, parseProductReviews } from './jsonld-offer.js';
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
+const CEMACO_REQUEST_INTERVAL_MS = 90_000;
+type PageResponse = { redirect: string } | { html: string };
+let lastCemacoRead: { url: string; startedAt: number; response: Promise<PageResponse> } | undefined;
 const nonPublic = new BlockList();
 for (const [address, prefix] of [
   ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16],
@@ -37,7 +40,7 @@ async function publicDestination(url: URL): Promise<LookupFunction> {
   };
 }
 
-async function readPage(url: URL, signal: AbortSignal): Promise<{ redirect: string } | { html: string }> {
+async function readPage(url: URL, signal: AbortSignal): Promise<PageResponse> {
   const verifiedLookup = await publicDestination(url);
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
@@ -81,12 +84,27 @@ async function readPage(url: URL, signal: AbortSignal): Promise<{ redirect: stri
   });
 }
 
+function readStorePage(url: URL, signal: AbortSignal) {
+  if (url.hostname.replace(/^www\./, '') !== 'cemaco.co.cr') return readPage(url, signal);
+  // The store publishes a 90-second crawl delay. Reuse an exact recent page instead of queuing a crawl.
+  const now = Date.now();
+  if (lastCemacoRead && now - lastCemacoRead.startedAt < CEMACO_REQUEST_INTERVAL_MS) {
+    if (lastCemacoRead.url === url.href) return lastCemacoRead.response;
+    const error = new Error('Cemaco limita la frecuencia de consulta. Probá de nuevo en uno o dos minutos.');
+    error.name = 'StoreRequestLimitError';
+    throw error;
+  }
+  const response = readPage(url, signal);
+  lastCemacoRead = { url: url.href, startedAt: now, response };
+  return response;
+}
+
 export async function fetchProductPage(pageUrl: string, website?: URL) {
   const signal = AbortSignal.timeout(15_000);
   let url = assertPublicHttpUrl(pageUrl);
   for (let redirects = 0; redirects <= 3; redirects++) {
     if (website && !matchesStoreWebsite(url, website)) throw new Error('Product page is outside the store website');
-    const response = await readPage(url, signal);
+    const response = await readStorePage(url, signal);
     if ('html' in response) return { html: response.html, url: url.href };
     url = assertPublicHttpUrl(new URL(response.redirect, url).toString());
   }
@@ -94,7 +112,12 @@ export async function fetchProductPage(pageUrl: string, website?: URL) {
 }
 
 export async function fetchJsonLdOffers(pageUrl: string, website?: URL) {
-  const { html, url } = await fetchProductPage(pageUrl, website);
+  const address = assertPublicHttpUrl(pageUrl);
+  if (address.hostname.replace(/^www\./, '') === 'crateandbarrel.co.cr') {
+    // Shopify can link a product through its collection while publishing offers on its direct URL.
+    address.pathname = address.pathname.replace(/^(\/(?:es\/)?)collections\/[^/]+\/(products\/[^/]+\/?$)/, '$1$2');
+  }
+  const { html, url } = await fetchProductPage(address.href, website);
   return parseJsonLdOffers(html, url);
 }
 

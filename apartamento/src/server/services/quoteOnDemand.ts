@@ -13,6 +13,7 @@ import { findProductPages } from '../agents/pricingAgent.js';
 import { fetchJsonLdOffers } from '../scrapers/fetchPage.js';
 import type { ParsedOffer } from '../scrapers/jsonld-offer.js';
 import { assertPublicHttpUrl, matchesStoreWebsite } from '../scrapers/ssrf-guard.js';
+import { HOME_STORES, SEED_STORES } from '../scrapers/stores-seed.js';
 import { rankReviewedProducts, type PricedProduct } from './reviewRanking.js';
 
 export type QuoteMode = 'url' | 'agent';
@@ -40,7 +41,8 @@ function storeForUrl(url: URL): Pick<LineItemQuote, 'storeName' | 'storeUrl' | '
   if (['ahorraya.app', 'ahorraya.cr'].includes(host.replace(/^www\./, ''))) {
     return { storeName: 'AhorraYa', storeUrl: url.origin, source: 'ahorra_ya' };
   }
-  return { storeName: host.replace(/^www\./, ''), storeUrl: url.origin, source: 'store_direct' };
+  const registered = [...HOME_STORES, ...SEED_STORES].find((store) => matchesStoreWebsite(url, new URL(store.websiteUrl)));
+  return { storeName: registered?.name ?? host.replace(/^www\./, ''), storeUrl: registered?.websiteUrl ?? url.origin, source: 'store_direct' };
 }
 
 function offerToQuote(offer: ParsedOffer, usdCrcRate = 0): LineItemQuote | null {
@@ -121,7 +123,10 @@ export async function quoteItemOnDemand(item: CatalogItem, options: QuoteOptions
   const report = (stage: QuoteActivity['stage'], detail: string) => options.onActivity?.(quoteActivity(item, stage, detail, tier));
   if (options.productUrl) {
     report('verifying', 'Leyendo el precio publicado en el enlace de la tienda.');
-    const product = await quoteFromPage(options.productUrl, options.usdCrcRate, undefined, item, tier).catch(() => undefined);
+    const product = await quoteFromPage(options.productUrl, options.usdCrcRate, undefined, item, tier).catch((error: unknown) => {
+      if (error instanceof Error && error.name === 'StoreRequestLimitError') throw error;
+      return undefined;
+    });
     if (product && product.quote.availability !== 'out_of_stock') return { quote: { ...product.quote, tier }, mode: 'url' };
     throw new Error('La página indicada no proporcionó una oferta disponible que coincida con el artículo y sus medidas.');
   }
