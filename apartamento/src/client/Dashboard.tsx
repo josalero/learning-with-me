@@ -5,38 +5,52 @@ import type { BudgetQuote, BudgetTier, CatalogItem, FurnishingProject, QuoteActi
 import AirbnbReview from './AirbnbReview';
 import AgentReview from './AgentReview';
 import BudgetSettings from './BudgetSettings';
-import Inventory, { QuoteDialog } from './Inventory';
+import Inventory, { QuoteDialog, unassignedRoomId, type BulkScope } from './Inventory';
 import { Link, projectPath, type ProjectView } from './navigation';
 import References from './References';
 import { QuoteProgress } from './QuoteProgress';
 import { streamPost } from './streamApi';
-import { ApiError } from './ui';
+import { api, ApiError } from './ui';
 import { Workspace, type Account } from './Workspace';
 
 const pageTitles = { resumen: 'Resumen', agentes: 'Agentes', inventario: 'Inventario', referencias: 'Referencias', airbnb: 'Revisión para Airbnb' };
 const overviewLinks = [
   { view: 'airbnb', title: 'Revisión para Airbnb', description: 'Contrasta el plano con los requisitos del anuncio.', icon: ClipboardCheck },
   { view: 'agentes', title: 'Actividad de los agentes', description: 'Ejecuta la revisión y aprueba sus etapas.', icon: ListChecks },
-  { view: 'inventario', title: 'Inventario por ambiente', description: 'Consulta, agrega cotizaciones y revisa pendientes.', icon: Boxes },
+  { view: 'inventario', title: 'Equipamiento por ambiente', description: 'Revisa artículos, cantidades y cotizaciones.', icon: Boxes },
   { view: 'referencias', title: 'Referencias y análisis visual', description: 'Sube imágenes y detecta artículos adicionales.', icon: Images },
 ] as const;
 
 type ActionNotice = { text: string; tone: 'error' | 'success' };
 
-export default function Dashboard({ initialProject, view, ...account }: Account & { initialProject: FurnishingProject; view: ProjectView }) {
+export default function Dashboard({ initialProject, view, roomId, ...account }: Account & { initialProject: FurnishingProject; view: ProjectView; roomId?: string }) {
   const [project, setProject] = useState(initialProject);
   const [tierPreference, setTierPreference] = useState<BudgetTier>(() => primaryBudgetTier(initialProject));
   const [savingProfiles, setSavingProfiles] = useState(false);
   const [quoteItem, setQuoteItem] = useState<CatalogItem | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateActivity, setUpdateActivity] = useState<QuoteActivity | null>(null);
-  const [bulkScope, setBulkScope] = useState<'pending' | 'all' | null>(null);
+  const [bulkScope, setBulkScope] = useState<BulkScope | null>(null);
   const [bulkActivity, setBulkActivity] = useState<Record<string, QuoteActivity>>({});
   const [inventoryNotice, setInventoryNotice] = useState<ActionNotice | null>(null);
-  useEffect(() => { if (view !== 'inventario') setQuoteItem(null); }, [view]);
+  const [savingItemId, setSavingItemId] = useState<string | null>(null);
+  useEffect(() => { setQuoteItem(null); }, [view, roomId]);
   const tiers = selectedBudgetTiers(project);
   const tier = tiers.includes(tierPreference) ? tierPreference : primaryBudgetTier(project);
   const pending = budgetQuoteJobs(project);
+  const roomLabel = roomId === unassignedRoomId ? 'Sin ambiente asignado' : project.zones.find(({ id }) => id === roomId)?.labelEs;
+
+  async function saveQuantity(itemId: string, qty: number) {
+    setSavingItemId(itemId);
+    try {
+      const updated = await api<{ qty: number }>(`/api/projects/${project.id}/items/${encodeURIComponent(itemId)}`, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty }),
+      });
+      setProject((current) => ({ ...current, items: current.items.map((item) => item.id === itemId ? { ...item, qty: updated.qty } : item) }));
+    } finally {
+      setSavingItemId(null);
+    }
+  }
 
   function storeSearch(event: QuoteActivity) {
     if (!event.search) return;
@@ -74,16 +88,17 @@ export default function Dashboard({ initialProject, view, ...account }: Account 
     }
   }
 
-  async function quoteBatch(scope: 'pending' | 'all') {
+  async function quoteBatch(action: BulkScope, roomItems?: CatalogItem[], zoneId?: string | null) {
+    const scope = action === 'all' ? 'all' : 'pending';
     setInventoryNotice(null);
     setUpdateActivity(null);
-    setBulkScope(scope);
-    setBulkActivity(Object.fromEntries(budgetQuoteJobs(project, scope).map(({ item, tier: jobTier }) => [`${item.id}:${jobTier}`, {
+    setBulkScope(action);
+    setBulkActivity(Object.fromEntries(budgetQuoteJobs(roomItems ? { ...project, items: roomItems } : project, scope).map(({ item, tier: jobTier }) => [`${item.id}:${jobTier}`, {
       itemId: item.id, tier: jobTier, itemName: item.name, stage: 'queued', detail: 'En espera de cotización.',
     } satisfies QuoteActivity])));
     try {
       const result = await streamPost<QuoteActivity, { project: FurnishingProject; saved: BudgetQuote[]; failed: BudgetQuote[] }>(
-        `/api/projects/${project.id}/quote-pending`, { scope },
+        `/api/projects/${project.id}/quote-pending`, { scope, zoneId },
         (event) => setBulkActivity((current) => ({ ...current, [`${event.itemId}:${event.tier}`]: event })),
       );
       setProject(result.project);
@@ -105,15 +120,15 @@ export default function Dashboard({ initialProject, view, ...account }: Account 
   }
 
   return (
-    <Workspace {...account} project={project} view={view}>
-      <div className="page-heading">
+    <Workspace {...account} project={project} view={view} roomLabel={roomLabel}>
+      {view !== 'inventario' && <div className="page-heading">
         <h1 tabIndex={-1}>{view === 'resumen' ? project.name : pageTitles[view]}</h1>
         {view === 'resumen' ? <p>{project.address && <><MapPin size={16} aria-hidden="true" /> {project.address}</>}</p> : (
           view === 'referencias' && <p>Administra los planos y renders para detectar artículos que faltan por cotizar.</p>
         )}
-      </div>
+      </div>}
       {view === 'resumen' && <>
-        <BudgetSettings project={project} locked={bulkScope !== null || updating || savingProfiles} onSaving={setSavingProfiles} onSaved={setProject} />
+        <BudgetSettings project={project} locked={bulkScope !== null || updating || savingProfiles || savingItemId !== null} onSaving={setSavingProfiles} onSaved={setProject} />
         <section className="panel overview-panel" aria-labelledby="overview-title">
           <div className="panel-header"><h2 id="overview-title">Explorar el proyecto</h2></div>
           <div className="overview-links">
@@ -128,8 +143,9 @@ export default function Dashboard({ initialProject, view, ...account }: Account 
       {view === 'airbnb' && <AirbnbReview projectId={project.id} />}
       <div hidden={view !== 'agentes'}><AgentReview projectId={project.id} active={view === 'agentes'} /></div>
       <div hidden={view !== 'inventario'}><Inventory
-        project={project} tier={tier} tiers={tiers} onTierChange={setTierPreference} active={view === 'inventario'} pendingCount={pending.length}
-        saving={bulkScope !== null || updating || savingProfiles || quoteItem !== null} bulkScope={bulkScope}
+        project={project} roomId={roomId} tier={tier} tiers={tiers} onTierChange={setTierPreference} active={view === 'inventario'} pendingCount={pending.length}
+        saving={bulkScope !== null || updating || savingProfiles || quoteItem !== null || savingItemId !== null} bulkScope={bulkScope}
+        savingItemId={savingItemId} onSaveQuantity={saveQuantity} onEnterQuoteUrl={setQuoteItem}
         onItemAdded={(updated, item) => {
           setProject(updated);
           setInventoryNotice({ tone: 'success', text: `${item.name} se agregó a los artículos pendientes.` });

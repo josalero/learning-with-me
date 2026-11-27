@@ -115,6 +115,7 @@ const manualItemSchema = z.object({
   zoneId: z.string().max(80),
   qty: z.number().int().min(1).max(999),
   notes: z.string().trim().max(500).optional(),
+  purchaseUnit: z.enum(['unit', 'set']).optional(),
   requestId: z.string().regex(/^[0-9a-f]{32}$/).optional(),
 });
 const splitItemSchema = z.object({
@@ -374,7 +375,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     if (!params.success) return reply.code(404).send({ error: 'No se encontró el proyecto.' });
     const input = manualItemSchema.safeParse(request.body);
     if (!input.success) return reply.code(400).send({ error: 'Revisa el nombre, la zona y la cantidad del artículo.' });
-    const { name, qty, zoneId, notes, requestId } = input.data;
+    const { name, qty, zoneId, notes, purchaseUnit, requestId } = input.data;
     const id = `manual-${requestId ?? randomUUID()}`;
     const result = await getDb().transaction(async (tx) => {
       const project = await loadOwnedProject(tx, user.workspaceId, params.data.projectId, true);
@@ -383,7 +384,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       if (existing) return { status: 'existing', project, item: existing } as const;
       if (zoneId && !project.zones.some((zone) => zone.id === zoneId)) return { status: 'invalid-zone' } as const;
       const item: CatalogItem = {
-        id, name, qty, zoneId, notes: notes || undefined, category: 'equipamiento', quotes: [],
+        id, name, qty, zoneId, notes: notes || undefined, purchaseUnit, category: 'equipamiento', quotes: [],
         unquotedReason: 'Pendiente de buscar precios en las tiendas registradas.',
       };
       const updated = { ...project, items: [...project.items, item] };
@@ -393,6 +394,30 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     if (result.status === 'not-found') return reply.code(404).send({ error: 'No se encontró el proyecto.' });
     if (result.status === 'invalid-zone') return reply.code(400).send({ error: 'La zona seleccionada no pertenece a este proyecto.' });
     return reply.code(result.status === 'created' ? 201 : 200).send({ project: result.project, item: result.item });
+  });
+
+  app.patch('/api/projects/:projectId/items/:itemId', async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const params = z.object({ projectId: z.string().uuid(), itemId: z.string().min(1).max(100) }).safeParse(request.params);
+    if (!params.success) return reply.code(404).send({ error: 'No se encontró el artículo.' });
+    const input = manualItemSchema.pick({ qty: true }).strict().safeParse(request.body);
+    if (!input.success) return reply.code(400).send({ error: 'Ingresa una cantidad entera entre 1 y 999.' });
+    const { projectId, itemId } = params.data;
+    const { qty } = input.data;
+    const updated = await getDb().transaction(async (tx) => {
+      const project = await loadOwnedProject(tx, user.workspaceId, projectId, true);
+      const index = project?.items.findIndex(({ id }) => id === itemId) ?? -1;
+      if (!project || index < 0) return null;
+      const item = project.items[index]!;
+      if (item.qty !== qty) {
+        const items = project.items.slice();
+        items[index] = { ...item, qty };
+        await saveProjectPayload(tx, { ...project, items });
+      }
+      return { qty };
+    });
+    return updated ?? reply.code(404).send({ error: 'No se encontró el artículo.' });
   });
 
   app.post('/api/projects/:projectId/items/:itemId/split', async (request, reply) => {
@@ -484,15 +509,21 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     const user = await requireUser(request, reply);
     if (!user) return;
     const { projectId } = request.params as { projectId: string };
-    const filters = z.object({ scope: z.enum(['pending', 'all']).default('pending') }).safeParse(request.body ?? {});
+    const filters = z.object({ scope: z.enum(['pending', 'all']).default('pending'), zoneId: z.string().min(1).max(80).nullable().optional() }).safeParse(request.body ?? {});
     if (!filters.success) return reply.code(400).send({ error: 'Elige qué artículos cotizar.' });
-    const { scope } = filters.data;
+    const { scope, zoneId } = filters.data;
     const db = getDb();
     const project = await loadOwnedProject(db, user.workspaceId, projectId);
     if (!project) return reply.code(404).send({ error: 'Project not found' });
+    const zoneIds = new Set(project.zones.map(({ id }) => id));
+    if (zoneId && !zoneIds.has(zoneId)) return reply.code(404).send({ error: 'No se encontró el ambiente.' });
+    const scopeProject = zoneId === undefined ? project : {
+      ...project,
+      items: project.items.filter((item) => zoneId === null ? !zoneIds.has(item.zoneId) : item.zoneId === zoneId),
+    };
     return respondWithProgress(request, reply, async (publish: (activity: QuoteActivity) => void) => {
-      const result = await quoteProjectItems(project, publish, await listWorkspaceStores(user.workspaceId), scope);
-      const before = new Map(project.items.map((item) => [item.id, item]));
+      const result = await quoteProjectItems(scopeProject, publish, await listWorkspaceStores(user.workspaceId), scope);
+      const before = new Map(scopeProject.items.map((item) => [item.id, item]));
       const priced = new Map(result.project.items.map((item) => [item.id, item]));
       const changedDuringQuote = (item: CatalogItem, tier: BudgetQuote['tier']) =>
         quotesForTier(item, tier)[0]?.id !== quotesForTier(before.get(item.id)!, tier)[0]?.id;
@@ -519,7 +550,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
       });
       if (!updated) throw new ProgressError(404, 'No se encontró el proyecto.');
       const currentItems = new Map(updated.project.items.map((item) => [item.id, item]));
-      for (const { item, tier } of budgetQuoteJobs(project, scope)) {
+      for (const { item, tier } of budgetQuoteJobs(scopeProject, scope)) {
         const current = currentItems.get(item.id);
         if (!current || !changedDuringQuote(current, tier) || !quotesForTier(current, tier).length) continue;
         const detail = updated.saved.some((saved) => saved.itemId === item.id && saved.tier === tier) ? 'Cotización guardada.' : 'La cotización de este nivel se actualizó en otra ejecución.';

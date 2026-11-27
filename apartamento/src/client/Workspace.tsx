@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { Boxes, ChevronRight, Download, FolderOpen, Images, LayoutGrid, ListChecks, LogOut, ClipboardCheck } from 'lucide-react';
+import { ChevronRight, Download, FolderOpen, House, Images, LayoutGrid, ListChecks, LogOut, ClipboardCheck } from 'lucide-react';
 import type { FurnishingProject } from '@shared/types';
 import { Link, projectPath, projectsPath, usePathname, type ProjectView } from './navigation';
 import { Brand, Notice, Spinner } from './ui';
@@ -9,15 +9,16 @@ export type Account = { session: Session; onLogout: () => void; loggingOut: bool
 
 const sections = [
   { id: 'resumen', title: 'Resumen', icon: LayoutGrid },
+  { id: 'inventario', title: 'Ambientes', icon: House },
   { id: 'agentes', title: 'Agentes', icon: ListChecks },
-  { id: 'inventario', title: 'Inventario', icon: Boxes },
   { id: 'referencias', title: 'Referencias', icon: Images },
   { id: 'airbnb', title: 'Airbnb', icon: ClipboardCheck },
 ] as const;
 
-export function Workspace({ session, onLogout, loggingOut, logoutError, project, view, children }: Account & {
+export function Workspace({ session, onLogout, loggingOut, logoutError, project, view, roomLabel, children }: Account & {
   project?: FurnishingProject;
   view?: ProjectView;
+  roomLabel?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -26,7 +27,7 @@ export function Workspace({ session, onLogout, loggingOut, logoutError, project,
 
   useEffect(() => {
     const heading = document.querySelector<HTMLElement>('main h1');
-    if (heading && (document.activeElement === document.body || document.activeElement?.closest('.workspace-nav, .breadcrumbs, .project-list, .overview-links'))) {
+    if (heading && (document.activeElement === document.body || document.activeElement?.closest('.workspace-nav, .breadcrumbs, .project-list, .overview-links, .planner-room-links'))) {
       heading.focus({ preventScroll: true });
     }
   }, [pathname, project?.id]);
@@ -71,7 +72,9 @@ export function Workspace({ session, onLogout, loggingOut, logoutError, project,
               <>
                 <Link href={projectsPath}>Proyectos</Link><ChevronRight size={14} aria-hidden="true" />
                 {view === 'resumen' ? <span aria-current="page" title={project.name}>{project.name}</span> : (
-                  <><Link href={projectPath(project.id)} title={project.name}>{project.name}</Link><ChevronRight size={14} aria-hidden="true" /><span aria-current="page">{currentSection?.title}</span></>
+                  <><Link href={projectPath(project.id)} title={project.name}>{project.name}</Link><ChevronRight size={14} aria-hidden="true" />
+                    {roomLabel ? <><Link href={projectPath(project.id, 'inventario')}>Ambientes</Link><ChevronRight size={14} aria-hidden="true" /><span aria-current="page">{roomLabel}</span></> : <span aria-current="page">{currentSection?.title}</span>}
+                  </>
                 )}
               </>
             ) : <span aria-current="page">Proyectos</span>}

@@ -1,16 +1,16 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowUpRight, ChevronDown, Fan, Lamp, LayoutGrid, Link2, PackageOpen, Plus, RefreshCw, Search, Sofa, Sparkles, Tv, WashingMachine } from 'lucide-react';
-import { budgetProfiles, quotesForTier } from '@shared/budgetProfiles';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Armchair, ArrowUpRight, Bath, BedDouble, ChevronDown, CookingPot, Fan, House, Lamp, Link2, Minus, PackageOpen, Plus, RefreshCw, Search, Sofa, Sparkles, Tv, Utensils, WashingMachine } from 'lucide-react';
+import { budgetProfiles, budgetQuoteJobs, quotesForTier } from '@shared/budgetProfiles';
 import { brandLabel, productClass, productProvenance } from '@shared/brands';
 import { enclosureAdvice, isFlexibleEnclosure, purchaseName } from '@shared/showerEnclosure';
 import { BrandGuide } from './BrandGuide';
 import { projectAreas } from '@shared/projectAreas';
 import { projectStats } from '@shared/projectStats';
-import { isPurchaseSet, purchaseQuantity } from '@shared/purchaseUnit';
+import { isPurchaseSet } from '@shared/purchaseUnit';
 import { quoteBasisLabel, quoteLink } from '@shared/quoteBasis';
 import { normalizeSearch } from '@shared/search';
 import type { BudgetTier, CatalogItem, FurnishingProject, LineItemQuote, QuoteActivity, QuoteSearch } from '@shared/types';
-import { Link, projectPath } from './navigation';
+import { inventoryPath, Link, navigate, projectPath } from './navigation';
 import { QuoteJob } from './QuoteProgress';
 import SplitItemDialog from './SplitItemDialog';
 import { streamPost } from './streamApi';
@@ -25,13 +25,13 @@ const categoryIcons: Record<string, typeof Sofa> = {
 };
 const quoteDate = new Intl.DateTimeFormat('es-CR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Costa_Rica' });
 
-function QuoteStoreLink({ quote, itemName }: { quote: LineItemQuote; itemName: string }) {
+function QuoteStoreLink({ quote, itemName, showAddress = true }: { quote: LineItemQuote; itemName: string; showAddress?: boolean }) {
   const link = quoteLink(quote);
   if (!link) return <span>Pendiente de verificar el enlace en {quote.storeName}</span>;
-  const label = `${link.label} en ${quote.storeName}`;
+  const label = `Ver en ${quote.storeName}`;
   return <div className="product-link"><a href={link.url} target="_blank" rel="noreferrer" aria-label={`${label} para ${itemName} (abre en otra pestaña)`}>
     {label} <ArrowUpRight size={14} aria-hidden="true" />
-  </a><details className="product-address"><summary>Ver URL</summary><span>{link.url}</span></details></div>;
+  </a>{showAddress && <details className="product-address"><summary>Ver URL</summary><span>{link.url}</span></details>}</div>;
 }
 
 function ReviewLink({ quote }: { quote: LineItemQuote }) {
@@ -67,17 +67,74 @@ function SearchFindings({ search, onUse, busy }: { search: QuoteSearch; onUse: (
   </div>;
 }
 
-export default function Inventory({ project, tier, tiers, onTierChange, active, pendingCount, saving, bulkScope, onOpenQuote, onBulkQuote, onItemAdded, onItemSplit, notice, activity, updateActivity }: {
+export type BulkScope = 'pending' | 'all' | 'room';
+export const unassignedRoomId = 'sin-asignar';
+
+const areaIcons: Record<string, typeof Sofa> = {
+  sala: Sofa, comedor: Utensils, cocina: CookingPot, cuartos: BedDouble, banos: Bath,
+  lavanderia: WashingMachine, terraza: Armchair,
+};
+
+type Room = { id: string; label: string; icon: typeof Sofa; zoneId: string | null; items: CatalogItem[] };
+type InventoryFilters = { query: string; status: 'all' | 'pending' | 'quoted'; group: 'plan' | 'brand' | 'class' };
+const defaultFilters: InventoryFilters = { query: '', status: 'all', group: 'plan' };
+
+function projectRooms(project: FurnishingProject): Room[] {
+  const rooms = projectAreas(project.zones).flatMap(({ id, zones }) => zones.map((zone): Room => ({
+    id: zone.id, label: zone.labelEs, icon: areaIcons[id] ?? House, zoneId: zone.id, items: [],
+  })));
+  const byZone = new Map(rooms.map((room) => [room.zoneId, room]));
+  const unassigned = { id: unassignedRoomId, label: 'Sin ambiente asignado', icon: PackageOpen, zoneId: null, items: [] as CatalogItem[] };
+  for (const item of project.items) (byZone.get(item.zoneId) ?? unassigned).items.push(item);
+  if (unassigned.items.length || !rooms.length) rooms.push(unassigned);
+  return rooms;
+}
+
+function lineCount(count: number) {
+  return `${count} ${count === 1 ? 'artículo' : 'artículos'}`;
+}
+
+function quantity(value: string) {
+  const number = Number(value);
+  return /^\d+$/.test(value) && Number.isInteger(number) && number >= 1 && number <= 999 ? number : undefined;
+}
+
+function RoomLinks({ projectId, rooms, currentRoom }: { projectId: string; rooms: Room[]; currentRoom?: Room }) {
+  return <ul className="planner-room-links" role="list">{rooms.map(({ id, icon: Icon, label, items }) => (
+    <li key={id}>
+      <Link href={inventoryPath(projectId, id)} aria-current={currentRoom?.id === id ? 'page' : undefined}>
+        <Icon size={17} aria-hidden="true" /><span>{label}</span>
+        <small aria-label={lineCount(items.length)}>{items.length}</small>
+      </Link>
+    </li>
+  ))}</ul>;
+}
+
+function PlannerTotal({ label, items, tier, hasDraft }: { label: string; items: CatalogItem[]; tier: BudgetTier; hasDraft: boolean }) {
+  const { totalCrc, quotedCount } = projectStats(items, tier);
+  return <div className="planner-total">
+    <span>{label}</span>
+    <strong aria-live="polite">{quotedCount ? money.format(totalCrc) : 'Por cotizar'}</strong>
+    {hasDraft && <small>Vista previa · cantidades sin guardar</small>}
+  </div>;
+}
+
+export default function Inventory({ project, roomId, tier, tiers, onTierChange, active, pendingCount, saving, bulkScope, savingItemId,
+  onSaveQuantity, onOpenQuote, onEnterQuoteUrl, onBulkQuote, onItemAdded, onItemSplit, notice, activity, updateActivity }: {
   project: FurnishingProject;
+  roomId?: string;
   tier: BudgetTier;
   tiers: BudgetTier[];
   onTierChange: (tier: BudgetTier) => void;
   active: boolean;
   pendingCount: number;
   saving: boolean;
-  bulkScope: 'pending' | 'all' | null;
+  bulkScope: BulkScope | null;
+  savingItemId: string | null;
+  onSaveQuantity: (itemId: string, qty: number) => Promise<void>;
   onOpenQuote: (item: CatalogItem, productUrl?: string) => void;
-  onBulkQuote: (scope: 'pending' | 'all') => void;
+  onEnterQuoteUrl: (item: CatalogItem) => void;
+  onBulkQuote: (scope: BulkScope, roomItems?: CatalogItem[], zoneId?: string | null) => void;
   onItemAdded: (project: FurnishingProject, item: CatalogItem) => void;
   onItemSplit: (project: FurnishingProject, item: CatalogItem) => void;
   notice: { text: string; tone: 'error' | 'success' } | null;
@@ -86,214 +143,295 @@ export default function Inventory({ project, tier, tiers, onTierChange, active, 
 }) {
   const [showManualForm, setShowManualForm] = useState(false);
   const [splitItem, setSplitItem] = useState<CatalogItem | null>(null);
-  const [closed, setClosed] = useState<string[]>(() => {
-    try {
-      const stored: unknown = JSON.parse(localStorage.getItem('closed-rooms:' + project.id) ?? '[]');
-      return Array.isArray(stored) ? stored.filter((v): v is string => typeof v === 'string') : [];
-    } catch { return []; }
-  });
-  const [filterRooms, setFilterRooms] = useState({ key: '', closed: [] as string[] });
-  const [search, setSearch] = useState('');
-  const [areaId, setAreaId] = useState('');
-  const [groupBy, setGroupBy] = useState<'area' | 'brand' | 'class'>('area');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'quoted'>('all');
-  useEffect(() => { if (!active) { setShowManualForm(false); setSplitItem(null); } }, [active]);
-  const query = normalizeSearch(search);
-  const areas = [...projectAreas(project.zones), { id: 'unassigned', label: 'Sin zona asignada', zones: [] }];
-  const zones = new Map(areas.flatMap((area) => area.zones.map((zone) => [zone.id, { area, name: zone.labelEs }] as const)));
-  const defaultZones = areas.find(({ id }) => id === areaId)?.zones;
-  const groups = new Map<string, CatalogItem[]>();
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [filterState, setFilterState] = useState({ roomId, ...defaultFilters });
+  useEffect(() => { setShowManualForm(false); setSplitItem(null); }, [active, roomId]);
 
-  for (const item of project.items) {
-    const zone = zones.get(item.zoneId);
-    const area = zone?.area.id ?? 'unassigned';
-    if (areaId && area !== areaId) continue;
+  const rooms = projectRooms(project);
+  const room = roomId === undefined ? rooms[0] : rooms.find(({ id }) => id === roomId);
+  const filters = filterState.roomId === roomId ? filterState : defaultFilters;
+  const roomItems = room?.items ?? [];
+  const roomPending = roomItems.filter((item) => !quotesForTier(item, tier).length).length;
+  const roomJobs = budgetQuoteJobs({ ...project, items: roomItems }).length;
+  const query = normalizeSearch(filters.query);
+  const visible = roomItems.filter((item) => {
     const quotes = quotesForTier(item, tier);
-    const key = groupBy === 'area' ? area : groupBy === 'brand' ? 'brand-' + brandLabel(quotes[0]) : 'class-' + productClass(quotes[0]);
-    if (filter === 'pending' && quotes.length) continue;
-    if (filter === 'quoted' && !quotes.length) continue;
-    if (query && !normalizeSearch(`${brandLabel(quotes[0])} ${purchaseName(item, tier)} ${item.name} ${zone?.name ?? ''} ${zone?.area.label ?? ''} ${quotes.map(({ storeName, title }) => `${storeName} ${title}`).join(' ')}`).includes(query)) continue;
-    const items = groups.get(key);
-    if (items) items.push(item);
-    else groups.set(key, [item]);
+    if (filters.status === 'pending' && quotes.length) return false;
+    if (filters.status === 'quoted' && !quotes.length) return false;
+    return !query || normalizeSearch(`${purchaseName(item, tier)} ${brandLabel(quotes[0])} ${quotes.map(({ storeName, title }) => `${storeName} ${title}`).join(' ')}`).includes(query);
+  });
+  const groups = new Map<string, CatalogItem[]>();
+  for (const item of visible) {
+    const [quote] = quotesForTier(item, tier);
+    const name = filters.group === 'brand' ? brandLabel(quote) : filters.group === 'class' ? productClass(quote) : '';
+    const group = groups.get(name);
+    if (group) group.push(item);
+    else groups.set(name, [item]);
   }
 
-  const sections = groupBy === 'area' ? areas : [...groups.keys()].sort((a,b) => a.localeCompare(b,'es')).map((id) => ({ id, label:id.slice(6), zones:[] }));
-  const resultCount = [...groups.values()].reduce((count, items) => count + items.length, 0);
-  const hasFilters = Boolean(search || areaId || filter !== 'all');
-
-  const filterKey = JSON.stringify([query, areaId, filter, tier]);
-  const collapsed = hasFilters ? (filterRooms.key === filterKey ? filterRooms.closed : []) : closed;
-  function toggleRoom(id: string) {
-    const next = collapsed.includes(id) ? collapsed.filter((room) => room !== id) : [...collapsed, id];
-    if (hasFilters) setFilterRooms({ key: filterKey, closed: next });
-    else {
-      setClosed(next);
-      try { localStorage.setItem('closed-rooms:' + project.id, JSON.stringify(next)); } catch { /* Storage is optional. */ }
-    }
+  function preview(items: CatalogItem[]) {
+    return items.map((item) => {
+      const value = quantity(drafts[item.id] ?? '');
+      return value === undefined || value === item.qty ? item : { ...item, qty: value };
+    });
   }
 
-  function clearFilters() {
-    setSearch('');
-    setAreaId('');
-    setFilter('all');
+  function setFilters(update: Partial<InventoryFilters>) {
+    setFilterState({ ...filters, ...update, roomId });
   }
+
+  function changeDraft(item: CatalogItem, value: string) {
+    setDrafts((previous) => {
+      const next = { ...previous };
+      if (value === String(item.qty)) delete next[item.id];
+      else next[item.id] = value;
+      return next;
+    });
+  }
+
+  async function save(item: CatalogItem, value: number) {
+    await onSaveQuantity(item.id, value);
+    changeDraft(item, String(item.qty));
+  }
+
+  const previewRoom = preview(roomItems);
+  const previewProject = preview(project.items);
+  const projectTotal = <PlannerTotal label="Total del proyecto" tier={tier} items={previewProject}
+    hasDraft={previewProject.some((item, index) => item !== project.items[index])} />;
 
   return (
-    <section id="inventario" className="panel inventory" aria-labelledby="inventory-title">
-      <div className="panel-header inventory-header">
-        <div>
-          <h2 id="inventory-title" tabIndex={-1}>Inventario por ambiente</h2>
-        </div>
-        <div className="button-row">
-          {project.items.length > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('all')}>
-            {bulkScope === 'all' ? <><Spinner /> Actualizando…</> : <><RefreshCw size={17} aria-hidden="true" /> Actualizar todo</>}
-          </button>}
-          {pendingCount > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('pending')}>
-            {bulkScope === 'pending' ? <><Spinner /> Cotizando…</> : <><Sparkles size={17} aria-hidden="true" /> Cotizar pendientes</>}
-          </button>}
-          <button type="button" className="button button-primary" disabled={saving} onClick={() => setShowManualForm(true)}><Plus size={18} aria-hidden="true" /> Agregar artículo</button>
-        </div>
-      </div>
-      <div className="inventory-controls">
-        <div className="inventory-budget">
-          {tiers.length > 1 ? <div className="segmented" role="group" aria-label="Nivel de presupuesto visible">
-            {tiers.map((option) => <button key={option} type="button" aria-pressed={option === tier} onClick={() => onTierChange(option)}>
-              {budgetProfiles[option].label}
-            </button>)}
-          </div> : <strong>{budgetProfiles[tier].label}</strong>}
-          <Link href={projectPath(project.id)}>Cambiar niveles</Link>
-          {tiers.length > 1 && <p>Las acciones por lote buscan ofertas para todos los niveles seleccionados.</p>}
-        </div>
-        <BrandGuide />
-        <div className="inventory-grouping"><span>Agrupar por</span><div className="segmented" role="group" aria-label="Agrupar inventario por">
-          <button type="button" aria-pressed={groupBy === 'area'} onClick={() => setGroupBy('area')}>Ambiente</button>
-          <button type="button" aria-pressed={groupBy === 'brand'} onClick={() => setGroupBy('brand')}>Marca</button>
-          <button type="button" aria-pressed={groupBy === 'class'} onClick={() => setGroupBy('class')}>Gama y origen</button>
-        </div></div>
-        <div className="inventory-fields">
-          <label className="search-field">
-            <Search size={17} aria-hidden="true" />
-            <span className="sr-only">Buscar artículos</span>
-            <input type="search" placeholder="Buscar artículo…" value={search} onChange={(event) => setSearch(event.target.value)} />
-          </label>
-          <label className="select-field">
-            <span className="sr-only">Filtrar por ambiente</span>
-            <select value={areaId} onChange={(event) => setAreaId(event.target.value)}>
-              <option value="">Todos los ambientes</option>
-              {areas.map(({ id, label }) => <option key={id} value={id} hidden={id === 'unassigned' && !project.items.some((item) => !zones.has(item.zoneId))}>{label}</option>)}
-            </select>
-            <ChevronDown size={15} aria-hidden="true" />
-          </label>
-        </div>
-        <div className="inventory-status">
-          <div className="segmented" role="group" aria-label="Estado de cotización">
-            <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Todos</button>
-            <button type="button" aria-pressed={filter === 'pending'} onClick={() => setFilter('pending')}>Pendientes</button>
-            <button type="button" aria-pressed={filter === 'quoted'} onClick={() => setFilter('quoted')}>Con cotización</button>
+    <section id="inventario" className="planner-layout" aria-labelledby="inventory-title">
+      <aside className="planner-sidebar panel">
+        <nav aria-label="Ambientes de la casa"><h2>Ambientes</h2>
+          <RoomLinks projectId={project.id} rooms={rooms} currentRoom={room} />
+        </nav>
+        {projectTotal}
+      </aside>
+      <div className="planner-workspace">
+        <details className="planner-room-picker panel" key={room?.id ?? roomId}>
+          <summary><House size={17} aria-hidden="true" /> Cambiar de ambiente <ChevronDown size={16} aria-hidden="true" /></summary>
+          <nav aria-label="Ambientes de la casa"><RoomLinks projectId={project.id} rooms={rooms} currentRoom={room} /></nav>
+        </details>
+        <header className="planner-heading">
+          <div className="page-heading">
+            {room && <p><room.icon size={17} aria-hidden="true" /> Equipamiento por ambiente</p>}
+            <h1 id="inventory-title" tabIndex={-1}>{room?.label ?? 'Ambiente no disponible'}</h1>
+            {room && <p>{lineCount(roomItems.length)} · {roomPending} por cotizar</p>}
           </div>
-          <span className="result-count" role="status">{resultCount} {resultCount === 1 ? 'artículo' : 'artículos'}</span>
-        </div>
-        {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
-        {activity}
-      </div>
-      {resultCount === 0 && (
-        <div className="inventory-empty">
-          <PackageOpen size={28} aria-hidden="true" />
-          <p>{hasFilters ? 'No hay artículos que coincidan con los filtros.' : 'Todavía no hay artículos en el inventario.'}</p>
-          {hasFilters && <button type="button" className="button button-secondary" onClick={clearFilters}>Limpiar filtros</button>}
-        </div>
-      )}
-      {sections.map(({ id, label, zones: areaZones }) => {
-        const items = groups.get(id);
-        if (!items) return null;
-        const { totalCrc, quotedCount } = projectStats(items, tier);
-        return (
-          <div className="inventory-zone" key={id}>
-            <h3 className="room-heading"><button type="button" className="room-toggle" aria-expanded={!collapsed.includes(id)}
-              aria-controls={'items-' + encodeURIComponent(id)} onClick={() => toggleRoom(id)}>
-              <span className="room-name"><LayoutGrid size={17} aria-hidden="true" />{label}</span>
-              <span className="room-count">{items.length} {items.length === 1 ? 'artículo' : 'artículos'} · {items.length - quotedCount} pendientes</span>
-              <span className="room-subtotal">{quotedCount ? money.format(totalCrc) : 'Sin cotizar'}</span><ChevronDown size={17} aria-hidden="true" />
-            </button></h3>
-            <ul className="item-list" role="list" id={'items-' + encodeURIComponent(id)} hidden={collapsed.includes(id)}>
-              {items.map((item) => {
-                const [quote, ...alternatives] = quotesForTier(item, tier);
-                const Icon = categoryIcons[item.category] ?? PackageOpen;
-                return (
-                  <li key={item.id} className="item-row">
-                    <div className="item-name">
-                      <span className="item-icon"><Icon size={18} aria-hidden="true" /></span>
-                      <div>
-                        <strong>{purchaseName(item, tier)}</strong>
-                        {isFlexibleEnclosure(item) && <span>{enclosureAdvice(tier)}</span>}
-                        {(areaZones.length > 1 || groupBy !== 'area') && <span>{zones.get(item.zoneId)?.name}</span>}
-                        {(item.qty > 1 || isPurchaseSet(item)) && <span>{purchaseQuantity(item)}</span>}
-                        {quote?.basis === 'published' && <><span>{quote.title}</span>
-                          <span>Marca · {brandLabel(quote)}</span>
-                          {productProvenance(quote.title, quote.brand) === 'replica' && <span>El vendedor lo anuncia como réplica.</span>}
-                          {quote.modelIds?.length ? <details className="product-address"><summary>Identificación del producto</summary>
-                            <span>Modelo o código comercial publicado · {quote.modelIds.join(', ')}</span><span>Autenticidad por confirmar con el fabricante.</span></details> : null}
-                        </>}
-                        {item.notes && <span>{item.notes}</span>}
-                        {item.id === 'i-freight' && item.category === 'logistica' && !quote && <a href="https://todomudanzas.cr/fletes/" target="_blank" rel="noreferrer">Solicitar precio de flete</a>}
-                        {!quote && item.unquotedReason && <span>{item.unquotedReason}</span>}
-                      </div>
-                    </div>
-                    <div className="item-price">
-                      {quote ? (
-                        <>
-                          <strong>{money.format(quote.priceCrc * item.qty)}</strong>
-                          {item.qty > 1 && <span>{money.format(quote.priceCrc)} / {isPurchaseSet(item) ? 'juego' : 'unidad'}</span>}
-                          <QuoteStoreLink quote={quote} itemName={item.name} />
-                          <ReviewLink quote={quote} />
-                          {quoteBasisLabel(quote) && <span>{quoteBasisLabel(quote)}</span>}
-                          {quote.basis === 'published' && Number.isFinite(Date.parse(quote.capturedAt)) && <time className="quote-date" dateTime={quote.capturedAt}>
-                            {quoteDate.format(new Date(quote.capturedAt))}
-                          </time>}
-                          {alternatives.length > 0 && <details className="quote-alternatives">
-                            <summary>{alternatives.length === 1 ? '1 alternativa' : `${alternatives.length} alternativas`}</summary>
-                            <ul>
-                              {alternatives.map((alternative) => <li key={alternative.id}>
-                                <span>{alternative.title} · {money.format(alternative.priceCrc * item.qty)}</span>
-                                <QuoteStoreLink quote={alternative} itemName={item.name} />
-                                <ReviewLink quote={alternative} />
-                              </li>)}
-                            </ul>
-                          </details>}
-                        </>
-                      ) : <span className="pending-label">Sin cotizar</span>}
-                    </div>
-                    <div className="item-actions">
-                      <button type="button" className="button button-small button-secondary" disabled={saving} onClick={() => onOpenQuote(item)} aria-label={`${quote ? 'Actualizar' : 'Cotizar'} ${item.name}`}>
-                        {quote ? 'Actualizar' : 'Cotizar'}
-                      </button>
-                      <button type="button" className="button button-small item-split" disabled={saving} onClick={() => setSplitItem(item)} aria-label={`Dividir en artículos: ${item.name}`}>Dividir en artículos</button>
-                    </div>
-                    {item.lastSearch?.[tier] && <SearchFindings search={item.lastSearch[tier]!} busy={saving} onUse={(url) => onOpenQuote(item, url)} />}
-                    {updateActivity?.itemId === item.id && updateActivity.tier === tier && !(updateActivity.stage === 'failed' && item.lastSearch?.[tier]?.detail === updateActivity.detail) && <div className="quote-single-progress quote-row-progress" role="status">
-                      <QuoteJob activity={updateActivity} single />
-                    </div>}
-                  </li>
-                );
-              })}
-            </ul>
+          {room && <PlannerTotal label="Subtotal del ambiente" items={previewRoom} tier={tier}
+            hasDraft={previewRoom.some((item, index) => item !== roomItems[index])} />}
+        </header>
+        {room ? <>
+          <div className="planner-controls">
+            <div className="segmented" role="group" aria-label="Estado de cotización">
+              <button type="button" aria-pressed={filters.status === 'all'} onClick={() => setFilters({ status: 'all' })}>Todos</button>
+              <button type="button" aria-pressed={filters.status === 'pending'} onClick={() => setFilters({ status: 'pending' })}>Por cotizar</button>
+              <button type="button" aria-pressed={filters.status === 'quoted'} onClick={() => setFilters({ status: 'quoted' })}>Con precio</button>
+            </div>
+            <div className="button-row">
+              {roomJobs > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('room', room.items, room.zoneId)}>
+                {bulkScope === 'room' ? <><Spinner /> Cotizando…</> : 'Cotizar ambiente'}
+              </button>}
+              <button type="button" className="button button-primary" disabled={saving} onClick={() => setShowManualForm(true)}>
+                <Plus size={17} aria-hidden="true" /> Agregar artículo
+              </button>
+            </div>
           </div>
-        );
-      })}
-      {showManualForm && <ManualItemDialog project={project} defaultZone={defaultZones?.length === 1 ? defaultZones[0]!.id : ''} onDismiss={() => setShowManualForm(false)} onSuccess={(updated, item) => {
-        clearFilters();
+          <div className="planner-options">
+            <label className="search-field">
+              <Search size={17} aria-hidden="true" /><span className="sr-only">Buscar en este ambiente</span>
+              <input type="search" placeholder="Buscar en este ambiente" value={filters.query} onChange={(event) => setFilters({ query: event.target.value })} />
+            </label>
+            <details className="planner-settings">
+              <summary>Opciones del presupuesto <ChevronDown size={15} aria-hidden="true" /></summary>
+              <div className="planner-settings-body panel">
+                <div className="inventory-budget">
+                  {tiers.length > 1 ? <div className="segmented" role="group" aria-label="Nivel de presupuesto visible">
+                    {tiers.map((option) => <button key={option} type="button" aria-pressed={option === tier} onClick={() => onTierChange(option)}>
+                      {budgetProfiles[option].label}
+                    </button>)}
+                  </div> : <strong>{budgetProfiles[tier].label}</strong>}
+                  <Link href={projectPath(project.id)}>Cambiar niveles</Link>
+                  {tiers.length > 1 && <p>La cotización por lote incluye todos los niveles seleccionados.</p>}
+                </div>
+                <div className="segmented" role="group" aria-label="Agrupar artículos">
+                  <button type="button" aria-pressed={filters.group === 'plan'} onClick={() => setFilters({ group: 'plan' })}>Sin agrupar</button>
+                  <button type="button" aria-pressed={filters.group === 'brand'} onClick={() => setFilters({ group: 'brand' })}>Por marca</button>
+                  <button type="button" aria-pressed={filters.group === 'class'} onClick={() => setFilters({ group: 'class' })}>Por gama y origen</button>
+                </div>
+                <BrandGuide />
+                <div className="button-row">
+                  {project.items.length > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('all')}>
+                    {bulkScope === 'all' ? <><Spinner /> Actualizando…</> : <><RefreshCw size={16} aria-hidden="true" /> Actualizar todo el proyecto</>}
+                  </button>}
+                  {pendingCount > 0 && <button type="button" className="button button-secondary" disabled={saving} onClick={() => onBulkQuote('pending')}>
+                    {bulkScope === 'pending' ? <><Spinner /> Cotizando…</> : <><Sparkles size={16} aria-hidden="true" /> Cotizar pendientes del proyecto</>}
+                  </button>}
+                </div>
+              </div>
+            </details>
+          </div>
+          {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
+          {activity}
+          <section className="planner-sheet panel" aria-label={`Artículos de ${room.label}`}>
+            {visible.length > 0 ? <>
+              {filters.group === 'plan' && <h2 className="sr-only">Artículos del ambiente</h2>}
+              <div className="planner-sheet-head planner-columns" aria-hidden="true"><span>Artículo y ficha</span><span>Precio unitario</span><span>Cantidad</span><span>Subtotal</span></div>
+              {[...groups.entries()].sort(([a], [b]) => a.localeCompare(b, 'es')).map(([groupName, items]) => (
+                <div className="planner-group" key={groupName}>
+                  {groupName && <h2>{groupName}</h2>}
+                  <ul className="planner-items" role="list">{items.map((item) => (
+                    <InventoryItem key={item.id} item={item} tier={tier} disabled={saving} saving={savingItemId === item.id}
+                      draft={drafts[item.id]} onChange={(value) => changeDraft(item, value)} onSave={(value) => save(item, value)}
+                      onQuote={(url) => onOpenQuote(item, url)} onEnterQuoteUrl={() => onEnterQuoteUrl(item)} onSplit={() => setSplitItem(item)}
+                      updateActivity={updateActivity?.itemId === item.id && updateActivity.tier === tier ? updateActivity : undefined} />
+                  ))}</ul>
+                </div>
+              ))}
+            </> : <div className="inventory-empty">
+              <PackageOpen size={25} aria-hidden="true" />
+              <p>{roomItems.length === 0 ? 'Este ambiente todavía no tiene artículos.' : query ? 'No hay artículos que coincidan con la búsqueda.'
+                : filters.status === 'pending' ? 'Todos los artículos de este ambiente tienen precio.' : 'Aún no hay artículos con precio en este ambiente.'}</p>
+              {(query || filters.status !== 'all') && <button type="button" className="button button-secondary" onClick={() => setFilters({ query: '', status: 'all' })}>Ver todos los artículos</button>}
+            </div>}
+          </section>
+        </> : <div className="panel page-state"><p>Elegí un ambiente del proyecto para continuar.</p><Link className="button button-secondary" href={inventoryPath(project.id)}>Ver el primer ambiente</Link></div>}
+        <div className="planner-mobile-total">{projectTotal}</div>
+      </div>
+      {showManualForm && <ManualItemDialog project={project} defaultZone={room?.zoneId ?? ''} onDismiss={() => setShowManualForm(false)} onSuccess={(updated, item) => {
+        setFilters(defaultFilters);
         onItemAdded(updated, item);
         setShowManualForm(false);
+        navigate(inventoryPath(project.id, item.zoneId || unassignedRoomId));
       }} />}
       {splitItem && <SplitItemDialog projectId={project.id} item={splitItem} onClose={() => setSplitItem(null)} onSaved={(updated) => {
-        clearFilters();
+        setFilters(defaultFilters);
+        changeDraft(splitItem, String(splitItem.qty));
         onItemSplit(updated, splitItem);
         setSplitItem(null);
         requestAnimationFrame(() => document.getElementById('inventory-title')?.focus({ preventScroll: true }));
       }} />}
     </section>
   );
+}
+
+function InventoryItem({ item, tier, draft, disabled, saving, onChange, onSave, onQuote, onEnterQuoteUrl, onSplit, updateActivity }: {
+  item: CatalogItem;
+  tier: BudgetTier;
+  draft?: string;
+  disabled: boolean;
+  saving: boolean;
+  onChange: (value: string) => void;
+  onSave: (value: number) => Promise<void>;
+  onQuote: (url?: string) => void;
+  onEnterQuoteUrl: () => void;
+  onSplit: () => void;
+  updateActivity?: QuoteActivity;
+}) {
+  const [error, setError] = useState('');
+  const [showDetails, setShowDetails] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const [quote, ...alternatives] = quotesForTier(item, tier);
+  const name = purchaseName(item, tier);
+  const Icon = categoryIcons[item.category] ?? PackageOpen;
+  const count = draft === undefined ? item.qty : quantity(draft);
+  const isSet = isPurchaseSet(item);
+  const unit = isSet ? 'juego' : 'unidad';
+  const dirty = draft !== undefined && count !== item.qty;
+  const errorId = `qty-error-${item.id}`;
+  const detailsId = `item-details-${item.id}`;
+  const search = item.lastSearch?.[tier];
+  const address = quote && quoteLink(quote)?.url;
+
+  function change(value: string) {
+    setError('');
+    onChange(value);
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (disabled || count === undefined || !dirty) return;
+    setError('');
+    try {
+      await onSave(count);
+      if (document.activeElement === document.body) input.current?.focus({ preventScroll: true });
+    } catch (cause) {
+      setError(cause instanceof ApiError && cause.message ? cause.message : 'No se pudo guardar la cantidad. Intentá de nuevo.');
+    }
+  }
+
+  return <li className="planner-item">
+    <div className="planner-item-main planner-columns">
+      <div className="planner-item-info">
+        <span className="item-icon"><Icon size={17} aria-hidden="true" /></span>
+        <div>
+          <h3>{name}</h3>
+          {quote ? <><p>{quote.title}</p><QuoteStoreLink quote={quote} itemName={name} showAddress={false} /></>
+            : <p>{item.unquotedReason || 'Sin oferta guardada'}</p>}
+          {item.id === 'i-freight' && item.category === 'logistica' && !quote &&
+            <a className="text-action" href="https://todomudanzas.cr/fletes/" target="_blank" rel="noreferrer">Solicitar precio de flete</a>}
+        </div>
+      </div>
+      <div className="planner-price">
+        <span className="planner-field-label">Precio unitario</span>
+        {quote ? <><strong>{money.format(quote.priceCrc)}</strong><small>por {unit}</small>
+          {quote.basis !== 'published' && <small>{quoteBasisLabel(quote)}</small>}
+        </> : <span className="pending-label">Por cotizar</span>}
+      </div>
+      <form className="planner-quantity" onSubmit={submit} aria-busy={saving} noValidate>
+        <span className="planner-field-label">Cantidad</span>
+        <div className="planner-stepper">
+          <button type="button" disabled={disabled || count === undefined || count <= 1} onClick={() => change(String((count ?? item.qty) - 1))} aria-label={`Restar ${unit} de ${name}`}><Minus size={15} aria-hidden="true" /></button>
+          <input ref={input} type="number" inputMode="numeric" min={1} max={999} step={1} required
+            value={draft ?? String(item.qty)} readOnly={disabled} aria-label={`Cantidad de ${name}`}
+            aria-invalid={dirty && count === undefined}
+            aria-describedby={count === undefined || error ? errorId : undefined}
+            onChange={(event) => change(event.target.value)} />
+          <button type="button" disabled={disabled || count === undefined || count >= 999} onClick={() => change(String((count ?? item.qty) + 1))} aria-label={`Sumar ${unit} de ${name}`}><Plus size={15} aria-hidden="true" /></button>
+        </div>
+        <small>{count === 1 ? unit : isSet ? 'juegos' : 'unidades'}</small>
+        {dirty && <button type="submit" className="button button-secondary button-small planner-save" disabled={disabled || count === undefined} aria-label={`Guardar cantidad de ${name}`}>
+          {saving ? <><Spinner /> Guardando</> : 'Guardar'}
+        </button>}
+        {(count === undefined || error) && <small id={errorId} className="planner-error" role="alert">{error || 'Ingresá un entero de 1 a 999.'}</small>}
+      </form>
+      <div className="planner-price planner-subtotal">
+        <span className="planner-field-label">Subtotal</span>
+        <strong>{quote && count !== undefined ? money.format(quote.priceCrc * count) : 'Pendiente'}</strong>
+      </div>
+      <div className="planner-item-actions">
+        <button type="button" className={`button button-small ${quote ? 'button-secondary' : 'button-primary'}`} disabled={disabled} onClick={() => onQuote()} aria-label={`${quote ? 'Actualizar' : 'Cotizar'} ${name}`}>
+          {quote ? 'Actualizar' : 'Cotizar'}
+        </button>
+        <button type="button" className="planner-item-more" aria-expanded={showDetails} aria-controls={detailsId}
+          aria-label={`Detalles de ${name}`} onClick={() => setShowDetails(!showDetails)}>Detalles <ChevronDown size={13} aria-hidden="true" /></button>
+      </div>
+    </div>
+    <div id={detailsId} className="planner-item-detail-body" hidden={!showDetails}>
+      {item.notes && <p>{item.notes}</p>}
+      {isFlexibleEnclosure(item) && <p>{enclosureAdvice(tier)}</p>}
+      {quote && <>
+        {address && <details className="product-address"><summary>Ver URL de la ficha</summary><span>{address}</span></details>}
+        <p>Marca · {brandLabel(quote)}</p>
+        {productProvenance(quote.title, quote.brand) === 'replica' && <p>El vendedor lo anuncia como réplica.</p>}
+        {!!quote.modelIds?.length && <p>Modelo publicado · {quote.modelIds.join(', ')}. Autenticidad por confirmar con el fabricante.</p>}
+        {quoteBasisLabel(quote) && <p>{quoteBasisLabel(quote)}</p>}
+        <ReviewLink quote={quote} />
+        {quote.basis === 'published' && Number.isFinite(Date.parse(quote.capturedAt)) &&
+          <time className="quote-date" dateTime={quote.capturedAt}>{quoteDate.format(new Date(quote.capturedAt))}</time>}
+        <button type="button" className="text-action" disabled={disabled} onClick={onEnterQuoteUrl}>Cambiar ficha del producto</button>
+      </>}
+      {alternatives.length > 0 && <ul className="planner-alternatives" role="list">{alternatives.map((alternative) => <li key={alternative.id}>
+        <strong>{alternative.title} · {money.format(alternative.priceCrc)} por {unit}</strong>
+        <QuoteStoreLink quote={alternative} itemName={name} /><ReviewLink quote={alternative} />
+        <button type="button" className="text-action" disabled={disabled} onClick={() => onQuote(alternative.productUrl)}>Usar este precio</button>
+      </li>)}</ul>}
+      <button type="button" className="text-action" disabled={disabled} onClick={onSplit} aria-label={`Dividir en artículos: ${name}`}>Dividir en artículos</button>
+    </div>
+    {search && <SearchFindings search={search} busy={disabled} onUse={onQuote} />}
+    {updateActivity && !(updateActivity.stage === 'failed' && search?.detail === updateActivity.detail) &&
+      <div className="quote-single-progress" role="status"><QuoteJob activity={updateActivity} single /></div>}
+  </li>;
 }
 
 function ManualItemDialog({ project, defaultZone, onDismiss, onSuccess }: {
@@ -319,7 +457,7 @@ function ManualItemDialog({ project, defaultZone, onDismiss, onSuccess }: {
     try {
       const result = await post<{ project: FurnishingProject; item: CatalogItem }>(`/api/projects/${project.id}/items`, {
         name, qty: Number(data.get('qty')), zoneId: String(data.get('zoneId') ?? ''),
-        notes: String(data.get('notes')).trim(), requestId,
+        notes: String(data.get('notes')).trim(), purchaseUnit: String(data.get('purchaseUnit')), requestId,
       });
       onSuccess(result.project, result.item);
     } catch (cause) {
@@ -350,6 +488,11 @@ function ManualItemDialog({ project, defaultZone, onDismiss, onSuccess }: {
           <input type="number" id="item-quantity" name="qty" min={1} max={999} step={1} defaultValue={1} required readOnly={busy} />
         </div>
       </div>
+      <fieldset className="manual-purchase-unit">
+        <legend>Cómo se cotiza</legend>
+        <label><input type="radio" name="purchaseUnit" value="unit" defaultChecked disabled={busy} /> Por unidad</label>
+        <label><input type="radio" name="purchaseUnit" value="set" disabled={busy} /> Por juego</label>
+      </fieldset>
       <label htmlFor="item-notes">Notas <span>(opcional)</span></label>
       <textarea id="item-notes" name="notes" rows={3} maxLength={500} placeholder="Medidas, materiales u otros detalles" readOnly={busy} />
       {error && <Notice>{error}</Notice>}
@@ -372,6 +515,7 @@ export function QuoteDialog({ projectId, item, tier, onSearch, onDismiss, onSucc
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [activity, setActivity] = useState<QuoteActivity | null>(null);
+  const hasQuote = quotesForTier(item, tier).length > 0;
 
   async function submit(productUrl = '') {
     if (productUrl && !/^https?:\/\//i.test(productUrl)) {
@@ -401,8 +545,8 @@ export function QuoteDialog({ projectId, item, tier, onSearch, onDismiss, onSucc
   }
 
   return (
-    <Modal title="Cotizar artículo" onDismiss={onDismiss} busy={busy}>
-      <p className="quote-item-title">{purchaseName(item, tier)}</p>
+    <Modal title={hasQuote ? 'Cambiar ficha del producto' : 'Cotizar artículo'} onDismiss={onDismiss} busy={busy}>
+      <p className="quote-item-title">{purchaseName(item, tier)} · Precio por {isPurchaseSet(item) ? 'juego' : 'unidad'}</p>
       <p className="quote-tier-label">{budgetProfiles[tier].label}</p>
       {activity?.search ? <SearchFindings search={activity.search} busy={busy} onUse={submit} /> : activity && <div className="quote-single-progress" role="status"><QuoteJob activity={activity} single /></div>}
       {error && error !== activity?.search?.detail && <Notice>{error}</Notice>}
@@ -411,7 +555,7 @@ export function QuoteDialog({ projectId, item, tier, onSearch, onDismiss, onSucc
           {busy ? <><Spinner /> Cotizando…</> : 'Buscar en tiendas'}
         </button>
       </div>
-      <details className="quote-manual" hidden={busy}>
+      <details className="quote-manual" open={hasQuote || undefined} hidden={busy}>
         <summary>Usar un enlace específico</summary>
         <form className="quote-form" onSubmit={(event) => {
           event.preventDefault();

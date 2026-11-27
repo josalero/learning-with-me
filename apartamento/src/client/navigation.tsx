@@ -8,14 +8,23 @@ export function projectPath(id: string, view: ProjectView = 'resumen') {
   return `${projectsPath}/${id}${view === 'resumen' ? '' : `/${view}`}`;
 }
 
+export function inventoryPath(projectId: string, roomId?: string) {
+  const inventory = projectPath(projectId, 'inventario');
+  return roomId ? `${inventory}/${encodeURIComponent(roomId)}` : inventory;
+}
+
 export function readRoute(path: string) {
   const parts = path.replace(/\/$/, '').split('/');
   if (path === '/' || path === projectsPath || path === `${projectsPath}/`) return { kind: 'projects' } as const;
-  const [, prefix, id, rawView = 'resumen'] = parts;
+  const [, prefix, id, rawView = 'resumen', rawRoom] = parts;
   const view = projectViews.find((candidate) => candidate === rawView);
-  if (prefix === 'proyectos' && id && view && parts.length <= 4
+  if (prefix === 'proyectos' && id && view && (parts.length <= 4 || (parts.length === 5 && view === 'inventario' && rawRoom))
     && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) {
-    return { kind: 'project', id, view } as const;
+    try {
+      return { kind: 'project', id, view, roomId: rawRoom && decodeURIComponent(rawRoom) } as const;
+    } catch {
+      return { kind: 'missing' } as const;
+    }
   }
   return { kind: 'missing' } as const;
 }

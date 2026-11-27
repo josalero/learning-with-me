@@ -12,7 +12,9 @@ export function isFlexibleEnclosure(item: CatalogItem) {
 }
 
 export function purchaseName(item: CatalogItem, tier: BudgetTier) {
-  return isFlexibleEnclosure(item) ? enclosureNames[tier] : item.name;
+  if (isFlexibleEnclosure(item)) return enclosureNames[tier];
+  if (item.id === 'i-island-stools' && item.name === 'Taburetes isla (×3)') return 'Taburetes isla';
+  return item.name;
 }
 
 export function enclosureAdvice(tier: BudgetTier) {

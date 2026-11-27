@@ -63,4 +63,14 @@ describe('Excel budget export', () => {
     expect(summary.getCell('C8').result).toBe('Sin tipo de cambio');
     expect(workbook.getWorksheet('Sin cotizar')?.getCell('A6').value).toBe('El proyecto aún no tiene artículos.');
   });
+
+  it('exports the updated quantity for a legacy item named with its original count', async () => {
+    const project = applyDemoQuotes(buildNatarundiProject('workspace', 'project'));
+    const stools = project.items.find(({ id }) => id === 'i-island-stools')!;
+    stools.qty = 5;
+    const detail = (await openBudget(project)).getWorksheet('Ítems')!;
+    const row = detail.getRows(6, detail.rowCount)!.find((entry) => entry.getCell(2).value === 'Taburetes isla')!;
+    expect(row.getCell(3).value).toBe(5);
+    expect(row.getCell(7).result).toBe(stools.quotes[0]!.priceCrc * 5);
+  });
 });

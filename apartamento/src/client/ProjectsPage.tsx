@@ -61,7 +61,7 @@ export default function ProjectsPage({ onSessionExpired, ...account }: Account &
                 const pending = project.itemCount - project.quotedCount;
                 return (
                   <li key={project.id}>
-                    <Link className="project-card panel" href={projectPath(project.id)}>
+                    <Link className="project-card panel" href={projectPath(project.id, 'inventario')}>
                       <span className="project-cover">
                         {project.coverReferenceId ? <img src={referenceImage(project.id, project.coverReferenceId)} alt="" loading="lazy" /> : <Building2 size={42} aria-hidden="true" />}
                       </span>

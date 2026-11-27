@@ -65,13 +65,14 @@ export default function App() {
 
   const account = { session, onLogout: logout, loggingOut, logoutError };
   if (route.kind === 'projects') return <ProjectsPage {...account} onSessionExpired={onSessionExpired} />;
-  if (route.kind === 'project') return <ProjectPage key={route.id} {...account} projectId={route.id} view={route.view} onSessionExpired={onSessionExpired} />;
+  if (route.kind === 'project') return <ProjectPage key={route.id} {...account} projectId={route.id} view={route.view} roomId={route.roomId} onSessionExpired={onSessionExpired} />;
   return <Workspace {...account}><MissingProject /></Workspace>;
 }
 
-function ProjectPage({ projectId, view, onSessionExpired, ...account }: Account & {
+function ProjectPage({ projectId, view, roomId, onSessionExpired, ...account }: Account & {
   projectId: string;
   view: ProjectView;
+  roomId?: string;
   onSessionExpired: () => void;
 }) {
   const [project, setProject] = useState<FurnishingProject | null>(null);
@@ -90,7 +91,7 @@ function ProjectPage({ projectId, view, onSessionExpired, ...account }: Account 
     return () => controller.abort();
   }, [projectId, retry, onSessionExpired]);
 
-  if (project) return <Dashboard {...account} initialProject={project} view={view} />;
+  if (project) return <Dashboard {...account} initialProject={project} view={view} roomId={roomId} />;
   return (
     <Workspace {...account}>
       {error === 'missing' ? <MissingProject /> : error ? (
